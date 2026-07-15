@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "version": "synthetic-v1",
+  "issues": [
+    {
+      "id": "orders-billing-notifications-cycle",
+      "type": "break-cycle",
+      "acceptableModules": [
+        ["modules/billing", "modules/notifications", "modules/orders"]
+      ],
+      "acceptableCycleEdges": [
+        { "fromModule": "modules/notifications", "toModule": "modules/orders" }
+      ],
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "expectedRisk": { "allowed": ["medium"] },
+      "expectedReversibility": { "allowed": ["conditional"] },
+      "ranking": { "shouldAppearInTopK": 1 },
+      "notes": "The labeled edge has one importing file while the other cycle edges have higher coupling."
+    }
+  ]
+}

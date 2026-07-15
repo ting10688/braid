@@ -1,0 +1,26 @@
+schemaVersion: 1
+expectationVersion: synthetic-v1
+id: static-comparison
+title: Manual notification boundary comparison
+description: Independent static, behavior, timing, runtime, and artifact guardrails.
+repetitions: 3
+timeoutMs: 30000
+cases:
+  - type: static-comparison
+    id: notification-app
+    beforeFixture: fixtures/templates/notification-app/before
+    afterFixture: fixtures/templates/notification-app/after-manual
+    commands:
+      build: [node, "{workspaceRoot}/node_modules/typescript/bin/tsc", -p, .]
+      test: [node, --test, test/order.test.mjs]
+      runtimeBenchmark:
+        - node
+        - -e
+        - "import('./dist/index.js').then(({createOrder}) => { for (let i = 0; i < 1000; i += 1) createOrder('u1'); })"
+    artifacts:
+      paths: [dist/**/*.js]
+    tolerances:
+      buildDurationRegressionPercent: 1000
+      testDurationRegressionPercent: 1000
+      artifactSizeRegressionPercent: 1000
+    smoke: true
