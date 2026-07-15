@@ -35,16 +35,23 @@ export const benchmarkSummary = (run: BenchmarkRun): BenchmarkSummary => {
     (sum, result) => sum + result.matchedIssueIds.length,
     0,
   );
+  const acceptedActions = proposalCases.reduce(
+    (sum, result) => sum + result.matchedIssueIds.length,
+    0,
+  );
   const proposals = proposalCases.reduce(
     (sum, result) => sum + result.proposals.length,
     0,
   );
-  const ambiguous = proposalCases.reduce(
-    (sum, result) => sum + (result.ambiguousProposalIds?.length ?? 0),
-    0,
-  );
   const informational = proposalCases.reduce(
     (sum, result) => sum + (result.informationalProposalIds?.length ?? 0),
+    0,
+  );
+  const falsePositives = proposalCases.reduce(
+    (sum, result) =>
+      sum +
+      result.unexpectedProposalIds.length +
+      (result.rejectedProposalIds?.length ?? 0),
     0,
   );
   const repositories = run.manifest.repositories ?? [];
@@ -63,7 +70,10 @@ export const benchmarkSummary = (run: BenchmarkRun): BenchmarkSummary => {
   return {
     correctness: {
       expectedIssueCoverage: ratio(matched, expected),
-      proposalValidity: ratio(matched + informational, proposals - ambiguous),
+      proposalValidity: ratio(
+        acceptedActions + informational,
+        acceptedActions + informational + falsePositives,
+      ),
       topKCoverage: mean(
         proposalCases
           .filter(({ expectedIssues }) => expectedIssues > 0)
@@ -94,13 +104,7 @@ export const benchmarkSummary = (run: BenchmarkRun): BenchmarkSummary => {
               reversibilityClassificationAgreement,
           ),
       ),
-      falsePositiveCount: proposalCases.reduce(
-        (sum, result) =>
-          sum +
-          result.unexpectedProposalIds.length +
-          (result.rejectedProposalIds?.length ?? 0),
-        0,
-      ),
+      falsePositiveCount: falsePositives,
       sourceMutations: run.cases.reduce(
         (sum, result) => sum + result.sourceMutations.length,
         0,

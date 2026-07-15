@@ -49,6 +49,29 @@ const stableValue = (value: unknown): unknown => {
   return value;
 };
 
+const normalizeImpact = (impact: MigrationProposal["expectedImpact"]) => ({
+  simulated: [...impact.simulated].sort((left, right) =>
+    compare(
+      `${left.metric}\0${left.rationale}`,
+      `${right.metric}\0${right.rationale}`,
+    ),
+  ),
+  estimated: [...impact.estimated].sort((left, right) =>
+    compare(
+      `${left.metric}\0${left.rationale}`,
+      `${right.metric}\0${right.rationale}`,
+    ),
+  ),
+  unknowns: sorted(impact.unknowns),
+});
+
+const normalizeRisk = (risk: MigrationProposal["risk"]) => ({
+  ...risk,
+  factors: [...risk.factors].sort((left, right) =>
+    compare(`${left.type}\0${left.details}`, `${right.type}\0${right.details}`),
+  ),
+});
+
 export const normalizeProposal = (
   proposal: MigrationProposal,
 ): MigrationProposal => {
@@ -74,42 +97,51 @@ export const normalizeProposal = (
         JSON.stringify(stableValue(right)),
       ),
     );
+  const alternatives = proposal.alternatives
+    ?.map((alternative) => ({
+      ...alternative,
+      selectedEdge: {
+        ...alternative.selectedEdge,
+        files: sorted(alternative.selectedEdge.files),
+      },
+      affectedFiles: sorted(alternative.affectedFiles),
+      affectedModules: sorted(alternative.affectedModules),
+      evidence: alternative.evidence
+        .map(normalizeEvidence)
+        .sort((left, right) =>
+          compare(
+            JSON.stringify(stableValue(left)),
+            JSON.stringify(stableValue(right)),
+          ),
+        ),
+      expectedImpact: normalizeImpact(alternative.expectedImpact),
+      risk: normalizeRisk(alternative.risk),
+      reversibility: {
+        ...alternative.reversibility,
+        factors: sorted(alternative.reversibility.factors),
+      },
+    }))
+    .sort((left, right) =>
+      compare(
+        `${left.selectedEdge.fromModule}\0${left.selectedEdge.toModule}\0${left.strategy}`,
+        `${right.selectedEdge.fromModule}\0${right.selectedEdge.toModule}\0${right.strategy}`,
+      ),
+    );
   return migrationProposalSchema.parse({
     ...proposal,
     affectedFiles: sorted(proposal.affectedFiles),
     affectedModules: sorted(proposal.affectedModules),
     target,
     evidence,
-    expectedImpact: {
-      simulated: [...proposal.expectedImpact.simulated].sort((left, right) =>
-        compare(
-          `${left.metric}\0${left.rationale}`,
-          `${right.metric}\0${right.rationale}`,
-        ),
-      ),
-      estimated: [...proposal.expectedImpact.estimated].sort((left, right) =>
-        compare(
-          `${left.metric}\0${left.rationale}`,
-          `${right.metric}\0${right.rationale}`,
-        ),
-      ),
-      unknowns: sorted(proposal.expectedImpact.unknowns),
-    },
-    risk: {
-      ...proposal.risk,
-      factors: [...proposal.risk.factors].sort((left, right) =>
-        compare(
-          `${left.type}\0${left.details}`,
-          `${right.type}\0${right.details}`,
-        ),
-      ),
-    },
+    expectedImpact: normalizeImpact(proposal.expectedImpact),
+    risk: normalizeRisk(proposal.risk),
     reversibility: {
       ...proposal.reversibility,
       factors: sorted(proposal.reversibility.factors),
     },
     preconditions: sorted(proposal.preconditions),
     constraints: sorted(proposal.constraints),
+    ...(alternatives ? { alternatives } : {}),
   });
 };
 

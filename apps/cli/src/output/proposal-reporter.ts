@@ -49,6 +49,9 @@ export const formatProposalReport = (
       `   Evidence: ${evidenceLine(proposal)}`,
       `   ${impactLine(proposal)}`,
       `   ${targetLine(proposal)}`,
+      ...(proposal.alternatives
+        ? [`   Alternatives: ${proposal.alternatives.length}`]
+        : []),
     );
   });
   return lines.join("\n");

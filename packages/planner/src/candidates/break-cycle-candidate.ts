@@ -1,12 +1,18 @@
+import { createHash } from "node:crypto";
 import type {
   ArchitectureConfig,
   ArchitectureSnapshot,
   DependencyCycle,
   ImportEdge,
 } from "@braid/core";
-import { buildAdjacencyList, detectCycles } from "@braid/analyzer";
+import {
+  buildAdjacencyList,
+  detectCycles,
+  findStronglyConnectedComponents,
+} from "@braid/analyzer";
 import type { ProposalCandidate } from "../candidate.js";
 import { protectedFiles } from "../path-policy.js";
+import { PLANNER_VERSION } from "../proposal-id.js";
 
 interface CycleEdge {
   fromModule: string;
@@ -16,6 +22,11 @@ interface CycleEdge {
   files: string[];
   publicEntrypoints: string[];
   protectedFiles: string[];
+}
+
+interface CycleRoot {
+  signature: string;
+  modules: string[];
 }
 
 const compare = (left: string, right: string): number =>
@@ -43,6 +54,61 @@ const moduleCycles = (imports: readonly ImportEdge[]): string[][] => {
       edges.map((edge) => [edge.fromModule, edge.toModule] as const),
     ),
   );
+};
+
+const cycleRoots = (snapshot: ArchitectureSnapshot): CycleRoot[] => {
+  const edges = snapshot.repository.imports.filter(
+    (edge) => edge.kind === "internal" && edge.fromModule !== edge.toModule,
+  );
+  const adjacency = buildAdjacencyList(
+    new Set(edges.flatMap((edge) => [edge.fromModule, edge.toModule])),
+    edges.map((edge) => [edge.fromModule, edge.toModule] as const),
+  );
+  return findStronglyConnectedComponents(adjacency)
+    .filter((modules) => modules.length > 1)
+    .map((modules) => {
+      const selected = new Set(modules);
+      const relevantEdges = edges
+        .filter(
+          (edge) =>
+            selected.has(edge.fromModule) && selected.has(edge.toModule),
+        )
+        .map(({ fromModule, toModule, fromFile, toFile }) => ({
+          fromModule,
+          toModule,
+          fromFile,
+          toFile,
+        }))
+        .sort((left, right) =>
+          compare(
+            `${left.fromModule}\0${left.toModule}\0${left.fromFile}\0${left.toFile}`,
+            `${right.fromModule}\0${right.toModule}\0${right.fromFile}\0${right.toFile}`,
+          ),
+        );
+      const signature = createHash("sha256")
+        .update(
+          JSON.stringify({
+            plannerVersion: PLANNER_VERSION,
+            snapshot: {
+              configHash: snapshot.configHash,
+              gitCommit: snapshot.gitCommit,
+            },
+            modules,
+            edges: relevantEdges,
+            files: [
+              ...new Set(
+                relevantEdges.flatMap(({ fromFile, toFile }) => [
+                  fromFile,
+                  toFile,
+                ]),
+              ),
+            ].sort(compare),
+          }),
+        )
+        .digest("hex")
+        .slice(0, 12);
+      return { signature: `CR-${signature}`, modules };
+    });
 };
 
 const collectCycleEdges = (
@@ -84,7 +150,7 @@ const collectCycleEdges = (
     };
   });
 
-const selectEdge = (edges: CycleEdge[]): CycleEdge | undefined =>
+const rankEdges = (edges: CycleEdge[]): CycleEdge[] =>
   [...edges].sort((left, right) => {
     const tuple = (edge: CycleEdge): Array<number | string> => [
       edge.importingFiles.length,
@@ -105,7 +171,7 @@ const selectEdge = (edges: CycleEdge[]): CycleEdge | undefined =>
       if (result !== 0) return result;
     }
     return 0;
-  })[0];
+  });
 
 const suggestedStrategy = (
   selected: CycleEdge,
@@ -147,8 +213,22 @@ export const breakCycleCandidates = (
 ): ProposalCandidate[] => {
   const imports = snapshot.repository.imports;
   const cyclesBefore = moduleCycles(imports).length;
+  const roots = cycleRoots(snapshot);
 
   return canonicalCycles(snapshot.repository.cycles).flatMap((cycle) => {
+    const root = roots.find(({ modules }) =>
+      cycle.every((module) => modules.includes(module)),
+    );
+    if (!root) return [];
+    if (
+      root.modules.every((id) => {
+        const kind = snapshot.repository.modules.find(
+          (module) => module.id === id,
+        )?.kind;
+        return ["root-file", "entrypoint", "barrel"].includes(kind ?? "");
+      })
+    )
+      return [];
     const cycleEdges = collectCycleEdges(
       cycle,
       imports,
@@ -156,17 +236,6 @@ export const breakCycleCandidates = (
       config.protected_paths,
     );
     if (cycleEdges.some((edge) => edge.imports.length === 0)) return [];
-    const selected = selectEdge(cycleEdges);
-    if (!selected) return [];
-    const remainingImports = imports.filter(
-      (edge) =>
-        !(
-          edge.kind === "internal" &&
-          edge.fromModule === selected.fromModule &&
-          edge.toModule === selected.toModule
-        ),
-    );
-    const cyclesAfter = moduleCycles(remainingImports).length;
     const cycleFiles = [
       ...new Set(cycleEdges.flatMap((edge) => edge.files)),
     ].sort(compare);
@@ -177,10 +246,25 @@ export const breakCycleCandidates = (
       cycleFiles,
       config.protected_paths,
     );
-    const strategy = suggestedStrategy(selected, imports);
+    const moduleSurfaceFiles = cycleFiles.filter((file) => {
+      const module = snapshot.repository.modules.find(({ paths }) =>
+        paths.includes(file),
+      );
+      return module?.kind === "entrypoint" || module?.kind === "barrel";
+    });
 
-    return [
-      {
+    return rankEdges(cycleEdges).map((selected) => {
+      const remainingImports = imports.filter(
+        (edge) =>
+          !(
+            edge.kind === "internal" &&
+            edge.fromModule === selected.fromModule &&
+            edge.toModule === selected.toModule
+          ),
+      );
+      const cyclesAfter = moduleCycles(remainingImports).length;
+      const strategy = suggestedStrategy(selected, imports);
+      return {
         schemaVersion: 1 as const,
         snapshotId: snapshot.id,
         type: "break-cycle" as const,
@@ -199,6 +283,8 @@ export const breakCycleCandidates = (
             files: selected.files,
           },
           suggestedStrategy: strategy,
+          rootCauseSignature: root.signature,
+          rootCauseModules: root.modules,
         },
         evidence: [
           {
@@ -273,8 +359,9 @@ export const breakCycleCandidates = (
         expectedBenefit: cyclesAfter < cyclesBefore ? 3 : 1,
         protectedFiles: protectedCycleFiles,
         publicEntrypoints,
+        moduleSurfaceFiles,
         cycleLength: cycle.length,
-      },
-    ];
+      };
+    });
   });
 };

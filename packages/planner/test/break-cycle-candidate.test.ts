@@ -13,6 +13,31 @@ const cycleProposal = (snapshot: ArchitectureSnapshot) =>
   })[0]!;
 
 describe("break-cycle proposal generation", () => {
+  it("suppresses the Consola-style root-only cycle artifact", () => {
+    expect(
+      generateMigrationProposals(
+        createPlannerSnapshot({
+          imports: [
+            internalEdge(
+              "root:constants",
+              "root:types",
+              "src/constants.ts",
+              "src/types.ts",
+            ),
+            internalEdge(
+              "root:types",
+              "root:constants",
+              "src/types.ts",
+              "src/constants.ts",
+            ),
+          ],
+        }),
+        plannerConfig,
+        { type: "break-cycle" },
+      ),
+    ).toEqual([]);
+  });
+
   it("handles a canonical two-module cycle with a stable edge", () => {
     const proposal = cycleProposal(
       createPlannerSnapshot({
@@ -123,6 +148,81 @@ describe("break-cycle proposal generation", () => {
         ],
       }),
     );
+    expect(proposal.expectedImpact.simulated[0]?.delta).toBe(-2);
+  });
+
+  it("groups multiple simple traversals in one SCC into one primary with alternatives", () => {
+    const first = createPlannerSnapshot({
+      imports: [
+        internalEdge("a", "b"),
+        internalEdge("b", "a"),
+        internalEdge("a", "c"),
+        internalEdge("c", "a"),
+      ],
+    });
+    const second = createPlannerSnapshot({
+      imports: [...first.repository.imports].reverse(),
+      files: [...first.repository.files].reverse(),
+      createdAt: new Date("2026-07-16T00:00:00.000Z"),
+    });
+    const firstProposal = cycleProposal(first);
+    const secondProposal = cycleProposal(second);
+    expect(
+      generateMigrationProposals(first, plannerConfig, {
+        type: "break-cycle",
+      }),
+    ).toHaveLength(1);
+    expect(firstProposal.target).toMatchObject({
+      type: "break-cycle",
+      rootCauseModules: ["a", "b", "c"],
+    });
+    expect(firstProposal.alternatives?.length).toBeGreaterThan(0);
+    expect(secondProposal.id).toBe(firstProposal.id);
+    expect(secondProposal.target).toEqual(firstProposal.target);
+    expect(secondProposal.alternatives).toEqual(firstProposal.alternatives);
+  });
+
+  it("keeps distinct SCC roots as distinct top-level proposals", () => {
+    const proposals = generateMigrationProposals(
+      createPlannerSnapshot({
+        imports: [
+          internalEdge("a", "b"),
+          internalEdge("b", "a"),
+          internalEdge("c", "d"),
+          internalEdge("d", "c"),
+        ],
+      }),
+      plannerConfig,
+      { type: "break-cycle" },
+    );
+    expect(proposals).toHaveLength(2);
+    expect(
+      new Set(
+        proposals.map((proposal) =>
+          proposal.target.type === "break-cycle"
+            ? proposal.target.rootCauseSignature
+            : undefined,
+        ),
+      ).size,
+    ).toBe(2);
+  });
+
+  it("selects the greatest simulated reduction before lexical edge order", () => {
+    const proposal = cycleProposal(
+      createPlannerSnapshot({
+        imports: [
+          internalEdge("a", "b"),
+          internalEdge("b", "z"),
+          internalEdge("a", "c"),
+          internalEdge("c", "z"),
+          internalEdge("z", "a"),
+        ],
+      }),
+    );
+    expect(proposal.target).toMatchObject({
+      type: "break-cycle",
+      selectedEdge: { fromModule: "z", toModule: "a" },
+    });
     expect(proposal.expectedImpact.simulated[0]?.delta).toBe(-2);
   });
 

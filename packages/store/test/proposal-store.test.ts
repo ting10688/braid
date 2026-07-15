@@ -132,6 +132,76 @@ describe("JSON proposal store", () => {
     ).toBe(serializeProposal(first));
   });
 
+  it("serializes cycle alternatives deterministically", () => {
+    const cycle = migrationProposalSchema.parse({
+      ...proposal(),
+      id: "P-BC-a18d42f3",
+      type: "break-cycle",
+      affectedFiles: ["src/a.ts", "src/b.ts"],
+      affectedModules: ["a", "b"],
+      target: {
+        type: "break-cycle",
+        cycleModules: ["a", "b"],
+        cycleFiles: ["src/a.ts", "src/b.ts"],
+        selectedEdge: {
+          fromModule: "a",
+          toModule: "b",
+          files: ["src/a.ts", "src/b.ts"],
+        },
+        suggestedStrategy: "introduce-boundary",
+        rootCauseSignature: "CR-123456789abc",
+        rootCauseModules: ["a", "b"],
+      },
+      evidence: [
+        {
+          type: "dependency-cycle",
+          modules: ["a", "b"],
+          files: ["src/a.ts", "src/b.ts"],
+        },
+      ],
+      alternatives: [
+        {
+          strategy: "introduce-boundary",
+          selectedEdge: {
+            fromModule: "b",
+            toModule: "a",
+            files: ["src/a.ts", "src/b.ts"],
+          },
+          affectedFiles: ["src/a.ts", "src/b.ts"],
+          affectedModules: ["a", "b"],
+          rationale: "Reverse edge.",
+          evidence: [
+            {
+              type: "dependency-cycle",
+              modules: ["a", "b"],
+              files: ["src/a.ts", "src/b.ts"],
+            },
+          ],
+          expectedImpact: { simulated: [], estimated: [], unknowns: [] },
+          risk: { level: "low", points: 0, factors: [] },
+          reversibility: { level: "conditional", factors: ["Restore edge."] },
+        },
+      ],
+    });
+    const alternative = cycle.alternatives![0]!;
+    expect(
+      serializeProposal({
+        ...cycle,
+        alternatives: [
+          {
+            ...alternative,
+            affectedFiles: [...alternative.affectedFiles].reverse(),
+            affectedModules: [...alternative.affectedModules].reverse(),
+            selectedEdge: {
+              ...alternative.selectedEdge,
+              files: [...alternative.selectedEdge.files].reverse(),
+            },
+          },
+        ],
+      }),
+    ).toBe(serializeProposal(cycle));
+  });
+
   it("rejects malformed persisted proposals", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "braid-proposals-"));
     temporaryDirectories.push(root);

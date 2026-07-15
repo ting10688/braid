@@ -43,7 +43,12 @@ const clustersFor = (
   const byToken = new Map<string, TopLevelDeclarationRecord[]>();
   for (const declaration of declarations) {
     for (const token of tokenizeSymbolName(declaration.name)) {
-      if (ignoredTokens.has(token)) continue;
+      if (
+        [...ignoredTokens].some(
+          (ignored) => ignored.startsWith(token) || token.startsWith(ignored),
+        )
+      )
+        continue;
       const group = byToken.get(token) ?? [];
       group.push(declaration);
       byToken.set(token, group);
@@ -52,28 +57,54 @@ const clustersFor = (
 
   return [...byToken.entries()]
     .flatMap(([token, grouped]) => {
+      if (token.length < 5) return [];
       const unique = [
         ...new Map(grouped.map((item) => [item.name, item])).values(),
       ].sort((left, right) => compare(left.name, right.name));
       if (unique.length < minimumSize || unique.length === declarations.length)
         return [];
       const names = new Set(unique.map((item) => item.name));
+      const selectedLines = unique.reduce(
+        (total, declaration) =>
+          total + declaration.endLine - declaration.startLine + 1,
+        0,
+      );
+      const declarationLines = declarations.reduce(
+        (total, declaration) =>
+          total + declaration.endLine - declaration.startLine + 1,
+        0,
+      );
+      const containsDominantClass = unique.some(
+        (declaration) =>
+          declaration.kind === "class" &&
+          (declaration.endLine - declaration.startLine + 1) * 4 >=
+            declarationLines * 3,
+      );
+      const containsRuntimeDeclaration = unique.some(
+        (declaration) =>
+          declaration.kind === "function" ||
+          declaration.kind === "class" ||
+          declaration.kind === "variable",
+      );
+      const internalReferenceCount = unique.reduce(
+        (total, declaration) =>
+          total +
+          declaration.references.filter((reference) => names.has(reference))
+            .length,
+        0,
+      );
+      if (
+        containsDominantClass ||
+        !containsRuntimeDeclaration ||
+        internalReferenceCount === 0
+      )
+        return [];
       return [
         {
           token,
           declarations: unique,
-          internalReferenceCount: unique.reduce(
-            (total, declaration) =>
-              total +
-              declaration.references.filter((reference) => names.has(reference))
-                .length,
-            0,
-          ),
-          selectedLines: unique.reduce(
-            (total, declaration) =>
-              total + declaration.endLine - declaration.startLine + 1,
-            0,
-          ),
+          internalReferenceCount,
+          selectedLines,
         },
       ];
     })
@@ -102,7 +133,12 @@ export const extractModuleCandidates = (
           config.planner.min_symbol_cluster_size + 1,
     )
     .flatMap((file) => {
-      const sourceModule = classifyModule(file.path);
+      const moduleRecord = snapshot.repository.modules.find((module) =>
+        module.paths.includes(file.path),
+      );
+      if (["entrypoint", "barrel"].includes(moduleRecord?.kind ?? ""))
+        return [];
+      const sourceModule = moduleRecord?.id ?? classifyModule(file.path);
       const cluster = clustersFor(
         file,
         sourceModule,
@@ -121,9 +157,6 @@ export const extractModuleCandidates = (
       )
         ? [file.path]
         : [];
-      const moduleRecord = snapshot.repository.modules.find(
-        (module) => module.id === sourceModule,
-      );
       const mayClearThreshold =
         file.linesOfCode - cluster.selectedLines <=
         config.thresholds.oversized_file_lines;
@@ -225,6 +258,7 @@ export const extractModuleCandidates = (
           expectedBenefit: mayClearThreshold ? 2 : 1,
           protectedFiles: protectedSource,
           publicEntrypoints,
+          moduleSurfaceFiles: [],
         },
       ];
     });

@@ -436,6 +436,7 @@ export const proposalCaseResultSchema = z.object({
   expectedIssues: z.number().int().nonnegative(),
   proposals: z.array(migrationProposalSchema),
   matchedIssueIds: z.array(idSchema),
+  acceptedProposalIds: z.array(z.string()).optional(),
   unmatchedIssueIds: z.array(idSchema),
   unexpectedProposalIds: z.array(z.string()),
   rejectedProposalIds: z.array(z.string()).optional(),
