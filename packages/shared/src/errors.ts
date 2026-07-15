@@ -1,4 +1,4 @@
-export class TopiaryError extends Error {
+export class BraidError extends Error {
   constructor(
     message: string,
     readonly exitCode: 1 | 2 | 3,
@@ -9,19 +9,19 @@ export class TopiaryError extends Error {
   }
 }
 
-export class InvalidInputError extends TopiaryError {
+export class InvalidInputError extends BraidError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, 2, options);
   }
 }
 
-export class AnalysisError extends TopiaryError {
+export class AnalysisError extends BraidError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, 3, options);
   }
 }
 
-export class PersistenceError extends TopiaryError {
+export class PersistenceError extends BraidError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, 1, options);
   }

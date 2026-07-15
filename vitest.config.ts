@@ -7,10 +7,10 @@ const fromRoot = (path: string): string =>
 export default defineConfig({
   resolve: {
     alias: {
-      "@topiary/analyzer": fromRoot("./packages/analyzer/src/index.ts"),
-      "@topiary/core": fromRoot("./packages/core/src/index.ts"),
-      "@topiary/shared": fromRoot("./packages/shared/src/index.ts"),
-      "@topiary/store": fromRoot("./packages/store/src/index.ts"),
+      "@braid/analyzer": fromRoot("./packages/analyzer/src/index.ts"),
+      "@braid/core": fromRoot("./packages/core/src/index.ts"),
+      "@braid/shared": fromRoot("./packages/shared/src/index.ts"),
+      "@braid/store": fromRoot("./packages/store/src/index.ts"),
     },
   },
   test: {

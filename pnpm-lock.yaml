@@ -32,16 +32,16 @@ importers:
 
   apps/cli:
     dependencies:
-      '@topiary/analyzer':
+      '@braid/analyzer':
         specifier: workspace:*
         version: link:../../packages/analyzer
-      '@topiary/core':
+      '@braid/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@topiary/shared':
+      '@braid/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@topiary/store':
+      '@braid/store':
         specifier: workspace:*
         version: link:../../packages/store
       commander:
@@ -52,10 +52,10 @@ importers:
 
   packages/analyzer:
     dependencies:
-      '@topiary/core':
+      '@braid/core':
         specifier: workspace:*
         version: link:../core
-      '@topiary/shared':
+      '@braid/shared':
         specifier: workspace:*
         version: link:../shared
       ts-morph:
@@ -64,7 +64,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@topiary/shared':
+      '@braid/shared':
         specifier: workspace:*
         version: link:../shared
       yaml:
@@ -78,10 +78,10 @@ importers:
 
   packages/store:
     dependencies:
-      '@topiary/core':
+      '@braid/core':
         specifier: workspace:*
         version: link:../core
-      '@topiary/shared':
+      '@braid/shared':
         specifier: workspace:*
         version: link:../shared
 

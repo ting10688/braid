@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
 import { ZodError } from "zod";
-import { InvalidInputError } from "@topiary/shared";
+import { InvalidInputError } from "@braid/shared";
 import {
   architectureConfigSchema,
   type ArchitectureConfig,
@@ -32,12 +32,12 @@ export const parseArchitectureConfig = (
       const details = error.issues
         .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
         .join("; ");
-      throw new InvalidInputError(`Invalid Topiary configuration: ${details}`, {
+      throw new InvalidInputError(`Invalid Braid configuration: ${details}`, {
         cause: error,
       });
     }
     throw new InvalidInputError(
-      `Invalid Topiary configuration YAML: ${error instanceof Error ? error.message : String(error)}`,
+      `Invalid Braid configuration YAML: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     );
   }
@@ -51,7 +51,7 @@ export const loadArchitectureConfig = async (
   } catch (error) {
     if (error instanceof InvalidInputError) throw error;
     throw new InvalidInputError(
-      `Cannot read Topiary configuration at ${filePath}`,
+      `Cannot read Braid configuration at ${filePath}`,
       { cause: error },
     );
   }

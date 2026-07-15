@@ -1,4 +1,4 @@
-import type { DependencyCycle, ImportEdge } from "@topiary/core";
+import type { DependencyCycle, ImportEdge } from "@braid/core";
 import { buildAdjacencyList } from "./import-graph.js";
 
 const canonicalCycle = (cycle: string[]): string[] => {

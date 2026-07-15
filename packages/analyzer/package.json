@@ -1,5 +1,5 @@
 {
-  "name": "@topiary/analyzer",
+  "name": "@braid/analyzer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,8 +14,8 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@topiary/core": "workspace:*",
-    "@topiary/shared": "workspace:*",
+    "@braid/core": "workspace:*",
+    "@braid/shared": "workspace:*",
     "ts-morph": "^26.0.0"
   }
 }

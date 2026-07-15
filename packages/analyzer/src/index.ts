@@ -4,7 +4,7 @@ import {
   type ArchitectureConfig,
   type ModuleRecord,
   type RepositoryModel,
-} from "@topiary/core";
+} from "@braid/core";
 import { buildImportGraph } from "./import-graph.js";
 import { findDependencyCycles } from "./cycle-detector.js";
 import { classifyModule } from "./module-classifier.js";

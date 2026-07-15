@@ -1,4 +1,4 @@
-import type { ImportEdge, SourceFileRecord } from "@topiary/core";
+import type { ImportEdge, SourceFileRecord } from "@braid/core";
 import type { ScannedImport } from "./repo-scanner.js";
 import { classifyModule } from "./module-classifier.js";
 
