@@ -5,6 +5,7 @@ import {
   changeTaskBenchmarkCaseSchema,
   expectationFileSchema,
   realWorldRepositorySchema,
+  repositoryManifestSchema,
   rollbackBenchmarkCaseSchema,
 } from "../src/models/benchmark.js";
 
@@ -106,5 +107,86 @@ describe("benchmark schemas", () => {
         testCommands: [["pnpm", "test"]],
       }).commitSha,
     ).toHaveLength(40);
+  });
+
+  it("requires canonical GitHub URLs, full SHAs, and explicit qualification", () => {
+    const manifest = {
+      schemaVersion: 1,
+      id: "example",
+      title: "Example",
+      role: "control",
+      repository: {
+        url: "https://github.com/example/project.git",
+        commit: "a".repeat(40),
+      },
+      license: {
+        spdxId: "MIT",
+        file: "LICENSE",
+        contentHash: "b".repeat(64),
+        attribution: "Example",
+      },
+      packageManager: {
+        name: "npm",
+        version: "1",
+        lockfile: "package-lock.json",
+        lockfileHash: "c".repeat(64),
+      },
+      environment: { node: ">=20", networkRequiredAfterCheckout: false },
+      source: {
+        include: ["src/**/*.ts"],
+        exclude: [],
+        tests: ["tests/**/*.test.ts"],
+        testExclude: [],
+        manifestHash: "d".repeat(64),
+        fileCount: 1,
+        testFileCount: 1,
+        linesOfCode: 1,
+        moduleCount: 1,
+        preferredRange: "below",
+        largestFiles: [{ path: "src/index.ts", linesOfCode: 1 }],
+      },
+      braidConfiguration: {
+        file: "braid-config.yaml",
+        hash: "e".repeat(64),
+      },
+      commands: {
+        install: { executable: "npm", arguments: ["ci", "--ignore-scripts"] },
+        build: { executable: "npm", arguments: ["run", "build"] },
+        test: { executable: "npm", arguments: ["test"] },
+      },
+      qualification: {
+        status: "qualified-with-limitations",
+        reviewedAt: "2026-07-15",
+        install: { status: "passed", command: "npm ci", detail: "passed" },
+        build: { status: "passed", command: "npm run build", detail: "passed" },
+        test: { status: "passed", command: "npm test", detail: "passed" },
+        braidAnalysis: { status: "passed", command: "braid", detail: "passed" },
+        limitations: ["Optional runtime excluded."],
+      },
+    };
+    expect(repositoryManifestSchema.parse(manifest).qualification.status).toBe(
+      "qualified-with-limitations",
+    );
+    expect(
+      repositoryManifestSchema.parse({
+        ...manifest,
+        qualification: { ...manifest.qualification, status: "rejected" },
+      }).qualification.status,
+    ).toBe("rejected");
+    expect(() =>
+      repositoryManifestSchema.parse({
+        ...manifest,
+        repository: { ...manifest.repository, commit: "a".repeat(39) },
+      }),
+    ).toThrow();
+    expect(() =>
+      repositoryManifestSchema.parse({
+        ...manifest,
+        repository: {
+          ...manifest.repository,
+          url: "git@github.com:example/project.git",
+        },
+      }),
+    ).toThrow();
   });
 });
