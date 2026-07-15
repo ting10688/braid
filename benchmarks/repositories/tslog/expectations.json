@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "issues": [
+    {
+      "id": "render-core-boundary-cycle",
+      "type": "break-cycle",
+      "acceptableModules": [["core", "render"]],
+      "acceptableCycleEdges": [{ "fromModule": "render", "toModule": "core" }],
+      "maximumAffectedFiles": 4,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "expectedRisk": { "allowed": ["low"] },
+      "expectedReversibility": { "allowed": ["conditional"] },
+      "ranking": { "shouldAppearInTopK": 1 },
+      "notes": "render/json imports the core log-object shape while core feature and pipeline code import the renderer; a shared contract can remove the one-import reverse edge."
+    },
+    {
+      "id": "core-environment-boundary-cycle",
+      "type": "break-cycle",
+      "acceptableModules": [["core", "env"]],
+      "acceptableCycleEdges": [{ "fromModule": "core", "toModule": "env" }],
+      "maximumAffectedFiles": 10,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "expectedRisk": { "allowed": ["medium"] },
+      "expectedReversibility": { "allowed": ["conditional"] },
+      "ranking": { "shouldAppearInTopK": 4 },
+      "notes": "core meta/pipeline imports environment services while environment implementations import core settings and async context; the scope and medium risk label are reasonable."
+    },
+    {
+      "id": "internal-environment-boundary-cycle",
+      "type": "break-cycle",
+      "acceptableModules": [["env", "internal"]],
+      "acceptableCycleEdges": [{ "fromModule": "internal", "toModule": "env" }],
+      "maximumAffectedFiles": 13,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "expectedRisk": { "allowed": ["medium"] },
+      "expectedReversibility": { "allowed": ["difficult"] },
+      "ranking": { "shouldAppearInTopK": 6 },
+      "notes": "internal/errorUtils imports env/stackTrace while environment providers depend on internal helpers; only the canonical two-module form is accepted."
+    }
+  ],
+  "reviewedProposals": [
+    {
+      "id": "render-root-cycle",
+      "classification": "ambiguous",
+      "type": "break-cycle",
+      "acceptableModules": [["render", "root"]],
+      "acceptableCycleEdges": [{ "fromModule": "render", "toModule": "root" }],
+      "maximumAffectedFiles": 5,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "The imports are real, but root combines public logger code, entrypoints, helpers, and interfaces; the actionable boundary is unclear."
+    },
+    {
+      "id": "root-internal-cycle",
+      "classification": "ambiguous",
+      "type": "break-cycle",
+      "acceptableModules": [["internal", "root"]],
+      "acceptableCycleEdges": [
+        { "fromModule": "root", "toModule": "internal" }
+      ],
+      "maximumAffectedFiles": 8,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "The selected direction would remove normal public-to-internal dependencies; a finer root split is needed before calling it correct or false."
+    },
+    {
+      "id": "duplicate-internal-env-render-cycle",
+      "classification": "rejected",
+      "type": "break-cycle",
+      "acceptableModules": [["env", "internal", "render"]],
+      "acceptableCycleEdges": [{ "fromModule": "internal", "toModule": "env" }],
+      "maximumAffectedFiles": 10,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "Duplicates the accepted internal-to-env edge with a larger cycle and adds no distinct action."
+    },
+    {
+      "id": "duplicate-render-core-env-cycle",
+      "classification": "rejected",
+      "type": "break-cycle",
+      "acceptableModules": [["core", "env", "render"]],
+      "acceptableCycleEdges": [{ "fromModule": "render", "toModule": "core" }],
+      "maximumAffectedFiles": 11,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "Duplicates the accepted render-to-core edge with a broader affected scope."
+    },
+    {
+      "id": "root-render-multimodule-cycle",
+      "classification": "ambiguous",
+      "type": "break-cycle",
+      "acceptableModules": [["internal", "render", "root"]],
+      "acceptableCycleEdges": [{ "fromModule": "root", "toModule": "render" }],
+      "maximumAffectedFiles": 12,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "The edge exists, but the root bucket and twelve-file scope prevent a confident actionability judgment."
+    },
+    {
+      "id": "duplicate-internal-env-four-module-cycle",
+      "classification": "rejected",
+      "type": "break-cycle",
+      "acceptableModules": [["env", "internal", "render", "root"]],
+      "acceptableCycleEdges": [{ "fromModule": "internal", "toModule": "env" }],
+      "maximumAffectedFiles": 12,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "Duplicates the accepted internal-to-env edge and inflates the scope to four modules."
+    },
+    {
+      "id": "duplicate-internal-env-root-cycle",
+      "classification": "rejected",
+      "type": "break-cycle",
+      "acceptableModules": [["env", "internal", "root"]],
+      "acceptableCycleEdges": [{ "fromModule": "internal", "toModule": "env" }],
+      "maximumAffectedFiles": 14,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "notes": "Duplicates the accepted internal-to-env edge with the broadest affected scope."
+    }
+  ]
+}

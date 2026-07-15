@@ -1,0 +1,92 @@
+schemaVersion: 1
+id: consola
+title: Consola
+role: control
+repository:
+  url: https://github.com/unjs/consola.git
+  commit: c47faac1738b7383971c6c20b5a34ffa15e7cc3b
+license:
+  spdxId: MIT
+  file: LICENSE
+  contentHash: df0e3cef4a42bae7db60ee33c3409a63df5f4dc40291d3627fbf52dfbd44e8a7
+  attribution: Copyright Pooya Parsa; bundled prompt and color support retain their upstream MIT attributions.
+packageManager:
+  name: pnpm
+  version: 10.6.3
+  lockfile: pnpm-lock.yaml
+  lockfileHash: c729beba14be288f8ecabe12a5ac037df3e7eb39ae450aa83fb72154f37d3b93
+environment:
+  node: "^14.18.0 || >=16.10.0"
+  networkRequiredAfterCheckout: false
+source:
+  include: ["src/**/*.ts"]
+  exclude:
+    [
+      "**/*.d.ts",
+      "test/**",
+      "examples/**",
+      "dist/**",
+      "lib/**",
+      "node_modules/**",
+    ]
+  tests: ["test/**/*.test.ts", "test/**/*.spec.ts"]
+  testExclude: []
+  manifestHash: a538c5c9b411292b0f096fd47d4978ab059d0010d2ae429f29efd7d2880e0f5e
+  fileCount: 21
+  testFileCount: 1
+  linesOfCode: 1809
+  moduleCount: 3
+  preferredRange: below
+  largestFiles:
+    - { path: src/consola.ts, linesOfCode: 386 }
+    - { path: src/utils/box.ts, linesOfCode: 266 }
+    - { path: src/prompt.ts, linesOfCode: 171 }
+    - { path: src/utils/color.ts, linesOfCode: 138 }
+    - { path: src/reporters/fancy.ts, linesOfCode: 131 }
+    - { path: src/types.ts, linesOfCode: 97 }
+    - { path: src/utils/string.ts, linesOfCode: 94 }
+    - { path: src/constants.ts, linesOfCode: 90 }
+    - { path: src/utils/tree.ts, linesOfCode: 84 }
+    - { path: src/reporters/basic.ts, linesOfCode: 75 }
+braidConfiguration:
+  file: braid-config.yaml
+  hash: 70aa53ad58582083e2b6ced180bf4a2418e0fad0e279666edafbbeccc7c5a3a5
+commands:
+  install:
+    executable: corepack
+    arguments: [pnpm, install, --frozen-lockfile, --ignore-scripts]
+  build:
+    executable: corepack
+    arguments: [pnpm, build]
+  test:
+    executable: corepack
+    arguments: [pnpm, vitest, run]
+qualification:
+  status: qualified
+  reviewedAt: "2026-07-15"
+  install:
+    {
+      status: passed,
+      command: "corepack pnpm install --frozen-lockfile --ignore-scripts",
+      detail: "pnpm 10.6.3 restored the exact lockfile.",
+    }
+  build:
+    {
+      status: passed,
+      command: "corepack pnpm build",
+      detail: "unbuild completed successfully.",
+    }
+  test:
+    {
+      status: passed,
+      command: "corepack pnpm vitest run",
+      detail: "1 test file and 3 tests passed.",
+    }
+  braidAnalysis:
+    {
+      status: passed,
+      command: "braid init, analyze, propose",
+      detail: "21 files parsed; three proposal runs were stable and source mutation was zero.",
+    }
+  limitations:
+    - Source file count is below the preferred 30-150 range, but repeated analysis remains useful and inexpensive.
