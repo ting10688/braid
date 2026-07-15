@@ -1,10 +1,13 @@
 import path from "node:path";
 import type { BenchmarkSuite } from "../models/benchmark.js";
 import { benchmarkRunSchema, type BenchmarkRun } from "../models/benchmark.js";
+import { createFixtureManifest } from "../fixtures/fixture-manifest.js";
+import { loadProtocol } from "../fixtures/fixture-loader.js";
 import { runComparisonCase } from "./comparison-runner.js";
 import {
   environmentFingerprint,
   gitCommit,
+  gitCommitForCommand,
   normalizedCommand,
 } from "./environment-fingerprint.js";
 import { runProposalCase } from "./proposal-runner.js";
@@ -48,6 +51,13 @@ export const runBenchmarkSuite = async (
     throw new Error(
       `No ${options.kind} benchmark cases matched the requested filters`,
     );
+  const protocol = await loadProtocol(options.benchmarksRoot);
+  const selectedSuite: BenchmarkSuite = { ...suite, cases: selected };
+  const fixture = await createFixtureManifest(
+    options.benchmarksRoot,
+    selectedSuite,
+    protocol,
+  );
   const cases = [];
   for (const benchmarkCase of selected) {
     if (options.verbose) process.stderr.write(`Running ${benchmarkCase.id}\n`);
@@ -56,8 +66,12 @@ export const runBenchmarkSuite = async (
         await runProposalCase(benchmarkCase, {
           benchmarksRoot: options.benchmarksRoot,
           braidCommand: options.braidCommand,
-          repetitions: suite.repetitions,
-          timeoutMs: suite.timeoutMs,
+          correctnessRepetitions: fixture.execution.correctnessRepetitions,
+          timingRepetitions: fixture.execution.timingRepetitions,
+          warmupRuns: fixture.execution.warmupRuns,
+          normalizationRules: protocol.normalizationRules,
+          expectationVersion: suite.expectationVersion,
+          timeoutMs: fixture.execution.timeoutMs,
           keepWorkdirs: options.keepWorkdirs,
           ...(options.verbose === undefined
             ? {}
@@ -69,8 +83,10 @@ export const runBenchmarkSuite = async (
         await runComparisonCase(benchmarkCase, {
           benchmarksRoot: options.benchmarksRoot,
           workspaceRoot: options.workspaceRoot,
-          repetitions: suite.repetitions,
-          timeoutMs: suite.timeoutMs,
+          correctnessRepetitions: fixture.execution.correctnessRepetitions,
+          timingRepetitions: fixture.execution.timingRepetitions,
+          warmupRuns: fixture.execution.warmupRuns,
+          timeoutMs: fixture.execution.timeoutMs,
           keepWorkdirs: options.keepWorkdirs,
           ...(options.verbose === undefined
             ? {}
@@ -80,23 +96,60 @@ export const runBenchmarkSuite = async (
     else
       throw new Error(`Execution is not implemented for ${benchmarkCase.type}`);
   }
-  const commit = await gitCommit(options.workspaceRoot);
+  const benchmarkCommit = await gitCommit(options.workspaceRoot);
+  const braidCommit = await gitCommitForCommand(options.braidCommand);
+  const version = await braidVersion(
+    options.braidCommand,
+    options.workspaceRoot,
+  );
+  const environment = await environmentFingerprint(options.workspaceRoot);
+  const command = normalizedCommand(
+    options.braidCommand,
+    options.workspaceRoot,
+  );
   const completedAt = new Date();
   const runId = `${suite.id}-${startedAt.toISOString().replaceAll(/[-:.]/gu, "")}`;
   return benchmarkRunSchema.parse({
     schemaVersion: 1,
     runId,
     suiteId: suite.id,
+    suiteVersion: suite.suiteVersion,
     expectationVersion: suite.expectationVersion,
     startedAt: startedAt.toISOString(),
     completedAt: completedAt.toISOString(),
     braid: {
-      commit,
-      version: await braidVersion(options.braidCommand, options.workspaceRoot),
-      command: normalizedCommand(options.braidCommand, options.workspaceRoot),
+      commit: braidCommit,
+      version,
+      command,
     },
-    benchmark: { commit, version: "0.1.0" },
-    environment: await environmentFingerprint(options.workspaceRoot),
+    benchmark: { commit: benchmarkCommit, version: "0.2.0" },
+    environment,
+    manifest: {
+      schemaVersion: 1,
+      protocolVersion: protocol.protocolVersion,
+      suiteId: suite.id,
+      suiteVersion: suite.suiteVersion,
+      expectationVersion: suite.expectationVersion,
+      fixtureManifestVersion: fixture.manifest.manifestVersion,
+      fixtureManifestHash: fixture.manifest.hash,
+      configurationHash: fixture.configurationHash,
+      braidVersion: version,
+      braidCommit,
+      benchmarkVersion: "0.2.0",
+      benchmarkCommit,
+      environment: {
+        platform: process.platform,
+        architecture: environment.architecture,
+        nodeVersion: environment.nodeVersion,
+        pnpmVersion: environment.pnpmVersion,
+        gitVersion: environment.gitVersion,
+      },
+      execution: {
+        ...fixture.execution,
+        command,
+      },
+    },
+    fixtureManifest: fixture.manifest,
     cases,
   });
 };

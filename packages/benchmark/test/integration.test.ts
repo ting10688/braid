@@ -23,6 +23,11 @@ describe("synthetic benchmark integration", () => {
       },
     );
     expect(run.cases).toHaveLength(5);
+    expect(run.manifest.execution).toMatchObject({
+      correctnessRepetitions: 3,
+      timingRepetitions: 7,
+      warmupRuns: 1,
+    });
     for (const result of run.cases) {
       expect(result.type).toBe("proposal");
       if (result.type !== "proposal") continue;
@@ -33,6 +38,9 @@ describe("synthetic benchmark integration", () => {
       expect(result.deterministic).toBe(true);
       expect(result.persistenceIdempotent).toBe(true);
       expect(result.sourceMutations).toEqual([]);
+      expect(result.correctnessRepetitions).toBe(3);
+      expect(result.durations.repetitions).toBe(7);
+      expect(result.flakiness).toEqual({ flaky: false, differences: [] });
     }
     expect(
       run.cases.find(({ caseId }) => caseId === "clean-modular-app"),
@@ -42,7 +50,7 @@ describe("synthetic benchmark integration", () => {
     ).toMatchObject({
       proposals: [{ risk: { level: "high" } }],
     });
-  }, 30_000);
+  }, 120_000);
 
   it("runs the before/after comparison with behavior and guardrails", async () => {
     const run = await runBenchmarkSuite(
@@ -70,5 +78,8 @@ describe("synthetic benchmark integration", () => {
       result.tolerances.every(({ withinTolerance }) => withinTolerance),
     ).toBe(true);
     expect(result.sourceMutations).toEqual([]);
-  }, 15_000);
+    expect(result.before.build?.exitCodes).toHaveLength(3);
+    expect(result.before.build?.timing.repetitions).toBe(7);
+    expect(result.flakiness).toEqual({ flaky: false, differences: [] });
+  }, 120_000);
 });

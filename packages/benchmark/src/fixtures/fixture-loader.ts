@@ -3,9 +3,13 @@ import path from "node:path";
 import { parse } from "yaml";
 import {
   benchmarkSuiteSchema,
+  benchmarkProtocolSchema,
   expectationFileSchema,
+  regressionPolicySchema,
+  type BenchmarkProtocol,
   type BenchmarkSuite,
   type ExpectationFile,
+  type RegressionPolicy,
 } from "../models/benchmark.js";
 
 export const benchmarkAssetPath = (
@@ -45,3 +49,34 @@ export const loadExpectation = async (
       await readFile(benchmarkAssetPath(benchmarksRoot, relativeFile), "utf8"),
     ),
   );
+
+export const loadProtocol = async (
+  benchmarksRoot: string,
+): Promise<BenchmarkProtocol> =>
+  benchmarkProtocolSchema.parse(
+    parse(
+      await readFile(
+        benchmarkAssetPath(benchmarksRoot, "protocol.yaml"),
+        "utf8",
+      ),
+    ),
+  );
+
+export const loadRegressionPolicy = async (
+  benchmarksRoot: string,
+  policyName = "default",
+): Promise<RegressionPolicy> => {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(policyName))
+    throw new Error(`Invalid regression policy name: ${policyName}`);
+  return regressionPolicySchema.parse(
+    parse(
+      await readFile(
+        benchmarkAssetPath(
+          benchmarksRoot,
+          path.join("policies", `${policyName}.yaml`),
+        ),
+        "utf8",
+      ),
+    ),
+  );
+};

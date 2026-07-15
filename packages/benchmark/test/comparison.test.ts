@@ -19,7 +19,9 @@ const baseCase: StaticComparisonCase = {
 const options = {
   benchmarksRoot,
   workspaceRoot,
-  repetitions: 1,
+  correctnessRepetitions: 2,
+  timingRepetitions: 1,
+  warmupRuns: 1,
   timeoutMs: 10_000,
   keepWorkdirs: false,
 };
@@ -48,8 +50,8 @@ describe("static comparison", () => {
       },
       options,
     );
-    expect(result.before.build?.exitCodes).toEqual([0]);
-    expect(result.after.build?.exitCodes).toEqual([1]);
+    expect(result.before.build?.exitCodes).toEqual([0, 0]);
+    expect(result.after.build?.exitCodes).toEqual([1, 1]);
     expect(result.behaviorValid).toBe(false);
   });
 
@@ -86,6 +88,7 @@ describe("static comparison", () => {
       options,
     );
     expect(result.behaviorValid).toBe(true);
+    expect(result.before.build?.timing.repetitions).toBe(1);
     expect(result.before.test?.passingTests).toBe(1);
     expect(result.after.artifactSizeBytes).toBeGreaterThan(0);
     expect(result.tolerances[0]?.withinTolerance).toBe(true);

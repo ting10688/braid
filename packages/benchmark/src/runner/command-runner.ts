@@ -102,17 +102,22 @@ const parsedTestCount = (
 };
 
 export const commandMeasurement = (
-  results: readonly CommandResult[],
+  correctnessResults: readonly CommandResult[],
+  timingResults: readonly CommandResult[] = correctnessResults,
 ): CommandMeasurement => {
-  const last = results.at(-1);
+  const last = correctnessResults.at(-1);
   if (!last) throw new Error("At least one command result is required");
+  if (timingResults.length === 0)
+    throw new Error("At least one timing result is required");
   const output = `${last.stdout}\n${last.stderr}`;
   return {
-    exitCodes: results.map(({ exitCode }) => exitCode),
-    timing: timingSummary(results.map(({ durationMs }) => durationMs)),
+    exitCodes: correctnessResults.map(({ exitCode }) => exitCode),
+    timing: timingSummary(timingResults.map(({ durationMs }) => durationMs)),
     stdout: last.stdout,
     stderr: last.stderr,
-    timedOut: results.some(({ timedOut }) => timedOut),
+    timedOut: [...correctnessResults, ...timingResults].some(
+      ({ timedOut }) => timedOut,
+    ),
     passingTests: parsedTestCount(output, ["pass", "passed", "tests passed"]),
     failingTests: parsedTestCount(output, ["fail", "failed", "tests failed"]),
   };

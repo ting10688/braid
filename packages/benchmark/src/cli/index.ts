@@ -3,12 +3,29 @@ import { glob } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { Command, CommanderError } from "commander";
-import { loadSuite } from "../fixtures/fixture-loader.js";
 import {
-  compareRunReport,
+  createGoldenBaseline,
+  listGoldenBaselines,
+  loadGoldenBaseline,
+} from "../baselines/golden-baseline.js";
+import { benchmarkSummary } from "../evaluators/benchmark-summary.js";
+import {
+  compareBenchmarkRuns,
+  compareBenchmarkSummaries,
+} from "../evaluators/iteration-comparator.js";
+import { loadRegressionPolicy, loadSuite } from "../fixtures/fixture-loader.js";
+import type {
+  BenchmarkRun,
+  BenchmarkSuite,
+  IterationComparison,
+} from "../models/benchmark.js";
+import {
+  comparisonConsoleReport,
+  comparisonMarkdownReport,
   consoleReport,
   loadRun,
   markdownReport,
+  writeComparisonReports,
   writeReports,
 } from "../reports/reporters.js";
 import {
@@ -18,6 +35,7 @@ import {
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
+const baselinesRoot = path.join(benchmarksRoot, "baselines");
 
 interface CommonOptions {
   suite: string;
@@ -30,6 +48,14 @@ interface CommonOptions {
   smoke?: boolean;
 }
 
+interface ComparisonOptions {
+  allowIncompatible?: boolean;
+  output?: string;
+  policy?: string;
+  json?: boolean;
+  markdown?: boolean;
+}
+
 const parseCommand = (input: string | undefined): string[] => {
   if (!input) return defaultBraidCommand(workspaceRoot);
   const parts = [...input.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/gu)].map(
@@ -39,10 +65,29 @@ const parseCommand = (input: string | undefined): string[] => {
   return parts;
 };
 
+const executableCommand = (input: string): string[] => {
+  const executable = path.resolve(input);
+  return executable.endsWith(".js") ? ["node", executable] : [executable];
+};
+
+const suiteKind = (suite: BenchmarkSuite): "proposal" | "static-comparison" => {
+  const kinds = new Set(
+    suite.cases
+      .map(({ type }) => type)
+      .filter((type) => ["proposal", "static-comparison"].includes(type)),
+  );
+  if (kinds.size !== 1)
+    throw new Error("Iteration suites must contain one executable case type");
+  const kind = [...kinds][0];
+  if (kind !== "proposal" && kind !== "static-comparison")
+    throw new Error(`Execution is not implemented for ${String(kind)}`);
+  return kind;
+};
+
 const execute = async (
   kind: "proposal" | "static-comparison",
   options: CommonOptions,
-): Promise<void> => {
+): Promise<BenchmarkRun> => {
   const suite = await loadSuite(benchmarksRoot, options.suite);
   const run = await runBenchmarkSuite(suite, {
     workspaceRoot,
@@ -61,12 +106,32 @@ const execute = async (
   process.stdout.write(
     options.json ? `${JSON.stringify(run, null, 2)}\n` : consoleReport(run),
   );
+  return run;
+};
+
+const comparisonExitCode = (comparison: IterationComparison): void => {
+  if (comparison.overallResult === "fail") process.exitCode = 2;
+  else if (comparison.overallResult === "incompatible") process.exitCode = 3;
+};
+
+const printComparison = (
+  comparison: IterationComparison,
+  options: ComparisonOptions,
+): void => {
+  process.stdout.write(
+    options.json
+      ? `${JSON.stringify(comparison, null, 2)}\n`
+      : options.markdown
+        ? comparisonMarkdownReport(comparison)
+        : comparisonConsoleReport(comparison),
+  );
+  comparisonExitCode(comparison);
 };
 
 const program = new Command()
   .name("braid-bench")
   .description("Independent reproducible benchmarks for Braid")
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .command("list")
@@ -83,7 +148,8 @@ program
       `${suites
         .sort((left, right) => left.id.localeCompare(right.id))
         .map(
-          (suite) => `${suite.id}\t${suite.title}\t${suite.cases.length} cases`,
+          (suite) =>
+            `${suite.id}@${suite.suiteVersion}\t${suite.title}\t${suite.cases.length} cases`,
         )
         .join("\n")}\n`,
     );
@@ -103,12 +169,16 @@ const common = (command: Command, defaultSuite: string): Command =>
 common(
   program.command("run").description("Run proposal benchmarks"),
   "phase-2-core",
-).action((options: CommonOptions) => execute("proposal", options));
+).action(async (options: CommonOptions) => {
+  await execute("proposal", options);
+});
 
 common(
   program.command("compare").description("Run static before/after comparisons"),
   "static-comparison",
-).action((options: CommonOptions) => execute("static-comparison", options));
+).action(async (options: CommonOptions) => {
+  await execute("static-comparison", options);
+});
 
 program
   .command("report")
@@ -125,23 +195,220 @@ program
 
 program
   .command("compare-runs")
-  .description("Compare two compatible benchmark runs")
-  .argument("<run-a>")
-  .argument("<run-b>")
-  .option("--allow-incompatible", "override suite compatibility checks")
+  .description("Compare baseline and candidate benchmark runs")
+  .argument("<baseline-run>")
+  .argument("<candidate-run>")
+  .option(
+    "--allow-incompatible",
+    "show metrics despite incompatible frozen inputs",
+  )
+  .option("--output <directory>", "comparison report directory")
+  .option("--policy <name>", "regression policy", "default")
+  .option("--json", "write comparison JSON to stdout")
+  .option("--markdown", "write comparison Markdown to stdout")
   .action(
     async (
-      runA: string,
-      runB: string,
-      options: { allowIncompatible?: boolean },
+      baselineRun: string,
+      candidateRun: string,
+      options: ComparisonOptions,
     ) => {
-      process.stdout.write(
-        compareRunReport(
-          await loadRun(path.resolve(runA)),
-          await loadRun(path.resolve(runB)),
-          options.allowIncompatible ?? false,
-        ),
+      const comparison = compareBenchmarkRuns(
+        await loadRun(path.resolve(baselineRun)),
+        await loadRun(path.resolve(candidateRun)),
+        await loadRegressionPolicy(benchmarksRoot, options.policy),
+        options.allowIncompatible ?? false,
       );
+      if (options.output)
+        await writeComparisonReports(comparison, path.resolve(options.output));
+      printComparison(comparison, options);
+    },
+  );
+
+const baseline = program
+  .command("baseline")
+  .description("Manage golden baselines");
+
+baseline
+  .command("create")
+  .requiredOption("--run <run-directory>", "source run directory")
+  .requiredOption("--name <name>", "baseline name")
+  .option("--force", "confirm creation or replacement")
+  .action(async (options: { run: string; name: string; force?: boolean }) => {
+    const created = await createGoldenBaseline(
+      baselinesRoot,
+      await loadRun(path.resolve(options.run)),
+      options.name,
+      options.force ?? false,
+    );
+    process.stdout.write(
+      `Created baseline ${created.name} from ${created.createdFromRunId}\n`,
+    );
+  });
+
+baseline.command("list").action(async () => {
+  process.stdout.write(
+    `${(await listGoldenBaselines(baselinesRoot)).join("\n")}\n`,
+  );
+});
+
+baseline
+  .command("show")
+  .argument("<name>")
+  .action(async (name: string) => {
+    process.stdout.write(
+      `${JSON.stringify(await loadGoldenBaseline(baselinesRoot, name), null, 2)}\n`,
+    );
+  });
+
+program
+  .command("compare-baseline")
+  .description("Compare a golden baseline with a candidate run")
+  .argument("<name>")
+  .argument("<candidate-run>")
+  .option("--allow-incompatible", "show metrics despite incompatible inputs")
+  .option("--output <directory>", "comparison report directory")
+  .option("--policy <name>", "regression policy", "default")
+  .option("--json", "write comparison JSON to stdout")
+  .option("--markdown", "write comparison Markdown to stdout")
+  .action(
+    async (name: string, candidateRun: string, options: ComparisonOptions) => {
+      const golden = await loadGoldenBaseline(baselinesRoot, name);
+      const candidate = await loadRun(path.resolve(candidateRun));
+      const comparison = compareBenchmarkSummaries(
+        {
+          runId: golden.createdFromRunId,
+          manifest: golden.manifest,
+          summary: golden.summary,
+        },
+        {
+          runId: candidate.runId,
+          manifest: candidate.manifest,
+          summary: benchmarkSummary(candidate),
+        },
+        await loadRegressionPolicy(benchmarksRoot, options.policy),
+        options.allowIncompatible ?? false,
+      );
+      if (options.output)
+        await writeComparisonReports(comparison, path.resolve(options.output));
+      printComparison(comparison, options);
+    },
+  );
+
+program
+  .command("iteration")
+  .description("Run and compare baseline and candidate Braid executables")
+  .requiredOption("--suite <suite>", "suite ID", "phase-2-core")
+  .requiredOption("--baseline-braid <path>", "baseline Braid executable or .js")
+  .requiredOption(
+    "--candidate-braid <path>",
+    "candidate Braid executable or .js",
+  )
+  .option("--output <directory>", "iteration report directory")
+  .option("--case <case-id>", "run one case")
+  .option("--policy <name>", "regression policy", "default")
+  .option("--smoke", "run smoke cases only")
+  .option("--verbose", "write progress to stderr")
+  .action(
+    async (options: {
+      suite: string;
+      baselineBraid: string;
+      candidateBraid: string;
+      output?: string;
+      case?: string;
+      policy: string;
+      smoke?: boolean;
+      verbose?: boolean;
+    }) => {
+      const suite = await loadSuite(benchmarksRoot, options.suite);
+      const kind = suiteKind(suite);
+      const output = path.resolve(
+        options.output ??
+          path.join(
+            benchmarksRoot,
+            "results",
+            `iteration-${new Date().toISOString().replaceAll(/[-:.]/gu, "")}`,
+          ),
+      );
+      const run = async (
+        name: "baseline" | "candidate",
+        command: readonly string[],
+      ): Promise<BenchmarkRun> => {
+        const result = await runBenchmarkSuite(suite, {
+          workspaceRoot,
+          benchmarksRoot,
+          braidCommand: command,
+          ...(options.case ? { caseId: options.case } : {}),
+          ...(options.smoke === undefined ? {} : { smoke: options.smoke }),
+          keepWorkdirs: false,
+          ...(options.verbose === undefined
+            ? {}
+            : { verbose: options.verbose }),
+          kind,
+        });
+        await writeReports(result, path.join(output, name));
+        return result;
+      };
+      const baselineRun = await run(
+        "baseline",
+        executableCommand(options.baselineBraid),
+      );
+      const candidateRun = await run(
+        "candidate",
+        executableCommand(options.candidateBraid),
+      );
+      const comparison = compareBenchmarkRuns(
+        baselineRun,
+        candidateRun,
+        await loadRegressionPolicy(benchmarksRoot, options.policy),
+      );
+      await writeComparisonReports(comparison, output);
+      printComparison(comparison, {});
+    },
+  );
+
+program
+  .command("regression")
+  .description("Run the smoke suite against a tracked correctness baseline")
+  .option("--suite <suite>", "suite ID", "phase-2-core")
+  .option("--baseline <name>", "golden baseline", "phase-2-core-smoke")
+  .option("--output <directory>", "report directory")
+  .option("--policy <name>", "regression policy", "default")
+  .action(
+    async (options: {
+      suite: string;
+      baseline: string;
+      output?: string;
+      policy: string;
+    }) => {
+      const suite = await loadSuite(benchmarksRoot, options.suite);
+      const run = await runBenchmarkSuite(suite, {
+        workspaceRoot,
+        benchmarksRoot,
+        braidCommand: defaultBraidCommand(workspaceRoot),
+        smoke: true,
+        keepWorkdirs: false,
+        kind: suiteKind(suite),
+      });
+      const output = path.resolve(
+        options.output ?? path.join(benchmarksRoot, "results", run.runId),
+      );
+      await writeReports(run, path.join(output, "candidate"));
+      const golden = await loadGoldenBaseline(baselinesRoot, options.baseline);
+      const comparison = compareBenchmarkSummaries(
+        {
+          runId: golden.createdFromRunId,
+          manifest: golden.manifest,
+          summary: golden.summary,
+        },
+        {
+          runId: run.runId,
+          manifest: run.manifest,
+          summary: benchmarkSummary(run),
+        },
+        await loadRegressionPolicy(benchmarksRoot, options.policy),
+      );
+      await writeComparisonReports(comparison, output);
+      printComparison(comparison, {});
     },
   );
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "synthetic-v1",
+  "version": "1.0.0",
   "issues": [
     {
       "id": "notification-responsibility-cluster",

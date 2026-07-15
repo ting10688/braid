@@ -4,6 +4,7 @@ import {
   analyzeFixture,
   normalizedSourceTree,
 } from "../evaluators/static-analysis.js";
+import { detectFieldFlakiness } from "../evaluators/flakiness-evaluator.js";
 import {
   copyFixture,
   initializeFixtureGit,
@@ -27,7 +28,9 @@ import {
 export interface ComparisonRunnerOptions {
   benchmarksRoot: string;
   workspaceRoot: string;
-  repetitions: number;
+  correctnessRepetitions: number;
+  timingRepetitions: number;
+  warmupRuns: number;
   timeoutMs: number;
   keepWorkdirs: boolean;
   verbose?: boolean;
@@ -48,9 +51,14 @@ const runRepeated = async (
   options: ComparisonRunnerOptions,
 ): Promise<CommandMeasurement | null> => {
   if (!command) return null;
-  const results: CommandResult[] = [];
-  for (let repetition = 0; repetition < options.repetitions; repetition += 1) {
-    results.push(
+  const correctnessResults: CommandResult[] = [];
+  const timingResults: CommandResult[] = [];
+  for (
+    let repetition = 0;
+    repetition < options.correctnessRepetitions;
+    repetition += 1
+  ) {
+    correctnessResults.push(
       await runCommand(expandCommand(command, options.workspaceRoot), {
         cwd: workdir,
         timeoutMs: options.timeoutMs,
@@ -61,7 +69,25 @@ const runRepeated = async (
       }),
     );
   }
-  return commandMeasurement(results);
+  for (
+    let repetition = 0;
+    repetition < options.warmupRuns + options.timingRepetitions;
+    repetition += 1
+  ) {
+    const result = await runCommand(
+      expandCommand(command, options.workspaceRoot),
+      {
+        cwd: workdir,
+        timeoutMs: options.timeoutMs,
+        redactions: {
+          [workdir]: "<fixture>",
+          [options.workspaceRoot]: "<workspace>",
+        },
+      },
+    );
+    if (repetition >= options.warmupRuns) timingResults.push(result);
+  }
+  return commandMeasurement(correctnessResults, timingResults);
 };
 
 const artifactSize = async (
@@ -255,6 +281,14 @@ export const runComparisonCase = async (
         ...before.sourceMutations.map((file) => `before:${file}`),
         ...after.sourceMutations.map((file) => `after:${file}`),
       ],
+      flakiness: detectFieldFlakiness({
+        beforeBuildExitCode: before.build?.exitCodes ?? [],
+        afterBuildExitCode: after.build?.exitCodes ?? [],
+        beforeTestExitCode: before.test?.exitCodes ?? [],
+        afterTestExitCode: after.test?.exitCodes ?? [],
+        beforeRuntimeExitCode: before.runtimeBenchmark?.exitCodes ?? [],
+        afterRuntimeExitCode: after.runtimeBenchmark?.exitCodes ?? [],
+      }),
     };
   } finally {
     if (!options.keepWorkdirs) {

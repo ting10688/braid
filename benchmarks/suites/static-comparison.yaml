@@ -1,10 +1,9 @@
 schemaVersion: 1
-expectationVersion: synthetic-v1
+suiteVersion: 1.0.0
+expectationVersion: 1.0.0
 id: static-comparison
 title: Manual notification boundary comparison
 description: Independent static, behavior, timing, runtime, and artifact guardrails.
-repetitions: 3
-timeoutMs: 30000
 cases:
   - type: static-comparison
     id: notification-app

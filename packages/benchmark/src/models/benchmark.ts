@@ -4,6 +4,26 @@ import { z } from "zod";
 const idSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
 const commandSchema = z.array(z.string().min(1)).min(1);
 const percentSchema = z.number().finite().nonnegative();
+const versionSchema = z.string().regex(/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/u);
+const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
+
+export const normalizationRuleSchema = z.enum([
+  "run-ids",
+  "timestamps",
+  "temporary-directory-paths",
+  "timing-samples",
+  "generated-state-paths",
+]);
+
+export const benchmarkProtocolSchema = z.object({
+  schemaVersion: z.literal(1),
+  protocolVersion: versionSchema,
+  correctnessRepetitions: z.number().int().min(2),
+  timingRepetitions: z.number().int().positive(),
+  warmupRuns: z.number().int().nonnegative(),
+  defaultTimeoutMs: z.number().int().positive(),
+  normalizationRules: z.array(normalizationRuleSchema).min(1),
+});
 
 export const issueExpectationSchema = z.object({
   id: idSchema,
@@ -36,7 +56,7 @@ export const issueExpectationSchema = z.object({
 
 export const expectationFileSchema = z.object({
   schemaVersion: z.literal(1),
-  version: z.string().min(1),
+  version: versionSchema,
   issues: z.array(issueExpectationSchema),
 });
 
@@ -153,23 +173,6 @@ export const rollbackResultSchema = z.object({
   rollbackDurationMs: z.number().finite().nonnegative(),
 });
 
-export const benchmarkBaselineSchema = z.object({
-  schemaVersion: z.literal(1),
-  suiteId: idSchema,
-  expectationVersion: z.string().min(1),
-  braid: z.object({
-    commit: z.string().min(1).nullable(),
-    version: z.string().min(1),
-  }),
-  benchmark: z.object({
-    commit: z.string().min(1).nullable(),
-    version: z.string().min(1),
-  }),
-  normalizedResultSummary: z.record(
-    z.union([z.number().finite(), z.boolean(), z.string()]),
-  ),
-});
-
 export const benchmarkCaseSchema = z.discriminatedUnion("type", [
   proposalBenchmarkCaseSchema,
   staticComparisonCaseSchema,
@@ -179,13 +182,70 @@ export const benchmarkCaseSchema = z.discriminatedUnion("type", [
 
 export const benchmarkSuiteSchema = z.object({
   schemaVersion: z.literal(1),
+  suiteVersion: versionSchema,
   expectationVersion: z.string().min(1),
   id: idSchema,
   title: z.string().min(1),
   description: z.string().min(1),
   cases: z.array(benchmarkCaseSchema).min(1),
-  repetitions: z.number().int().min(1),
-  timeoutMs: z.number().int().positive(),
+  execution: z
+    .object({
+      correctnessRepetitions: z.number().int().min(2).optional(),
+      timingRepetitions: z.number().int().positive().optional(),
+      warmupRuns: z.number().int().nonnegative().optional(),
+      timeoutMs: z.number().int().positive().optional(),
+    })
+    .default({}),
+});
+
+export const fixtureManifestSchema = z.object({
+  schemaVersion: z.literal(1),
+  manifestVersion: versionSchema,
+  suiteId: idSchema,
+  suiteVersion: versionSchema,
+  fixtures: z.array(
+    z.object({
+      fixtureId: z.string().min(1),
+      files: z.array(
+        z.object({
+          path: z.string().min(1),
+          contentHash: sha256Schema,
+        }),
+      ),
+      configurationHash: sha256Schema,
+      expectationFileHash: sha256Schema,
+    }),
+  ),
+  hash: sha256Schema,
+});
+
+export const runManifestSchema = z.object({
+  schemaVersion: z.literal(1),
+  protocolVersion: versionSchema,
+  suiteId: idSchema,
+  suiteVersion: versionSchema,
+  expectationVersion: z.string().min(1),
+  fixtureManifestVersion: versionSchema,
+  fixtureManifestHash: sha256Schema,
+  configurationHash: sha256Schema,
+  braidVersion: z.string().min(1),
+  braidCommit: z.string().min(1).nullable(),
+  benchmarkVersion: z.string().min(1),
+  benchmarkCommit: z.string().min(1).nullable(),
+  environment: z.object({
+    platform: z.string().min(1),
+    architecture: z.string().min(1),
+    nodeVersion: z.string().min(1),
+    pnpmVersion: z.string().min(1),
+    gitVersion: z.string().min(1),
+  }),
+  execution: z.object({
+    correctnessRepetitions: z.number().int().min(2),
+    timingRepetitions: z.number().int().positive(),
+    warmupRuns: z.number().int().nonnegative(),
+    timeoutMs: z.number().int().positive(),
+    command: z.string().min(1),
+  }),
 });
 
 export const timingSummarySchema = z.object({
@@ -231,6 +291,16 @@ export const architectureDeltaSchema = z.object({
   publicEntrypoints: z.number().int(),
 });
 
+export const flakinessSchema = z.object({
+  flaky: z.boolean(),
+  differences: z.array(
+    z.object({
+      field: z.string().min(1),
+      repetitions: z.array(z.number().int().positive()).min(1),
+    }),
+  ),
+});
+
 export const proposalCaseResultSchema = z.object({
   type: z.literal("proposal"),
   caseId: idSchema,
@@ -247,10 +317,15 @@ export const proposalCaseResultSchema = z.object({
   riskClassificationAgreement: z.number().min(0).max(1),
   reversibilityClassificationAgreement: z.number().min(0).max(1),
   deterministic: z.boolean(),
+  flakiness: flakinessSchema,
+  proposalIdentityStable: z.boolean(),
+  proposalOrderingStable: z.boolean(),
+  exitCodes: z.array(z.number().int()).min(2),
+  expectedExitCodeMatched: z.boolean(),
   persistenceIdempotent: z.boolean(),
   sourceMutations: z.array(z.string()),
   durations: timingSummarySchema,
-  repetitions: z.number().int().min(2),
+  correctnessRepetitions: z.number().int().min(2),
 });
 
 export const toleranceResultSchema = z.object({
@@ -287,6 +362,7 @@ export const staticComparisonResultSchema = z.object({
   behaviorValid: z.boolean(),
   tolerances: z.array(toleranceResultSchema),
   sourceMutations: z.array(z.string()),
+  flakiness: flakinessSchema,
 });
 
 export const benchmarkCaseResultSchema = z.discriminatedUnion("type", [
@@ -309,6 +385,7 @@ export const benchmarkRunSchema = z.object({
   schemaVersion: z.literal(1),
   runId: z.string().min(1),
   suiteId: idSchema,
+  suiteVersion: versionSchema,
   expectationVersion: z.string().min(1),
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime(),
@@ -322,10 +399,99 @@ export const benchmarkRunSchema = z.object({
     version: z.string().min(1),
   }),
   environment: environmentFingerprintSchema,
+  manifest: runManifestSchema,
+  fixtureManifest: fixtureManifestSchema,
   cases: z.array(benchmarkCaseResultSchema),
 });
 
+export const policyRuleSchema = z.union([
+  z.object({ direction: z.enum(["nondecreasing", "nonincreasing"]) }).strict(),
+  z.object({ maximum: z.number().finite() }).strict(),
+  z.object({ allowedRegressionPercent: percentSchema }).strict(),
+  z.object({ allowedIncreasePercent: percentSchema }).strict(),
+  z
+    .object({ requiredValue: z.union([z.number(), z.boolean(), z.string()]) })
+    .strict(),
+]);
+
+const policyRulesSchema = z.union([
+  policyRuleSchema,
+  z.array(policyRuleSchema).min(1),
+]);
+
+export const regressionPolicySchema = z.object({
+  schemaVersion: z.literal(1),
+  policyVersion: versionSchema,
+  blocking: z.record(policyRulesSchema),
+  warnings: z.record(policyRulesSchema),
+});
+
+export const comparisonStatusSchema = z.enum([
+  "improved",
+  "regressed",
+  "unchanged",
+  "warning",
+  "incompatible",
+]);
+
+const metricValueSchema = z.union([z.number(), z.boolean(), z.string()]);
+
+export const metricComparisonSchema = z.object({
+  metric: z.string().min(1),
+  category: z.enum(["correctness", "stability", "cost"]),
+  baseline: metricValueSchema,
+  candidate: metricValueSchema,
+  status: comparisonStatusSchema,
+  rationale: z.string().min(1),
+});
+
+const comparisonRunDescriptorSchema = z.object({
+  runId: z.string().min(1),
+  braidVersion: z.string().min(1),
+  braidCommit: z.string().min(1).nullable(),
+  manifest: runManifestSchema,
+});
+
+export const iterationComparisonSchema = z.object({
+  schemaVersion: z.literal(1),
+  policyVersion: versionSchema,
+  baselineRunId: z.string().min(1),
+  candidateRunId: z.string().min(1),
+  baseline: comparisonRunDescriptorSchema,
+  candidate: comparisonRunDescriptorSchema,
+  compatible: z.boolean(),
+  incompatibilities: z.array(z.string()),
+  environmentWarnings: z.array(z.string()),
+  comparisons: z.array(metricComparisonSchema),
+  overallResult: z.enum(["pass", "fail", "warning", "incompatible"]),
+});
+
+export const benchmarkSummarySchema = z.object({
+  correctness: z.record(metricValueSchema),
+  stability: z.record(metricValueSchema),
+  cost: z.record(metricValueSchema),
+});
+
+export const goldenBaselineSchema = z.object({
+  schemaVersion: z.literal(1),
+  name: idSchema,
+  createdFromRunId: z.string().min(1),
+  manifest: runManifestSchema,
+  summary: benchmarkSummarySchema,
+  braid: z.object({
+    version: z.string().min(1),
+    commit: z.string().min(1).nullable(),
+  }),
+  benchmark: z.object({
+    version: z.string().min(1),
+    commit: z.string().min(1).nullable(),
+  }),
+});
+
+export const benchmarkBaselineSchema = goldenBaselineSchema;
+
 export type IssueExpectation = z.infer<typeof issueExpectationSchema>;
+export type BenchmarkProtocol = z.infer<typeof benchmarkProtocolSchema>;
 export type ExpectationFile = z.infer<typeof expectationFileSchema>;
 export type ProposalBenchmarkCase = z.infer<typeof proposalBenchmarkCaseSchema>;
 export type StaticComparisonCase = z.infer<typeof staticComparisonCaseSchema>;
@@ -338,6 +504,16 @@ export type RepositorySource = z.infer<typeof repositorySourceSchema>;
 export type ChangeTaskResult = z.infer<typeof changeTaskResultSchema>;
 export type RollbackResult = z.infer<typeof rollbackResultSchema>;
 export type BenchmarkBaseline = z.infer<typeof benchmarkBaselineSchema>;
+export type FixtureManifest = z.infer<typeof fixtureManifestSchema>;
+export type RunManifest = z.infer<typeof runManifestSchema>;
+export type Flakiness = z.infer<typeof flakinessSchema>;
+export type RegressionPolicy = z.infer<typeof regressionPolicySchema>;
+export type PolicyRule = z.infer<typeof policyRuleSchema>;
+export type ComparisonStatus = z.infer<typeof comparisonStatusSchema>;
+export type MetricComparison = z.infer<typeof metricComparisonSchema>;
+export type IterationComparison = z.infer<typeof iterationComparisonSchema>;
+export type BenchmarkSummary = z.infer<typeof benchmarkSummarySchema>;
+export type GoldenBaseline = z.infer<typeof goldenBaselineSchema>;
 export type BenchmarkCase = z.infer<typeof benchmarkCaseSchema>;
 export type BenchmarkCaseReference = BenchmarkCase;
 export type BenchmarkSuite = z.infer<typeof benchmarkSuiteSchema>;
