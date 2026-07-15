@@ -82,13 +82,12 @@ commits. They contain no raw logs, hostnames, usernames, absolute paths, tempora
 timing assertions. Creation and replacement require explicit `--force` confirmation:
 
 ```bash
-pnpm benchmark:baseline -- create --run benchmarks/results/<run> --name phase-2-core --force
-pnpm benchmark:baseline -- list
-pnpm benchmark:baseline -- show phase-2-core
+pnpm benchmark:baseline create --run benchmarks/results/<run> --name phase-2-core --force
+pnpm benchmark:baseline list
+pnpm benchmark:baseline show phase-2-core
 node packages/benchmark/dist/cli/index.js compare-baseline phase-2-core <candidate-run>
 
-pnpm benchmark:iteration -- \
-  --suite phase-2-core \
+pnpm benchmark:iteration --suite phase-2-core \
   --baseline-braid /path/to/baseline/braid \
   --candidate-braid /path/to/candidate/braid \
   --output benchmarks/results/my-iteration
