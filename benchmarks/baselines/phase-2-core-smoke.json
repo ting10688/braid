@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "name": "phase-2-core-smoke",
+  "createdFromRunId": "phase-2-core-20260715T091141969Z",
+  "manifest": {
+    "schemaVersion": 1,
+    "protocolVersion": "1.0.0",
+    "suiteId": "phase-2-core",
+    "suiteVersion": "1.0.0",
+    "expectationVersion": "1.0.0",
+    "fixtureManifestVersion": "1.0.0",
+    "fixtureManifestHash": "c27d616c9309e3572ce0cd2408396896ba2c7da718d4981089a7b5b3a086ba75",
+    "configurationHash": "258b784c787214798c5ff2d63ea3f02ca3acf41eca1ed83088cbf0ae2f515c57",
+    "braidVersion": "0.2.0",
+    "braidCommit": "a4aca7961729a4e9ea6a90b42801b9a2fde197b8",
+    "benchmarkVersion": "0.2.0",
+    "benchmarkCommit": "a4aca7961729a4e9ea6a90b42801b9a2fde197b8",
+    "environment": {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "nodeVersion": "v22.22.3",
+      "pnpmVersion": "11.7.0",
+      "gitVersion": "git version 2.50.1 (Apple Git-155)"
+    },
+    "execution": {
+      "correctnessRepetitions": 3,
+      "timingRepetitions": 7,
+      "warmupRuns": 1,
+      "timeoutMs": 30000,
+      "command": "node <workspace>/apps/cli/dist/index.js"
+    }
+  },
+  "summary": {
+    "correctness": {
+      "expectedIssueCoverage": 1,
+      "proposalValidity": 1,
+      "topKCoverage": 1,
+      "evidenceCoverage": 1,
+      "evidenceCorrectness": 1,
+      "riskAgreement": 1,
+      "reversibilityAgreement": 1,
+      "falsePositiveCount": 0,
+      "sourceMutations": 0,
+      "buildSuccess": true,
+      "testSuccess": true,
+      "expectedExitCodeMatched": true
+    },
+    "stability": {
+      "caseCount": 5,
+      "deterministicCases": 5,
+      "flakyCases": 0,
+      "proposalIdentityStable": true,
+      "proposalOrderingStable": true,
+      "persistenceIdempotent": true
+    },
+    "cost": {
+      "medianRuntimeMs": 374.0590830000001,
+      "minimumRuntimeMs": 367.71300000000156,
+      "maximumRuntimeMs": 381.9932919999992,
+      "proposalCount": 4,
+      "reportSizeBytes": 20346
+    }
+  },
+  "braid": {
+    "version": "0.2.0",
+    "commit": "a4aca7961729a4e9ea6a90b42801b9a2fde197b8"
+  },
+  "benchmark": {
+    "version": "0.2.0",
+    "commit": "a4aca7961729a4e9ea6a90b42801b9a2fde197b8"
+  }
+}

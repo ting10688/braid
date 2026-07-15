@@ -1,0 +1,12 @@
+schemaVersion: 1
+protocolVersion: 1.0.0
+correctnessRepetitions: 3
+timingRepetitions: 7
+warmupRuns: 1
+defaultTimeoutMs: 30000
+normalizationRules:
+  - run-ids
+  - timestamps
+  - temporary-directory-paths
+  - timing-samples
+  - generated-state-paths

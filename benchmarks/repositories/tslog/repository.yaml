@@ -1,0 +1,94 @@
+schemaVersion: 1
+id: tslog
+title: tslog
+role: complexity
+repository:
+  url: https://github.com/fullstack-build/tslog.git
+  commit: 07d3e31ea36ae1074accb0097bdc53bd73c93e13
+license:
+  spdxId: MIT
+  file: LICENSE
+  contentHash: a5e6ddb3af783a02eacc848cbe309cc0940b4859ac653e9b1a2e21a4fea22552
+  attribution: Copyright 2022 fullstack-build/tslog contributors.
+packageManager:
+  name: npm
+  version: lockfileVersion 3
+  lockfile: package-lock.json
+  lockfileHash: 8e72c592396e9e1bea0ef56d2ef32c9afad2208546db8be42cb431104fbd242f
+environment:
+  node: ">=20"
+  networkRequiredAfterCheckout: false
+source:
+  include: ["src/**/*.ts"]
+  exclude:
+    [
+      "**/*.d.ts",
+      "tests/**",
+      "benchmarks/**",
+      "docs/**",
+      "dist/**",
+      "node_modules/**",
+    ]
+  tests: ["tests/**/*.test.ts", "tests/**/*.spec.ts"]
+  testExclude: []
+  manifestHash: 3562eedb3f3a1bf124541dbf8e4fddaf7dda4bf15e9a534a3265216c6b1b3c8c
+  fileCount: 59
+  testFileCount: 99
+  linesOfCode: 11046
+  moduleCount: 6
+  preferredRange: within
+  largestFiles:
+    - { path: src/render/json.ts, linesOfCode: 789 }
+    - { path: src/subpaths/presets/otel.ts, linesOfCode: 686 }
+    - { path: src/BaseLogger.ts, linesOfCode: 566 }
+    - { path: src/interfaces.ts, linesOfCode: 551 }
+    - { path: src/core/masking.ts, linesOfCode: 524 }
+    - { path: src/env/shared.ts, linesOfCode: 486 }
+    - { path: src/core/settings.ts, linesOfCode: 466 }
+    - { path: src/render/inspect.polyfill.ts, linesOfCode: 448 }
+    - { path: src/subpaths/transports/worker.ts, linesOfCode: 385 }
+    - { path: src/subpaths/presets/pino.ts, linesOfCode: 344 }
+braidConfiguration:
+  file: braid-config.yaml
+  hash: 552894cdd434d81a2615d414802ad39d82b3b15b8b5c081c0451dc0073fb52cb
+commands:
+  install:
+    executable: npm
+    arguments: [ci, --ignore-scripts]
+  build:
+    executable: npm
+    arguments: [run, build]
+  test:
+    executable: npm
+    arguments: [test]
+qualification:
+  status: qualified-with-limitations
+  reviewedAt: "2026-07-15"
+  install:
+    {
+      status: passed,
+      command: "npm ci --ignore-scripts",
+      detail: "npm restored package-lock.json with lifecycle scripts disabled.",
+    }
+  build:
+    {
+      status: passed,
+      command: "npm run build",
+      detail: "TypeScript native-preview, ESM, browser, and package preparation steps completed.",
+    }
+  test:
+    {
+      status: passed,
+      command: "npm test",
+      detail: "86 selected test files and 1,579 tests passed; browser Playwright tests were excluded.",
+    }
+  braidAnalysis:
+    {
+      status: passed,
+      command: "braid init, analyze, propose",
+      detail: "59 files were analyzed; three proposal runs were stable and source mutation was zero.",
+    }
+  limitations:
+    - Braid reported TypeScript syntax diagnostics in six native-preview source files while still extracting their imports and declarations.
+    - Playwright, Bun, and Deno tests were excluded because they require browser downloads or optional runtimes.
+    - The upstream build invokes prepare-publish as a local file-preparation step; no publish or release command was executed.

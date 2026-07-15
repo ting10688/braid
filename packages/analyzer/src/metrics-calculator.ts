@@ -25,8 +25,9 @@ export const calculateMetrics = (
   ).length,
   oversizedModules: repository.modules.filter(
     (module) =>
-      module.fileCount > thresholds.oversized_module_files ||
-      module.exportedSymbolCount > thresholds.oversized_module_exports,
+      !["entrypoint", "barrel"].includes(module.kind) &&
+      (module.fileCount > thresholds.oversized_module_files ||
+        module.exportedSymbolCount > thresholds.oversized_module_exports),
   ).length,
   publicEntrypointCount: repository.publicEntrypoints.length,
 });

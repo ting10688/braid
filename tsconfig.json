@@ -4,7 +4,9 @@
     { "path": "packages/shared" },
     { "path": "packages/core" },
     { "path": "packages/analyzer" },
+    { "path": "packages/planner" },
     { "path": "packages/store" },
+    { "path": "packages/benchmark" },
     { "path": "apps/cli" },
     { "path": "examples/bloated-saas" }
   ]

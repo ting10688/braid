@@ -1,0 +1,24 @@
+project:
+  language: typescript
+  architecture_style: modular-monolith
+source:
+  include: [src/**/*.ts]
+  exclude: ["**/*.d.ts", "**/dist/**"]
+constraints:
+  circular_dependencies: forbidden
+  public_api_changes: approval_required
+  allow_new_dependencies: false
+  preserve_existing_import_paths: true
+thresholds:
+  oversized_file_lines: 17
+  oversized_module_files: 10
+  oversized_module_exports: 20
+  max_module_dependencies: 8
+protected_paths: []
+modules: {}
+planner:
+  enabled_proposals: [extract-module, break-cycle]
+  max_proposals: 10
+  min_symbol_cluster_size: 3
+  preferred_max_affected_files: 10
+  include_high_risk: true

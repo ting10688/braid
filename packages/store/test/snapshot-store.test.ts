@@ -77,6 +77,7 @@ describe("JSON snapshot store", () => {
       "src/a.ts",
       "src/b.ts",
     ]);
+    await expect(store.load(snapshot.id)).resolves.toEqual(stored);
     await expect(store.save(snapshot)).rejects.toThrow(
       /Could not persist snapshot/u,
     );

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "issues": [
+    {
+      "id": "users-permissions-cycle",
+      "type": "break-cycle",
+      "acceptableFiles": [
+        ["src/modules/permissions/permissions.ts", "src/modules/users/users.ts"]
+      ],
+      "acceptableModules": [["modules/permissions", "modules/users"]],
+      "acceptableCycleEdges": [
+        { "fromModule": "modules/permissions", "toModule": "modules/users" }
+      ],
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "architecture-constraint"
+      ],
+      "expectedRisk": { "allowed": ["low"] },
+      "expectedReversibility": { "allowed": ["conditional"] },
+      "ranking": { "shouldAppearInTopK": 1 },
+      "notes": "Either direction could break the cycle; the lower stable edge is independently labeled here."
+    }
+  ]
+}

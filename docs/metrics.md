@@ -18,3 +18,11 @@ use strict `>` semantics: a file exactly at its configured limit is not oversize
 `max_module_dependencies` is validated and retained in configuration for boundary warnings in a future
 phase. The current snapshot schema has no corresponding raw metric, so Braid does not silently fold it
 into another number.
+
+## Proposal impact certainty
+
+Proposal impact reuses these metric names but separates `simulated`, `estimated`, and `unknowns`.
+Removing a selected module edge is graph-simulated, so an exact circular-dependency delta is allowed.
+Extraction uses declaration spans and thresholds, so its oversized-file direction remains an estimate;
+cross-module import and public API changes remain unknown until execution planning. No proposal impact
+is added to the snapshot or presented as a guaranteed future metric.

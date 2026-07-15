@@ -55,8 +55,8 @@ describe("bloated SaaS analysis", () => {
       crossModuleImports: 5,
       circularDependencies: 1,
       oversizedFiles: 2,
-      oversizedModules: 3,
-      publicEntrypointCount: 3,
+      oversizedModules: 2,
+      publicEntrypointCount: 1,
     });
     expect(
       first.repository.imports.find((edge) => edge.toFile === "node:crypto")

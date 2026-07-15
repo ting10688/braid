@@ -61,6 +61,7 @@ describe("repository scanner", () => {
       fromFile: "src/index.ts",
       specifier: "@domain/index",
       resolvedFile: "src/domain/index.ts",
+      typeOnly: false,
     });
   });
 });

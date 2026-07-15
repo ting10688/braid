@@ -3,11 +3,12 @@ import { Command, CommanderError } from "commander";
 import { BraidError } from "@braid/shared";
 import { analyzeCommand } from "./commands/analyze.js";
 import { initCommand } from "./commands/init.js";
+import { proposeCommand } from "./commands/propose.js";
 
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.1.0");
+  .version("0.2.3");
 
 program
   .command("init")
@@ -23,6 +24,17 @@ program
   .option("--json", "write only the snapshot JSON to stdout")
   .option("--no-save", "do not persist the snapshot")
   .action(analyzeCommand);
+
+program
+  .command("propose")
+  .description("Generate deterministic migration proposals")
+  .argument("[path]", "target project", ".")
+  .option("--json", "write only proposal JSON to stdout")
+  .option("--no-save", "do not persist the snapshot or proposals")
+  .option("--limit <number>", "maximum proposals to return")
+  .option("--type <type>", "filter by extract-module or break-cycle")
+  .option("--snapshot <snapshot-id>", "use an existing snapshot")
+  .action(proposeCommand);
 
 program.exitOverride();
 for (const command of program.commands) command.exitOverride();
