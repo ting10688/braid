@@ -39,6 +39,10 @@ import {
   verifyRepositoryCache,
 } from "../repositories/repository-materializer.js";
 import { qualifyRepository } from "../repositories/repository-qualification.js";
+import {
+  migrationBenchmarkConsoleReport,
+  runMigrationExecutionBenchmark,
+} from "../migration-execution-suite.js";
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
@@ -143,7 +147,7 @@ const printComparison = (
 const program = new Command()
   .name("braid-bench")
   .description("Independent reproducible benchmarks for Braid")
-  .version("0.2.3");
+  .version("0.3.0");
 
 program
   .command("list")
@@ -195,6 +199,26 @@ repositories
     process.stdout.write(
       `${JSON.stringify({ manifest, verification }, null, 2)}\n`,
     );
+  });
+
+program
+  .command("migration")
+  .description("Run the deterministic Phase 3 migration-execution suite")
+  .option("--mode <mode>", "smoke, run, or regression", "run")
+  .option("--json", "write one JSON report")
+  .action(async (options: { mode: string; json?: boolean }) => {
+    if (!["smoke", "run", "regression"].includes(options.mode))
+      throw new Error(`Unknown migration benchmark mode: ${options.mode}`);
+    const report = await runMigrationExecutionBenchmark({
+      smoke: options.mode === "smoke",
+    });
+    process.stdout.write(
+      options.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : migrationBenchmarkConsoleReport(report),
+    );
+    if (options.mode === "regression" && report.regressions.length > 0)
+      process.exitCode = 2;
   });
 
 repositories

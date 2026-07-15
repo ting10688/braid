@@ -5,6 +5,7 @@ import {
 } from "@braid/analyzer";
 import {
   configHash,
+  migrationConfigHash,
   createArchitectureSnapshot,
   DEFAULT_ARCHITECTURE_CONFIG,
   parseArchitectureConfig,
@@ -95,6 +96,7 @@ export const createPlannerSnapshot = ({
     projectRoot: "/project",
     gitCommit: null,
     configHash: configHash(plannerConfig),
+    migrationConfigHash: migrationConfigHash(plannerConfig),
     repository,
     metrics: {
       totalSourceFiles: sourceFiles.length,
