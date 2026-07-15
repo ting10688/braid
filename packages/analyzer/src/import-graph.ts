@@ -12,6 +12,7 @@ const packageName = (specifier: string): string => {
 export const buildImportGraph = (
   files: SourceFileRecord[],
   scannedImports: ScannedImport[],
+  moduleFor: (filePath: string) => string = classifyModule,
 ): ImportEdge[] => {
   const knownFiles = new Set(files.map((file) => file.path));
 
@@ -28,9 +29,10 @@ export const buildImportGraph = (
       return {
         fromFile: item.fromFile,
         toFile,
-        fromModule: classifyModule(item.fromFile),
-        toModule: internal ? classifyModule(toFile) : toFile,
+        fromModule: moduleFor(item.fromFile),
+        toModule: internal ? moduleFor(toFile) : toFile,
         kind: internal ? "internal" : "external",
+        typeOnly: item.typeOnly,
       };
     })
     .sort((left, right) =>

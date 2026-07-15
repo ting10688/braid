@@ -23,10 +23,26 @@ export const sourceFileRecordSchema = z.object({
   importedFiles: z.array(z.string()),
   isTestFile: z.boolean(),
   declarations: z.array(topLevelDeclarationRecordSchema).optional(),
+  topLevelStatements: z
+    .object({
+      imports: z.number().int().nonnegative(),
+      reExports: z.number().int().nonnegative(),
+      implementation: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
+
+export const moduleKindSchema = z.enum([
+  "feature",
+  "entrypoint",
+  "barrel",
+  "root-file",
+  "infrastructure",
+]);
 
 export const moduleRecordSchema = z.object({
   id: z.string().min(1),
+  kind: moduleKindSchema.default("feature"),
   paths: z.array(z.string()),
   fileCount: z.number().int().nonnegative(),
   exportedSymbolCount: z.number().int().nonnegative(),
@@ -40,6 +56,7 @@ export const importEdgeSchema = z.object({
   fromModule: z.string().min(1),
   toModule: z.string().min(1),
   kind: z.enum(["internal", "external"]),
+  typeOnly: z.boolean().default(false),
 });
 
 export const dependencyCycleSchema = z.object({
@@ -62,6 +79,7 @@ export type TopLevelDeclarationRecord = z.infer<
   typeof topLevelDeclarationRecordSchema
 >;
 export type ModuleRecord = z.infer<typeof moduleRecordSchema>;
+export type ModuleKind = z.infer<typeof moduleKindSchema>;
 export type ImportEdge = z.infer<typeof importEdgeSchema>;
 export type DependencyCycle = z.infer<typeof dependencyCycleSchema>;
 export type RepositoryModel = z.infer<typeof repositoryModelSchema>;
