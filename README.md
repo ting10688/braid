@@ -6,8 +6,8 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.3.0 adds explicitly approved, isolated execution of a
-strict low-risk subset of deterministic migration proposals for local TypeScript projects.
+reversible architecture changes. Version 0.3.1 adds deterministic execution-readiness and symbol
+closure before isolated execution of a strict low-risk proposal subset for local TypeScript projects.
 
 ## Current scope
 
@@ -20,7 +20,7 @@ atomically save them under `.braid/state/proposals/`. Cycle proposals use one ra
 alternatives for each deterministic strongly connected root cause.
 Proposal precision is measured with reproducible synthetic and pinned real-world benchmark suites.
 An approved low-risk, easy-reversibility `extract-module` proposal can now run through a deterministic
-plan, an owned external Git worktree, a disposable no-remote executor staging repository, a bounded
+readiness gate and plan, an owned external Git worktree, a disposable no-remote executor staging repository, a bounded
 Codex `workspace-write` process, independent Git diff inspection, configured validation, architecture
 comparison, and one local candidate commit.
 
@@ -146,6 +146,11 @@ executor, requires the exact proposal ID in `--approve`, and supports `--model`,
 `--reasoning-effort`, `--timeout`, `--json`, and `--no-commit`. It never merges or pushes. See the
 [migration safety and lifecycle guide](docs/migrations.md).
 
+`migrate plan` reports `ready`, `ready-with-warnings`, or `not-ready`, including required companions,
+retained/external/unresolved dependencies, predicted import direction, cycle risks, and stable reasons.
+`migrate run` never adds a companion on the user's behalf; `not-ready` exits before any worktree,
+staging repository, executor process, or candidate branch is created.
+
 ## Development
 
 ```bash
@@ -170,6 +175,7 @@ pnpm benchmark:real:regression
 pnpm benchmark:migration:smoke
 pnpm benchmark:migration:run
 pnpm benchmark:migration:regression
+pnpm benchmark:readiness
 ```
 
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
@@ -240,8 +246,9 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 
 ## Status
 
-Braid v0.3.0 implements Phase 3 safe isolated extraction execution. Snapshot, proposal, and execution
-schemas remain version 1 and may evolve in future releases.
+Braid v0.3.1 implements Phase 3.1 execution readiness and safe isolated extraction execution. Snapshot,
+proposal, execution-plan, and execution-record schemas remain version 1; readiness evidence is a
+versioned backward-compatible execution-plan extension.
 
 ## License
 
