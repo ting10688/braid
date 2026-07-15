@@ -17,7 +17,12 @@
     "format": "prettier --write .",
     "braid": "node apps/cli/dist/index.js",
     "analyze:example": "pnpm build && node apps/cli/dist/index.js analyze examples/bloated-saas --no-save",
-    "propose:example": "pnpm build && node apps/cli/dist/index.js propose examples/bloated-saas --no-save"
+    "propose:example": "pnpm build && node apps/cli/dist/index.js propose examples/bloated-saas --no-save",
+    "benchmark:list": "pnpm build && node packages/benchmark/dist/cli/index.js list",
+    "benchmark:smoke": "pnpm build && node packages/benchmark/dist/cli/index.js run --suite phase-2-core --smoke",
+    "benchmark:run": "pnpm build && node packages/benchmark/dist/cli/index.js run --suite phase-2-core",
+    "benchmark:compare": "pnpm build && node packages/benchmark/dist/cli/index.js compare --suite static-comparison",
+    "benchmark:report": "node packages/benchmark/dist/cli/index.js report"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

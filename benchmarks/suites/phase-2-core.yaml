@@ -1,0 +1,58 @@
+schemaVersion: 1
+expectationVersion: synthetic-v1
+id: phase-2-core
+title: Phase 2 proposal quality and determinism
+description: Independent labels for clean, extraction, cycle, ranking, and protected-path cases.
+repetitions: 2
+timeoutMs: 30000
+cases:
+  - type: proposal
+    id: clean-modular-app
+    fixture: fixtures/templates/clean-modular-app
+    expectationFile: expectations/clean-modular-app.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true
+  - type: proposal
+    id: oversized-notifications
+    fixture: fixtures/templates/oversized-notifications
+    expectationFile: expectations/oversized-notifications.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true
+  - type: proposal
+    id: two-node-cycle
+    fixture: fixtures/templates/two-node-cycle
+    expectationFile: expectations/two-node-cycle.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true
+  - type: proposal
+    id: three-node-cycle
+    fixture: fixtures/templates/three-node-cycle
+    expectationFile: expectations/three-node-cycle.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true
+  - type: proposal
+    id: protected-cycle
+    fixture: fixtures/templates/protected-cycle
+    expectationFile: expectations/protected-cycle.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true

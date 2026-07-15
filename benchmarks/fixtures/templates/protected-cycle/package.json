@@ -1,0 +1,5 @@
+{
+  "name": "protected-cycle",
+  "private": true,
+  "type": "module"
+}
