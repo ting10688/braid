@@ -7,20 +7,33 @@ import {
 } from "@braid/core";
 import { buildImportGraph } from "./import-graph.js";
 import { findDependencyCycles } from "./cycle-detector.js";
-import { classifyModule } from "./module-classifier.js";
+import {
+  classifyModule,
+  classifySourceFiles,
+  findPublicEntrypoints,
+  type ModuleClassification,
+} from "./module-classifier.js";
 import { calculateMetrics } from "./metrics-calculator.js";
 import { scanRepository } from "./repo-scanner.js";
 
 const buildModules = (
   files: RepositoryModel["files"],
   imports: RepositoryModel["imports"],
+  classifications: ReadonlyMap<string, ModuleClassification>,
 ): ModuleRecord[] => {
   const ids = [
-    ...new Set(files.map((file) => classifyModule(file.path))),
+    ...new Set(
+      files.map(
+        (file) =>
+          classifications.get(file.path)?.id ?? classifyModule(file.path),
+      ),
+    ),
   ].sort();
   return ids.map((id) => {
     const moduleFiles = files.filter(
-      (file) => classifyModule(file.path) === id,
+      (file) =>
+        (classifications.get(file.path)?.id ?? classifyModule(file.path)) ===
+        id,
     );
     const incoming = imports
       .filter(
@@ -40,6 +53,7 @@ const buildModules = (
       .map((edge) => edge.toModule);
     return {
       id,
+      kind: classifications.get(moduleFiles[0]!.path)?.kind ?? "feature",
       paths: moduleFiles.map((file) => file.path).sort(),
       fileCount: moduleFiles.length,
       exportedSymbolCount: moduleFiles.reduce(
@@ -64,18 +78,19 @@ export const analyzeRepository = async (
 ): Promise<AnalysisResult> => {
   const root = path.resolve(projectRoot);
   const scan = await scanRepository(root, config);
-  const imports = buildImportGraph(scan.files, scan.imports);
+  const publicEntrypoints = await findPublicEntrypoints(root, scan.files);
+  const classifications = classifySourceFiles(scan.files, publicEntrypoints);
+  const moduleFor = (filePath: string): string =>
+    classifications.get(filePath)?.id ?? classifyModule(filePath);
+  const imports = buildImportGraph(scan.files, scan.imports, moduleFor);
   const repository = repositoryModelSchema.parse({
     projectRoot: root,
     language: "typescript",
     files: scan.files,
-    modules: buildModules(scan.files, imports),
+    modules: buildModules(scan.files, imports, classifications),
     imports,
     cycles: findDependencyCycles(imports),
-    publicEntrypoints: scan.files
-      .filter((file) => /(?:^|\/)index\.tsx?$/u.test(file.path))
-      .map((file) => file.path)
-      .sort(),
+    publicEntrypoints,
   });
 
   return {

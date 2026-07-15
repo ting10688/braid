@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "issues": [
+    {
+      "id": "notification-responsibility-cluster",
+      "type": "extract-module",
+      "acceptableFiles": [["src/modules/orders/service.ts"]],
+      "acceptableModules": [["modules/orders"]],
+      "acceptableSymbols": [
+        [
+          "formatNotification",
+          "notificationLog",
+          "retryNotification",
+          "sendNotification"
+        ]
+      ],
+      "requiredEvidenceTypes": ["oversized-file", "symbol-cluster"],
+      "expectedRisk": { "allowed": ["low"] },
+      "expectedReversibility": { "allowed": ["easy"] },
+      "ranking": { "shouldAppearInTopK": 1 },
+      "notes": "The notification declarations form a human-labeled cohesive responsibility cluster."
+    }
+  ]
+}

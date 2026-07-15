@@ -44,6 +44,53 @@ export const detectCycles = (
   );
 };
 
+export const findStronglyConnectedComponents = (
+  adjacency: ReadonlyMap<string, readonly string[]>,
+): string[][] => {
+  let nextIndex = 0;
+  const indices = new Map<string, number>();
+  const lowLinks = new Map<string, number>();
+  const stack: string[] = [];
+  const stacked = new Set<string>();
+  const components: string[][] = [];
+
+  const visit = (node: string): void => {
+    const index = nextIndex++;
+    indices.set(node, index);
+    lowLinks.set(node, index);
+    stack.push(node);
+    stacked.add(node);
+
+    for (const target of [...(adjacency.get(node) ?? [])].sort()) {
+      if (!indices.has(target)) {
+        visit(target);
+        lowLinks.set(
+          node,
+          Math.min(lowLinks.get(node)!, lowLinks.get(target)!),
+        );
+      } else if (stacked.has(target)) {
+        lowLinks.set(node, Math.min(lowLinks.get(node)!, indices.get(target)!));
+      }
+    }
+
+    if (lowLinks.get(node) !== indices.get(node)) return;
+    const component: string[] = [];
+    let current: string;
+    do {
+      current = stack.pop()!;
+      stacked.delete(current);
+      component.push(current);
+    } while (current !== node);
+    components.push(component.sort());
+  };
+
+  for (const node of [...adjacency.keys()].sort())
+    if (!indices.has(node)) visit(node);
+  return components.sort((left, right) =>
+    left.join("\0").localeCompare(right.join("\0")),
+  );
+};
+
 export const findDependencyCycles = (
   imports: ImportEdge[],
 ): DependencyCycle[] => {

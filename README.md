@@ -4,14 +4,18 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. This hackathon foundation currently implements deterministic analysis
-for local TypeScript projects; it does not yet modify code.
+reversible architecture changes. Version 0.2.3 adds deterministic migration proposals for local
+TypeScript projects. Braid still does not modify analyzed source code or execute migrations.
 
 ## Current scope
 
 Braid scans configured TypeScript and TSX files without executing them, resolves relative and
 tsconfig-aliased imports, classifies modules, finds file/module dependency cycles, calculates raw
 architecture metrics, and saves validated JSON snapshots under `.braid/state/snapshots/`.
+It explicitly distinguishes feature, infrastructure, entrypoint, barrel, and top-level root-file
+modules. It can then generate evidence-backed `break-cycle` and `extract-module` proposals and
+atomically save them under `.braid/state/proposals/`. Cycle proposals use one ranked primary plus typed
+alternatives for each deterministic strongly connected root cause.
 
 The long-term vision has two modes:
 
@@ -20,7 +24,7 @@ The long-term vision has two modes:
 - Recovery Mode will propose, execute, validate, and roll back small evidence-based migrations for
   existing architectural drift.
 
-Automatic migration, Codex execution, worktrees, and rollback are not implemented yet.
+Migration execution, Codex runtime integration, worktrees, and rollback execution are not implemented.
 
 ## Requirements and installation
 
@@ -54,6 +58,42 @@ Analyze a configured project:
 braid analyze
 braid analyze --json
 braid analyze --no-save
+```
+
+Generate migration proposals from a fresh analysis or an existing snapshot:
+
+```bash
+braid propose
+braid propose --json
+braid propose --no-save
+braid propose --limit 1
+braid propose --type extract-module
+braid propose --type break-cycle
+braid propose --snapshot S-abc123def456-20260715T120000000Z
+```
+
+`braid propose` is proposal-only. Saving may write snapshots and proposal JSON under `.braid/state`,
+but source, tests, manifests, and TypeScript configuration are never modified. `--no-save` performs no
+writes. JSON mode emits one JSON document to stdout; diagnostics remain on stderr.
+
+Example proposal summary:
+
+```text
+Braid migration proposals
+
+Proposals: 2
+Recommended first candidate: P-BC-4d35cc34
+
+1. [break-cycle] Break orders → users cycle edge
+   Risk: low
+   Reversibility: conditional
+   Expected impact (simulated): circularDependencies decrease (-1)
+   Alternatives: 1
+
+2. [extract-module] Extract notification responsibilities from order-service.ts
+   Risk: low
+   Reversibility: easy
+   Expected impact (estimated): oversizedFiles unknown
 ```
 
 Example console output:
@@ -90,7 +130,34 @@ pnpm test:watch
 pnpm format
 pnpm braid --help
 pnpm analyze:example
+pnpm propose:example
+pnpm benchmark:list
+pnpm benchmark:smoke
+pnpm benchmark:run
+pnpm benchmark:compare
+pnpm benchmark:regression
+pnpm benchmark:real:list
+pnpm benchmark:real:qualify
+pnpm benchmark:real:run
+pnpm benchmark:real:regression
 ```
+
+Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
+inputs before comparing two Braid executables. A run records immutable manifests, separates
+correctness/stability/cost metrics, and treats timing across different environments as informational.
+Create a reviewable baseline with `pnpm benchmark:baseline create --run <run> --name <name>
+--force`, or run a direct comparison with `pnpm benchmark:iteration --suite phase-2-core
+--baseline-braid <path> --candidate-braid <path>`. See the benchmark methodology for report formats,
+compatibility rules, and exit codes.
+
+The real-world Phase 2 suite evaluates pinned Consola and tslog checkouts from the ignored
+`.braid-bench-cache/repositories/` cache. Consola is the false-positive control; tslog exercises dense
+runtime, transport, preset, serializer, subpath, and CLI boundaries. Normal runs are network-free and
+clone each verified cache checkout into a fresh remote-free temporary directory. Network refresh is
+always explicit, for example `node packages/benchmark/dist/cli/index.js repositories refresh consola`.
+Neither third-party repository is vendored or used as a Braid source dependency. Phase 2.1 reduced the
+reviewed real-world output from 11 to 2 top-level proposals, raised action validity from 37.5% to 75%,
+and reduced false positives from 5 to 1 while retaining 100% expected-issue and evidence correctness.
 
 The example app is intentionally healthy at runtime but architecturally awkward. It contains a
 users/orders cycle, mixed notification logic, cross-module imports, a large shared module, and a local
@@ -101,11 +168,17 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `apps/cli`: Commander-based `braid` command and console/JSON presentation.
 - `packages/core`: Zod domain schemas and validated YAML configuration.
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
-- `packages/store`: atomic JSON project and snapshot persistence.
+- `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
+- `packages/store`: atomic JSON project, snapshot, and proposal persistence.
+- `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
+  iteration comparison, and reports.
 - `packages/shared`: errors and project-local path constants.
+- `benchmarks`: versioned synthetic and pinned real-world suites, reviewed expectations, fixture templates,
+  repository metadata, and ignored run results.
 - `examples/bloated-saas`: deterministic integration fixture and runnable TypeScript application.
 
-See [architecture](docs/architecture.md), [metric definitions](docs/metrics.md), and the
+See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
+[benchmark methodology](docs/benchmarking.md), [metric definitions](docs/metrics.md), and the
 [roadmap](docs/roadmap.md).
 
 ## Known limitations
@@ -113,10 +186,15 @@ See [architecture](docs/architecture.md), [metric definitions](docs/metrics.md),
 - Only TypeScript/TSX source is supported.
 - Import analysis covers static `import` and `export ... from`; dynamic imports and runtime resolution
   are not modeled.
-- Module classification is directory-based, not responsibility-aware.
+- Module classification uses normalized paths, package entrypoint fields, and static statement shape; it
+  is not responsibility-aware.
 - Line counting is lexical and intentionally simple.
 - No quality score is produced; metrics require context.
-- Migration proposal, execution, validation, and rollback are roadmap work.
+- Symbol clustering uses identifiers and static references, not semantic or runtime behavior.
+- A grouped SCC can expose several statically plausible alternatives; their presence is not a claim that
+  every alternative is architecturally desirable.
+- Extraction impact is estimated because caller rewrites are not simulated.
+- Migration execution, validation, and rollback execution remain roadmap work.
 
 ## Status
 

@@ -1,0 +1,26 @@
+{
+  "name": "@braid/benchmark",
+  "version": "0.2.3",
+  "private": true,
+  "description": "Independent reproducible benchmarks for Braid.",
+  "type": "module",
+  "bin": {
+    "braid-bench": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@braid/core": "workspace:*",
+    "commander": "^14.0.0",
+    "yaml": "^2.8.0",
+    "zod": "^3.25.76"
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "name": "real-world-phase-2-precision-v1",
+  "createdFromRunId": "real-world-phase-2-20260715T114131421Z",
+  "manifest": {
+    "schemaVersion": 1,
+    "protocolVersion": "1.0.0",
+    "suiteId": "real-world-phase-2",
+    "suiteVersion": "1.1.0",
+    "expectationVersion": "1.1.0",
+    "fixtureManifestVersion": "1.0.0",
+    "fixtureManifestHash": "6d5c0dc9c05318ba1d0c710638363946e04d133a93446a9b25e1e978abe4fbe5",
+    "configurationHash": "238c6104db2aa5165cf9bfd7486af85a92fd7469d9ef1c7347e7b0856f74e621",
+    "repositories": [
+      {
+        "id": "consola",
+        "url": "https://github.com/unjs/consola.git",
+        "commit": "c47faac1738b7383971c6c20b5a34ffa15e7cc3b",
+        "licenseHash": "df0e3cef4a42bae7db60ee33c3409a63df5f4dc40291d3627fbf52dfbd44e8a7",
+        "lockfileHash": "c729beba14be288f8ecabe12a5ac037df3e7eb39ae450aa83fb72154f37d3b93",
+        "sourceManifestHash": "a538c5c9b411292b0f096fd47d4978ab059d0010d2ae429f29efd7d2880e0f5e",
+        "braidConfigurationHash": "70aa53ad58582083e2b6ced180bf4a2418e0fad0e279666edafbbeccc7c5a3a5",
+        "qualificationStatus": "qualified",
+        "sourceFiles": 21,
+        "sourceLinesOfCode": 1809,
+        "moduleCount": 3,
+        "installStatus": "passed",
+        "buildStatus": "passed",
+        "testStatus": "passed",
+        "braidAnalysisStatus": "passed"
+      },
+      {
+        "id": "tslog",
+        "url": "https://github.com/fullstack-build/tslog.git",
+        "commit": "07d3e31ea36ae1074accb0097bdc53bd73c93e13",
+        "licenseHash": "a5e6ddb3af783a02eacc848cbe309cc0940b4859ac653e9b1a2e21a4fea22552",
+        "lockfileHash": "8e72c592396e9e1bea0ef56d2ef32c9afad2208546db8be42cb431104fbd242f",
+        "sourceManifestHash": "3562eedb3f3a1bf124541dbf8e4fddaf7dda4bf15e9a534a3265216c6b1b3c8c",
+        "braidConfigurationHash": "552894cdd434d81a2615d414802ad39d82b3b15b8b5c081c0451dc0073fb52cb",
+        "qualificationStatus": "qualified-with-limitations",
+        "sourceFiles": 59,
+        "sourceLinesOfCode": 11046,
+        "moduleCount": 6,
+        "installStatus": "passed",
+        "buildStatus": "passed",
+        "testStatus": "passed",
+        "braidAnalysisStatus": "passed"
+      }
+    ],
+    "braidVersion": "0.2.3",
+    "braidCommit": "b1c10148d5c2ff9f30584cebfe0854708d7db290",
+    "benchmarkVersion": "0.2.0",
+    "benchmarkCommit": "b1c10148d5c2ff9f30584cebfe0854708d7db290",
+    "environment": {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "nodeVersion": "v22.22.3",
+      "pnpmVersion": "11.7.0",
+      "gitVersion": "git version 2.50.1 (Apple Git-155)"
+    },
+    "execution": {
+      "correctnessRepetitions": 3,
+      "timingRepetitions": 7,
+      "warmupRuns": 1,
+      "timeoutMs": 30000,
+      "command": "node <workspace>/apps/cli/dist/index.js"
+    }
+  },
+  "summary": {
+    "correctness": {
+      "expectedIssueCoverage": 1,
+      "proposalValidity": 0.75,
+      "topKCoverage": 1,
+      "evidenceCoverage": 1,
+      "evidenceCorrectness": 1,
+      "riskAgreement": 1,
+      "reversibilityAgreement": 1,
+      "falsePositiveCount": 1,
+      "sourceMutations": 0,
+      "buildSuccess": true,
+      "testSuccess": true,
+      "expectedExitCodeMatched": true
+    },
+    "stability": {
+      "caseCount": 2,
+      "deterministicCases": 2,
+      "flakyCases": 0,
+      "proposalIdentityStable": true,
+      "proposalOrderingStable": true,
+      "persistenceIdempotent": true
+    },
+    "cost": {
+      "medianRuntimeMs": 1222.693041500001,
+      "minimumRuntimeMs": 718.6474169999992,
+      "maximumRuntimeMs": 1745.9633329999997,
+      "proposalCount": 2,
+      "reportSizeBytes": 47069
+    }
+  },
+  "braid": {
+    "version": "0.2.3",
+    "commit": "b1c10148d5c2ff9f30584cebfe0854708d7db290"
+  },
+  "benchmark": {
+    "version": "0.2.0",
+    "commit": "b1c10148d5c2ff9f30584cebfe0854708d7db290"
+  }
+}

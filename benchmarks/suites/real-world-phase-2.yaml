@@ -1,0 +1,32 @@
+schemaVersion: 1
+suiteVersion: 1.1.0
+expectationVersion: 1.1.0
+id: real-world-phase-2
+title: Phase 2 real-world repository proposal quality
+description: Independently reviewed false-positive control and complex-project proposal quality on pinned TypeScript repositories.
+execution:
+  correctnessRepetitions: 3
+  timingRepetitions: 7
+  warmupRuns: 1
+  timeoutMs: 30000
+cases:
+  - type: repository-proposal
+    id: consola
+    repositoryId: consola
+    expectationFile: repositories/consola/expectations.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true
+  - type: repository-proposal
+    id: tslog
+    repositoryId: tslog
+    expectationFile: repositories/tslog/expectations.json
+    braidCommands:
+      init: [init, ., --force]
+      analyze: [analyze, ., --json]
+      propose: [propose, ., --json]
+    expectedExitCode: 0
+    smoke: true

@@ -1,6 +1,6 @@
 {
   "name": "@braid/cli",
-  "version": "0.1.0",
+  "version": "0.2.3",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "type": "module",
@@ -20,6 +20,7 @@
   "dependencies": {
     "@braid/analyzer": "workspace:*",
     "@braid/core": "workspace:*",
+    "@braid/planner": "workspace:*",
     "@braid/shared": "workspace:*",
     "@braid/store": "workspace:*",
     "commander": "^14.0.0"

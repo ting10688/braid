@@ -3,6 +3,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { analyzeRepository } from "@braid/analyzer";
 import {
+  type ArchitectureConfig,
+  type ArchitectureSnapshot,
   configHash,
   createArchitectureSnapshot,
   loadArchitectureConfig,
@@ -32,6 +34,28 @@ const readGitCommit = async (projectRoot: string): Promise<string | null> => {
   }
 };
 
+export interface CurrentSnapshot {
+  snapshot: ArchitectureSnapshot;
+  warnings: string[];
+}
+
+export const createCurrentSnapshot = async (
+  projectRoot: string,
+  config: ArchitectureConfig,
+): Promise<CurrentSnapshot> => {
+  const analysis = await analyzeRepository(projectRoot, config);
+  return {
+    snapshot: createArchitectureSnapshot({
+      projectRoot,
+      gitCommit: await readGitCommit(projectRoot),
+      configHash: configHash(config),
+      repository: analysis.repository,
+      metrics: analysis.metrics,
+    }),
+    warnings: analysis.warnings,
+  };
+};
+
 export const analyzeCommand = async (
   targetPath: string,
   options: AnalyzeOptions,
@@ -40,21 +64,16 @@ export const analyzeCommand = async (
   const config = await loadArchitectureConfig(
     path.join(projectRoot, CONFIG_FILE),
   );
-  const analysis = await analyzeRepository(projectRoot, config);
-  const snapshot = createArchitectureSnapshot({
+  const { snapshot, warnings } = await createCurrentSnapshot(
     projectRoot,
-    gitCommit: await readGitCommit(projectRoot),
-    configHash: configHash(config),
-    repository: analysis.repository,
-    metrics: analysis.metrics,
-  });
+    config,
+  );
   const savedPath =
     options.save === false
       ? null
       : await new JsonSnapshotStore(projectRoot).save(snapshot);
 
-  for (const warning of analysis.warnings)
-    process.stderr.write(`Warning: ${warning}\n`);
+  for (const warning of warnings) process.stderr.write(`Warning: ${warning}\n`);
   process.stdout.write(
     options.json
       ? `${JSON.stringify(snapshot, null, 2)}\n`

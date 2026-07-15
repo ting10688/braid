@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "issues": [
+    {
+      "id": "protected-permissions-cycle",
+      "type": "break-cycle",
+      "acceptableFiles": [
+        ["src/modules/permissions/permissions.ts", "src/modules/users/users.ts"]
+      ],
+      "acceptableModules": [["modules/permissions", "modules/users"]],
+      "acceptableCycleEdges": [
+        { "fromModule": "modules/permissions", "toModule": "modules/users" }
+      ],
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "protected-path-impact"
+      ],
+      "expectedRisk": { "allowed": ["high"] },
+      "expectedReversibility": { "allowed": ["difficult"] },
+      "ranking": { "shouldAppearInTopK": 1 },
+      "notes": "Any change to this cycle intersects the protected permissions module."
+    }
+  ]
+}

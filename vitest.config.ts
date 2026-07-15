@@ -8,7 +8,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@braid/analyzer": fromRoot("./packages/analyzer/src/index.ts"),
+      "@braid/benchmark": fromRoot("./packages/benchmark/src/index.ts"),
       "@braid/core": fromRoot("./packages/core/src/index.ts"),
+      "@braid/planner": fromRoot("./packages/planner/src/index.ts"),
       "@braid/shared": fromRoot("./packages/shared/src/index.ts"),
       "@braid/store": fromRoot("./packages/store/src/index.ts"),
     },
