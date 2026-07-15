@@ -3,6 +3,7 @@ import {
   expectedImpactSchema,
   projectRelativePathSchema,
 } from "./migration-proposal.js";
+import { executionReadinessResultSchema } from "./execution-readiness.js";
 
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
 const gitCommitSchema = z.string().regex(/^[a-f0-9]{40,64}$/u);
@@ -110,6 +111,14 @@ export const migrationExecutionPlanSchema = z.object({
     suggestedModule: z.string().min(1),
     destinationDirectory: projectRelativePathSchema,
     symbols: z.array(z.string().min(1)).min(2),
+    companionSymbols: z
+      .array(
+        z.object({
+          file: projectRelativePathSchema,
+          symbol: z.string().min(1),
+        }),
+      )
+      .optional(),
     predictedImpact: expectedImpactSchema,
   }),
   validation: z.object({
@@ -122,6 +131,7 @@ export const migrationExecutionPlanSchema = z.object({
     timeoutMs: z.number().int().min(1_000).max(900_000),
     sandbox: z.literal("workspace-write"),
   }),
+  readiness: executionReadinessResultSchema.optional(),
 });
 
 export const validationResultSchema = z.object({

@@ -28,8 +28,12 @@ export const configHash = (config: ArchitectureConfig): string => {
   return hashNormalized(analysisAndPlannerConfig);
 };
 
-export const migrationConfigHash = (config: ArchitectureConfig): string =>
-  hashNormalized(config.migration);
+export const migrationConfigHash = (config: ArchitectureConfig): string => {
+  const { maximumSymbols, ...legacyCompatible } = config.migration;
+  return hashNormalized(
+    maximumSymbols === 20 ? legacyCompatible : config.migration,
+  );
+};
 
 export const executionConfigHash = (config: ArchitectureConfig): string =>
   hashNormalized({

@@ -23,6 +23,7 @@ describe("architecture configuration", () => {
       enabled: false,
       supportedProposalTypes: ["extract-module"],
       maximumChangedFiles: 8,
+      maximumSymbols: 20,
       codex: {
         executable: "codex",
         timeoutMs: 900_000,
@@ -55,6 +56,7 @@ describe("architecture configuration", () => {
     expect(legacyConfig.migration).toMatchObject({
       enabled: false,
       maximumChangedFiles: 8,
+      maximumSymbols: 20,
       validation: { commands: [] },
     });
     expect(configHash(legacyConfig)).toBe(configHash(currentConfig));
@@ -69,6 +71,23 @@ describe("architecture configuration", () => {
     );
     expect(executionConfigHash(changedMigration)).not.toBe(
       executionConfigHash(currentConfig),
+    );
+
+    const { maximumSymbols: _maximumSymbols, ...legacyMigration } =
+      currentConfig.migration;
+    void _maximumSymbols;
+    expect(
+      migrationConfigHash({
+        ...currentConfig,
+        migration: legacyMigration,
+      } as typeof currentConfig),
+    ).toBe(migrationConfigHash(currentConfig));
+    const changedSymbolBudget = {
+      ...currentConfig,
+      migration: { ...currentConfig.migration, maximumSymbols: 10 },
+    };
+    expect(migrationConfigHash(changedSymbolBudget)).not.toBe(
+      migrationConfigHash(currentConfig),
     );
   });
 
