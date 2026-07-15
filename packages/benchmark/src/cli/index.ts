@@ -43,6 +43,10 @@ import {
   migrationBenchmarkConsoleReport,
   runMigrationExecutionBenchmark,
 } from "../migration-execution-suite.js";
+import {
+  readinessBenchmarkConsoleReport,
+  runReadinessBenchmark,
+} from "../readiness-suite.js";
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
@@ -219,6 +223,20 @@ program
     );
     if (options.mode === "regression" && report.regressions.length > 0)
       process.exitCode = 2;
+  });
+
+program
+  .command("readiness")
+  .description("Run the deterministic Phase 3.1 execution-readiness suite")
+  .option("--json", "write one JSON report")
+  .action(async (options: { json?: boolean }) => {
+    const report = await runReadinessBenchmark();
+    process.stdout.write(
+      options.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : readinessBenchmarkConsoleReport(report),
+    );
+    if (report.regressions.length > 0) process.exitCode = 2;
   });
 
 repositories

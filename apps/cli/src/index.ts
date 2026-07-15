@@ -17,7 +17,7 @@ import {
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.3.0");
+  .version("0.3.1");
 
 program
   .command("init")

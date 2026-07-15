@@ -38,6 +38,15 @@ export const proposalTargetSchema = z.discriminatedUnion("type", [
     sourceFile: projectRelativePathSchema,
     sourceModule: z.string().min(1),
     candidateSymbols: z.array(z.string().min(1)).min(2),
+    approvedCompanionSymbols: z
+      .array(
+        z.object({
+          file: projectRelativePathSchema,
+          symbol: z.string().min(1),
+        }),
+      )
+      .min(1)
+      .optional(),
     suggestedModuleName: z.string().min(1),
   }),
   z.object({
@@ -221,7 +230,28 @@ export const migrationProposalSchema = z
       path: ["alternatives"],
       message: "only break-cycle proposals may contain alternatives",
     },
-  );
+  )
+  .superRefine((proposal, context) => {
+    if (proposal.target.type !== "extract-module") return;
+    const approved = proposal.target.approvedCompanionSymbols ?? [];
+    const keys = approved.map(({ file, symbol }) => `${file}\0${symbol}`);
+    if (new Set(keys).size !== keys.length)
+      context.addIssue({
+        code: "custom",
+        path: ["target", "approvedCompanionSymbols"],
+        message: "must not contain duplicate companion symbols",
+      });
+    const primary = new Set(proposal.target.candidateSymbols);
+    const sourceFile = proposal.target.sourceFile;
+    approved.forEach(({ file, symbol }, index) => {
+      if (file === sourceFile && primary.has(symbol))
+        context.addIssue({
+          code: "custom",
+          path: ["target", "approvedCompanionSymbols", index],
+          message: "companion symbol must be distinct from primary symbols",
+        });
+    });
+  });
 
 export type ProposalType = z.infer<typeof proposalTypeSchema>;
 export type ProposalTarget = z.infer<typeof proposalTargetSchema>;

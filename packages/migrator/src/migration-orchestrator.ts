@@ -27,6 +27,7 @@ import {
   createCandidateCommit,
 } from "./candidate-commit.js";
 import { createExecutionPlan } from "./execution-plan.js";
+import { READINESS_REJECTION_EXIT_CODE } from "./execution-readiness.js";
 import {
   createExecutorStagingRepository,
   type ExecutorStagingRepository,
@@ -387,12 +388,6 @@ export const runMigration = async (
     }
     throw error;
   }
-  const manager =
-    input.worktreeManager ??
-    new WorktreeManager({
-      repositoryRoot,
-      executionRoot: defaultExecutionRoot(repositoryRoot),
-    });
   const expectedCandidateBranch = candidateBranchForExecution(executionId);
   let mainIntegrityOptions: CaptureMainCheckoutStateOptions = {
     ownedCandidateRef: `refs/heads/${expectedCandidateBranch}`,
@@ -568,6 +563,52 @@ export const runMigration = async (
     throw finalError;
   }
 
+  if (plan.readiness?.state === "not-ready") {
+    const readinessError = new MigrationSafetyError(
+      `Migration proposal is not execution-ready: ${plan.readiness.blockingReasons
+        .map(({ code, message }) => `${code}: ${message}`)
+        .join("; ")}`,
+      READINESS_REJECTION_EXIT_CODE,
+      "execution-not-ready",
+    );
+    const mainAfter = await captureMainCheckoutState(
+      repositoryRoot,
+      mainIntegrityOptions,
+    );
+    let finalError = readinessError;
+    try {
+      assertMainCheckoutIntegrity(mainBefore, mainAfter);
+    } catch (integrityError) {
+      finalError = safetyError(integrityError, 11, "main-checkout-mutated");
+    }
+    await transition(
+      migrationExecutionRecordSchema.parse({
+        ...record,
+        status: "preflight-failed",
+        completedAt: now().toISOString(),
+        fingerprints: {
+          ...record.fingerprints,
+          mainAfter: mainAfter.fingerprint,
+        },
+        failure: {
+          stage: finalError.exitCode === 11 ? "main-integrity" : "readiness",
+          code: finalError.code,
+          message: sanitizePortableText(finalError.message, [
+            repositoryRoot,
+            homedir(),
+          ]),
+        },
+      }),
+    );
+    throw finalError;
+  }
+
+  const manager =
+    input.worktreeManager ??
+    new WorktreeManager({
+      repositoryRoot,
+      executionRoot: defaultExecutionRoot(repositoryRoot),
+    });
   let owned;
   try {
     owned = await manager.create(executionId, plan.repository.baseCommit, {

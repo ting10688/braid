@@ -1,7 +1,7 @@
 export class BraidError extends Error {
   constructor(
     message: string,
-    readonly exitCode: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12,
+    readonly exitCode: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13,
     options?: ErrorOptions,
   ) {
     super(message, options);
@@ -12,7 +12,7 @@ export class BraidError extends Error {
 export class MigrationSafetyError extends BraidError {
   constructor(
     message: string,
-    exitCode: 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12,
+    exitCode: 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13,
     readonly code: string,
     options?: ErrorOptions,
   ) {

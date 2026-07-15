@@ -173,6 +173,22 @@ pnpm benchmark:migration:run
 pnpm benchmark:migration:regression
 ```
 
+### Phase 3.1 execution-readiness suite
+
+Implemented as `phase-3-1-execution-readiness@1.0.0` with protocol `1.0.0`. Ten independent cases cover
+local interface/type companions, a safely retained helper, a shared retained type, unresolved evidence,
+reverse direction, a predicted new cycle, file-budget overflow, protected/public companion scope, and a
+complete closure through the existing migration orchestrator.
+
+The report keeps readiness accuracy, companion precision/recall, repeated deterministic output,
+false-ready, false-not-ready, prevented executor launches, verified zero-launch rejection, and main
+checkout mutation as separate metrics. The incomplete and complete demonstrations use disposable local
+repositories and the scripted executor; live Codex is not a benchmark dependency.
+
+```bash
+pnpm benchmark:readiness
+```
+
 ## Independence and fixture isolation
 
 The proposal evaluator depends on public `@braid/core` schemas but not on `@braid/planner` or

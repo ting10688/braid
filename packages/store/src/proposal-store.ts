@@ -80,6 +80,18 @@ export const normalizeProposal = (
       ? {
           ...proposal.target,
           candidateSymbols: sorted(proposal.target.candidateSymbols),
+          ...(proposal.target.approvedCompanionSymbols
+            ? {
+                approvedCompanionSymbols: [
+                  ...proposal.target.approvedCompanionSymbols,
+                ].sort((left, right) =>
+                  compare(
+                    `${left.file}\0${left.symbol}`,
+                    `${right.file}\0${right.symbol}`,
+                  ),
+                ),
+              }
+            : {}),
         }
       : {
           ...proposal.target,

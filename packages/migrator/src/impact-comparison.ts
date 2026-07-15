@@ -162,12 +162,30 @@ export const compareMigrationImpact = (
     after,
     plan.expectedChange.destinationDirectory,
   );
-  const sourceSymbols = declarationNames(sourceAfter);
   const destinationSymbols = new Set(
     destinationAfter.flatMap((file) => [...declarationNames(file)]),
   );
-  const selectedSymbolsMoved = plan.expectedChange.symbols.every(
-    (symbol) => !sourceSymbols.has(symbol) && destinationSymbols.has(symbol),
+  const sourceByPath = new Map(
+    after.repository.files.map((file) => [file.path, file]),
+  );
+  const companionLocators = plan.expectedChange.companionSymbols ?? [];
+  const companionNames = new Set(companionLocators.map(({ symbol }) => symbol));
+  const primaryLocators = plan.readiness
+    ? plan.readiness.primarySymbols.map(({ file, name }) => ({
+        file,
+        symbol: name,
+      }))
+    : plan.expectedChange.symbols
+        .filter((symbol) => !companionNames.has(symbol))
+        .map((symbol) => ({
+          file: plan.expectedChange.sourceFile,
+          symbol,
+        }));
+  const selectedLocators = [...primaryLocators, ...companionLocators];
+  const selectedSymbolsMoved = selectedLocators.every(
+    ({ file, symbol }) =>
+      !declarationNames(sourceByPath.get(file)).has(symbol) &&
+      destinationSymbols.has(symbol),
   );
   const sourceModuleChanged =
     canonical(sourceBefore) !== canonical(sourceAfter);

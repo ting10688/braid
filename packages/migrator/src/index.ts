@@ -3,6 +3,12 @@ export {
   type CreateExecutionPlanInput,
 } from "./execution-plan.js";
 export {
+  evaluateExecutionReadiness,
+  READINESS_ALGORITHM_VERSION,
+  READINESS_REJECTION_EXIT_CODE,
+  type EvaluateExecutionReadinessInput,
+} from "./execution-readiness.js";
+export {
   runPreflight,
   type PreflightInput,
   type PreflightResult,

@@ -1,6 +1,7 @@
 # Safe migration execution
 
-Phase 3 turns one explicitly approved `extract-module` proposal into a local, reviewable candidate. It
+Phase 3.1 turns one execution-ready, explicitly approved `extract-module` proposal into a local,
+reviewable candidate. It
 does not merge, push, open a pull request, execute rollback, or execute `break-cycle` proposals.
 
 ## Safety gate
@@ -28,6 +29,32 @@ Snapshots carry separate analysis/planner and migration-configuration hashes. Th
 proposal identities and benchmark fixtures backward-compatible while still rejecting any changed
 execution scope, Codex setting, timeout, or validation command before Phase 3 runs. Plans record the
 combined execution configuration hash.
+
+## Execution readiness and symbol closure
+
+Before any owned worktree, candidate branch, standalone staging repository, or executor process exists,
+the migrator evaluates the approved proposal against declaration/reference/import/module facts in the
+selected snapshot. The analyzer supplies facts, the planner continues to own proposal intent and
+approved evidence, and the migrator decides only whether that fixed intent is executable.
+
+The closure starts with `target.candidateSymbols`. A same-source declaration needed by a selected
+declaration must move because retaining it predicts a destination-to-source dependency while preserved
+imports require source-to-destination. Repository-local declarations in other files remain where they
+are when import direction is valid; external imports also remain. A local dependency becomes a required
+companion when retaining it is not importable or would close a predictable cycle. Closure repeats until
+no required companion is added, then repeats the complete calculation and hashes both results.
+
+An updated proposal can explicitly list `approvedCompanionSymbols` by file and symbol. This is approval
+evidence, not an instruction to discover more work. `migrate run` never broadens it. A missing approval,
+unresolved declaration, reverse edge, predicted cycle, file/symbol budget overflow, protected/public
+companion, or unequal repeated closure is `not-ready`. Retained dependencies and legacy snapshot facts
+produce visible warnings when otherwise safe. The only states are `ready`, `ready-with-warnings`, and
+`not-ready`.
+
+The readiness result uses schema version 1 and records proposal ID, snapshot/config/source fingerprints,
+primary and companion symbols, retained/external/unresolved dependencies, predicted import/cycle
+evidence, warnings, blockers, and deterministic hashes. New plans embed it without changing execution
+plan or execution record schema version; old persisted v1 plans remain readable.
 
 ## Deterministic plan and isolated worktree
 
@@ -72,7 +99,8 @@ workspace-write root. A bounded run therefore cannot reach a temp-hosted source/
 remote branch.
 
 The deterministic prompt places non-overridable safety rules before inert plan JSON. It names exact
-symbols, source, destination, allowed and forbidden paths, changed-file limit, validation commands, and
+approved primary/companion symbols, retained dependencies, predicted imports, source, destination,
+allowed and forbidden paths, changed-file limit, validation commands, and
 the structured final-response schema. There is no free-form prompt injection field. Codex's filtered
 summary and events are evidence only; Git remains the source of truth. Authentication data, environment
 secrets, private paths, full process environment, and hidden reasoning are not persisted.
@@ -169,6 +197,8 @@ braid migrate discard <execution-id> --confirm <execution-id> [--json] [--path <
 Stable exit codes are 0 success/information, 2 invalid CLI use, 3 approval failure, 4 stale state, 5
 unsupported/unsafe proposal, 6 worktree failure, 7 executor failure, 8 scope violation, 9 validation
 failure, 10 architecture failure, 11 main-checkout integrity failure, and 12 discard safety refusal.
+Exit code 13 is a deterministic execution-readiness rejection; it occurs before worktree/executor
+creation and uses failure code `execution-not-ready`.
 
 ## Configuration
 
@@ -180,6 +210,7 @@ migration:
   supportedProposalTypes:
     - extract-module
   maximumChangedFiles: 8
+  maximumSymbols: 20
   codex:
     executable: codex
     timeoutMs: 900000

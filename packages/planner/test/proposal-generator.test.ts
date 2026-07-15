@@ -90,4 +90,69 @@ describe("proposal generator", () => {
     );
     expect(proposals.map((proposal) => proposal.type)).toEqual(["break-cycle"]);
   });
+
+  it("preserves Phase 2 proposal IDs when readiness reference facts are added", () => {
+    const snapshot = createPlannerSnapshot({
+      files: [
+        {
+          path: "src/orders/service.ts",
+          linesOfCode: 600,
+          exportedSymbols: ["sendNotification", "buildNotification"],
+          importedFiles: [],
+          isTestFile: false,
+          declarations: [
+            {
+              name: "sendNotification",
+              kind: "function",
+              exported: true,
+              startLine: 1,
+              endLine: 20,
+              references: ["buildNotification"],
+            },
+            {
+              name: "buildNotification",
+              kind: "function",
+              exported: true,
+              startLine: 22,
+              endLine: 40,
+              references: [],
+            },
+            {
+              name: "placeOrder",
+              kind: "function",
+              exported: true,
+              startLine: 42,
+              endLine: 60,
+              references: [],
+            },
+          ],
+        },
+      ],
+    });
+    const withReadinessFacts = {
+      ...snapshot,
+      repository: {
+        ...snapshot.repository,
+        files: snapshot.repository.files.map((file) => ({
+          ...file,
+          declarations: file.declarations?.map((declaration) => ({
+            ...declaration,
+            symbolReferences: declaration.references.map((name) => ({
+              name,
+              resolution: "local" as const,
+              declarationFile: file.path,
+            })),
+          })),
+        })),
+      },
+    };
+
+    expect(
+      generateMigrationProposals(withReadinessFacts, plannerConfig).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(
+      generateMigrationProposals(snapshot, plannerConfig).map(({ id }) => id),
+    );
+  });
 });

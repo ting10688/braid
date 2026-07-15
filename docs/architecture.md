@@ -48,7 +48,8 @@ Fixture templates remain tracked inputs; every benchmark run operates on disposa
 1. The CLI resolves the target root and loads `.braid/architecture.yaml`.
 2. Zod validates the parsed YAML and reports exact invalid field paths.
 3. The scanner uses configured globs and ts-morph without executing target code.
-4. Static imports and re-exports become stable-sorted internal or external edges.
+4. Static imports and re-exports become stable-sorted internal or external edges; declaration references
+   classify same-file, repository-internal, external-package, and unresolved symbol dependencies.
 5. Package fields, public-entrypoint facts, normalized paths, and top-level statement shape classify
    modules; adjacency lists feed canonical file/module cycle detection.
 6. Pure metric calculations apply the configured thresholds.
@@ -119,7 +120,8 @@ equivalent. The CI-only scripted executor goes through the same orchestration pa
 ```mermaid
 flowchart LR
     Approved["approved low-risk extract-module"] --> Fresh["freshness + safety preflight"]
-    Fresh --> Plan["deterministic execution plan"]
+    Fresh --> Ready["deterministic symbol closure"]
+    Ready --> Plan["execution-ready plan"]
     Plan --> WT["owned external worktree + local branch"]
     WT --> Stage["standalone no-remote executor stage"]
     Stage --> Executor["bounded executor"]
@@ -144,3 +146,5 @@ locator; portable reports contain project-relative paths and hashes.
 Feature changes and architecture migrations will be separate transactions. A prerequisite migration can
 therefore be reviewed, validated, reverted, or reused independently of the feature that motivated it.
 Phase 3 creates reviewable local candidates but does not execute rollback, merge, or push operations.
+Phase 3.1 keeps that boundary: analyzer facts do not choose companions, planner intent does not depend on
+Codex, and migrator readiness never rewrites or silently expands a proposal.

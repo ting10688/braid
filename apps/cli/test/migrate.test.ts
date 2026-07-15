@@ -2,6 +2,7 @@ import path from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { migrationProposalSchema } from "@braid/core";
 import type { MigrationExecutor } from "@braid/migrator";
 import { JsonProposalStore, JsonSnapshotStore } from "@braid/store";
 import {
@@ -39,13 +40,22 @@ const captureStdout = () => {
   return () => output;
 };
 
-const fixture = async () => {
+const fixture = async (complete = true) => {
   const container = await mkdtemp(path.join(tmpdir(), "braid-cli-migrate-"));
   temporaryDirectories.push(container);
   const item = await createMigrationFixture(container);
+  const proposal = complete
+    ? item.proposal
+    : migrationProposalSchema.parse({
+        ...item.proposal,
+        target: {
+          ...item.proposal.target,
+          approvedCompanionSymbols: undefined,
+        },
+      });
   await new JsonSnapshotStore(item.repositoryRoot).save(item.snapshot);
-  await new JsonProposalStore(item.repositoryRoot).save(item.proposal);
-  return item;
+  await new JsonProposalStore(item.repositoryRoot).save(proposal);
+  return { ...item, proposal };
 };
 
 const controlledCodex = (): MigrationExecutor => ({
@@ -86,6 +96,13 @@ describe("migrate CLI commands", () => {
       json: true,
     });
     expect(output()).toContain('"planId": "PL-');
+    await migratePlanCommand(item.proposal.id, {
+      path: item.repositoryRoot,
+    });
+    expect(output()).toContain("Readiness: ready");
+    expect(output()).toContain(
+      "Required companions: src/orders/order-service.ts#SentNotification",
+    );
 
     await migrateRunCommand(
       item.proposal.id,
@@ -169,5 +186,43 @@ describe("migrate CLI commands", () => {
     await expect(
       migratePlanCommand("P-EM-deadbeef", { path: item.repositoryRoot }),
     ).rejects.toMatchObject({ exitCode: 4, code: "stale-proposal" });
+  });
+
+  it("shows and rejects not-ready proposals before executor launch", async () => {
+    const item = await fixture(false);
+    const output = captureStdout();
+    let launches = 0;
+    const executor: MigrationExecutor = {
+      kind: "codex",
+      inspect: async () => ({ kind: "codex", sandbox: "workspace-write" }),
+      execute: async () => {
+        launches += 1;
+        throw new Error("not-ready proposal launched the executor");
+      },
+    };
+
+    await migratePlanCommand(item.proposal.id, {
+      path: item.repositoryRoot,
+    });
+    expect(output()).toContain("Readiness: not-ready");
+    expect(output()).toContain("companion-not-authorized");
+
+    await expect(
+      migrateRunCommand(
+        item.proposal.id,
+        {
+          path: item.repositoryRoot,
+          approve: item.proposal.id,
+        },
+        {
+          executorFactory: () => executor,
+          executionIdFactory: () => "E-a1000000-0000-4000-8000-000000000032",
+        },
+      ),
+    ).rejects.toMatchObject({ exitCode: 13, code: "execution-not-ready" });
+    expect(launches).toBe(0);
+    expect(
+      await git(item.repositoryRoot, ["branch", "--list", "braid/exec/*"]),
+    ).toBe("");
   });
 });
