@@ -132,7 +132,16 @@ pnpm benchmark:list
 pnpm benchmark:smoke
 pnpm benchmark:run
 pnpm benchmark:compare
+pnpm benchmark:regression
 ```
+
+Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
+inputs before comparing two Braid executables. A run records immutable manifests, separates
+correctness/stability/cost metrics, and treats timing across different environments as informational.
+Create a reviewable baseline with `pnpm benchmark:baseline -- create --run <run> --name <name>
+--force`, or run a direct comparison with `pnpm benchmark:iteration -- --suite phase-2-core
+--baseline-braid <path> --candidate-braid <path>`. See the benchmark methodology for report formats,
+compatibility rules, and exit codes.
 
 The example app is intentionally healthy at runtime but architecturally awkward. It contains a
 users/orders cycle, mixed notification logic, cross-module imports, a large shared module, and a local
@@ -145,7 +154,8 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
 - `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
 - `packages/store`: atomic JSON project, snapshot, and proposal persistence.
-- `packages/benchmark`: independent fixture isolation, proposal evaluation, static comparison, and reports.
+- `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
+  iteration comparison, and reports.
 - `packages/shared`: errors and project-local path constants.
 - `benchmarks`: versioned synthetic suites, expectations, fixture templates, and ignored run results.
 - `examples/bloated-saas`: deterministic integration fixture and runnable TypeScript application.
