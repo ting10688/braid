@@ -128,6 +128,10 @@ pnpm format
 pnpm braid --help
 pnpm analyze:example
 pnpm propose:example
+pnpm benchmark:list
+pnpm benchmark:smoke
+pnpm benchmark:run
+pnpm benchmark:compare
 ```
 
 The example app is intentionally healthy at runtime but architecturally awkward. It contains a
@@ -141,11 +145,14 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
 - `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
 - `packages/store`: atomic JSON project, snapshot, and proposal persistence.
+- `packages/benchmark`: independent fixture isolation, proposal evaluation, static comparison, and reports.
 - `packages/shared`: errors and project-local path constants.
+- `benchmarks`: versioned synthetic suites, expectations, fixture templates, and ignored run results.
 - `examples/bloated-saas`: deterministic integration fixture and runnable TypeScript application.
 
 See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
-[metric definitions](docs/metrics.md), and the [roadmap](docs/roadmap.md).
+[benchmark methodology](docs/benchmarking.md), [metric definitions](docs/metrics.md), and the
+[roadmap](docs/roadmap.md).
 
 ## Known limitations
 
