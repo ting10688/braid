@@ -4,14 +4,16 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. This hackathon foundation currently implements deterministic analysis
-for local TypeScript projects; it does not yet modify code.
+reversible architecture changes. Version 0.2 adds deterministic migration proposals for local
+TypeScript projects. Braid still does not modify analyzed source code or execute migrations.
 
 ## Current scope
 
 Braid scans configured TypeScript and TSX files without executing them, resolves relative and
 tsconfig-aliased imports, classifies modules, finds file/module dependency cycles, calculates raw
 architecture metrics, and saves validated JSON snapshots under `.braid/state/snapshots/`.
+It can then generate evidence-backed `break-cycle` and `extract-module` proposals and atomically save
+them under `.braid/state/proposals/`.
 
 The long-term vision has two modes:
 
@@ -20,7 +22,7 @@ The long-term vision has two modes:
 - Recovery Mode will propose, execute, validate, and roll back small evidence-based migrations for
   existing architectural drift.
 
-Automatic migration, Codex execution, worktrees, and rollback are not implemented yet.
+Migration execution, Codex runtime integration, worktrees, and rollback execution are not implemented.
 
 ## Requirements and installation
 
@@ -54,6 +56,41 @@ Analyze a configured project:
 braid analyze
 braid analyze --json
 braid analyze --no-save
+```
+
+Generate migration proposals from a fresh analysis or an existing snapshot:
+
+```bash
+braid propose
+braid propose --json
+braid propose --no-save
+braid propose --limit 1
+braid propose --type extract-module
+braid propose --type break-cycle
+braid propose --snapshot S-abc123def456-20260715T120000000Z
+```
+
+`braid propose` is proposal-only. Saving may write snapshots and proposal JSON under `.braid/state`,
+but source, tests, manifests, and TypeScript configuration are never modified. `--no-save` performs no
+writes. JSON mode emits one JSON document to stdout; diagnostics remain on stderr.
+
+Example proposal summary:
+
+```text
+Braid migration proposals
+
+Proposals: 2
+Recommended first candidate: P-BC-4d35cc34
+
+1. [break-cycle] Break orders → users cycle edge
+   Risk: low
+   Reversibility: conditional
+   Expected impact (simulated): circularDependencies decrease (-1)
+
+2. [extract-module] Extract notification responsibilities from order-service.ts
+   Risk: low
+   Reversibility: easy
+   Expected impact (estimated): oversizedFiles unknown
 ```
 
 Example console output:
@@ -90,6 +127,7 @@ pnpm test:watch
 pnpm format
 pnpm braid --help
 pnpm analyze:example
+pnpm propose:example
 ```
 
 The example app is intentionally healthy at runtime but architecturally awkward. It contains a
@@ -101,12 +139,13 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `apps/cli`: Commander-based `braid` command and console/JSON presentation.
 - `packages/core`: Zod domain schemas and validated YAML configuration.
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
-- `packages/store`: atomic JSON project and snapshot persistence.
+- `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
+- `packages/store`: atomic JSON project, snapshot, and proposal persistence.
 - `packages/shared`: errors and project-local path constants.
 - `examples/bloated-saas`: deterministic integration fixture and runnable TypeScript application.
 
-See [architecture](docs/architecture.md), [metric definitions](docs/metrics.md), and the
-[roadmap](docs/roadmap.md).
+See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
+[metric definitions](docs/metrics.md), and the [roadmap](docs/roadmap.md).
 
 ## Known limitations
 
@@ -116,7 +155,9 @@ See [architecture](docs/architecture.md), [metric definitions](docs/metrics.md),
 - Module classification is directory-based, not responsibility-aware.
 - Line counting is lexical and intentionally simple.
 - No quality score is produced; metrics require context.
-- Migration proposal, execution, validation, and rollback are roadmap work.
+- Symbol clustering uses identifiers and static references, not semantic or runtime behavior.
+- Extraction impact is estimated because caller rewrites are not simulated.
+- Migration execution, validation, and rollback execution remain roadmap work.
 
 ## Status
 

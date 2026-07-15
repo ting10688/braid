@@ -1,15 +1,16 @@
 # Roadmap
 
-## Phase 1: Deterministic repository analysis — current
+## Phase 1: Deterministic repository analysis — complete
 
 Scan TypeScript repositories, model imports and modules, detect cycles, calculate explainable metrics,
 and persist validated deterministic snapshots.
 
-## Phase 2: Migration proposal generation
+## Phase 2: Migration proposal generation — complete
 
-Generate small evidence-backed proposals from snapshots, with explicit affected files and dependencies.
+Generate deterministic evidence-backed proposals with explainable risk, reversibility, impact certainty,
+stable identity, ranking, persistence, and source-safety guards.
 
-## Phase 3: Codex migration execution in Git worktrees
+## Phase 3: Codex migration execution in Git worktrees — next
 
 Execute approved migrations through Codex in isolated worktrees without contaminating read-only analysis.
 
