@@ -14,6 +14,9 @@ Braid Bench answers separate questions instead of collapsing them into one score
    artifact size. These are neutral constraints, not evidence of better architecture.
 5. **Reversibility:** whether a migration can later be rolled back safely and restore the source tree.
    Phase D defines this data but does not execute migration or rollback.
+6. **Migration execution safety:** whether approval/freshness/scope/validation/architecture failures are
+   rejected, worktrees are isolated, the main checkout remains unchanged, and complete candidate records
+   and commits are produced only for safe cases.
 
 Source size may increase after a useful boundary is introduced. Runtime on a tiny fixture may move in
 either direction due to noise. Neither outcome automatically decides architecture quality, and no opaque
@@ -151,12 +154,32 @@ hashes. Restoration hashing excludes `.braid/state/**`, `node_modules/**`, `dist
 `coverage/**`; a case may explicitly allow generated-state differences. No migration or rollback is
 executed by Braid Bench today.
 
+### Phase 3 execution suite
+
+Implemented as `phase-3-execution@1.0.0` with benchmark protocol `1.0.0`. It uses only the injected
+scripted executor and the production orchestrator; live Codex is never a required CI input. Ten explicit
+cases cover valid notification extraction, stale proposal, wrong approval, unauthorized file,
+dependency mutation, required validation failure, new cycle, no-op, executor timeout, and safe discard.
+
+The report keeps separate case/status rows and metrics for preflight correctness, scope compliance,
+main-checkout mutations, successful/rejected migrations, validation, candidate commits,
+predicted-versus-actual comparison, worktree isolation, deterministic plans, complete records, and
+runtime. It never combines them into a quality score. Any main mutation, accepted scope/dependency/
+approval/staleness/validation/cycle violation, missing record, or nondeterministic plan is blocking.
+
+```bash
+pnpm benchmark:migration:smoke
+pnpm benchmark:migration:run
+pnpm benchmark:migration:regression
+```
+
 ## Independence and fixture isolation
 
-`@braid/benchmark` depends on public `@braid/core` schemas but not on `@braid/planner` or
-`@braid/analyzer`. Braid is invoked as `node apps/cli/dist/index.js` by default. The evaluator owns its
-source/import/module/cycle measurement and compares CLI proposals with human labels. Braid metric changes
-alone never declare a benchmark successful.
+The proposal evaluator depends on public `@braid/core` schemas but not on `@braid/planner` or
+`@braid/analyzer`. Braid is invoked as `node apps/cli/dist/index.js` by default, and the evaluator owns
+its source/import/module/cycle measurement. The Phase 3 suite separately depends on the public migrator
+and test-fixture interfaces because its subject is the orchestrator itself; it asserts Git and portable
+record outcomes rather than asking the orchestrator to grade its own architecture facts.
 
 Every fixture run uses a fresh temporary copy, initializes a local Git repository with a fixed author and
 timestamp, creates one baseline commit, and records source hashes before and after. `.braid/state` is

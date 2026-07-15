@@ -16,13 +16,16 @@ Classify root files, package entrypoints, and barrels explicitly; group cycle ac
 SCC root cause; retain one ranked primary with typed alternatives; and suppress equivalent or subsumed
 cycle actions. The reviewed real-world comparison preserves recall and reduces false positives.
 
-## Phase 3: Codex migration execution in Git worktrees — next
+## Phase 3: Safe isolated migration execution — complete
 
-Execute approved migrations through Codex in isolated worktrees without contaminating read-only analysis.
+Execute explicitly approved low-risk extractions through bounded Codex in owned external worktrees;
+enforce Git scope, trusted validation, architecture comparison, main-checkout integrity, portable records,
+one local candidate commit, and ownership-safe discard. Automatic merge/push, rollback, and
+`break-cycle` execution remain excluded.
 
-## Phase 4: Validation and direct rollback
+## Phase 4: Direct rollback and recovery hardening — next
 
-Validate behavior and architecture after each migration and provide a direct, auditable rollback path.
+Add direct, auditable rollback after dependent-migration modeling and extend interrupted-run recovery.
 
 ## Phase 5: Growth Mode feature impact analysis
 
@@ -40,5 +43,6 @@ These milestones describe evaluator coverage and are distinct from product execu
 - Benchmark B: Static before/after comparison — complete
 - Benchmark C: Downstream feature change cost — scaffolded
 - Benchmark D: Migration rollback validation — scaffolded
+- Phase 3 deterministic migration execution — complete (`phase-3-execution@1.0.0`)
 - Real-world repository suite — complete (`real-world-phase-2`, Consola and tslog)
 - Real-world-guided proposal precision (module-boundary classification and duplicate cycle actions) — complete
