@@ -123,6 +123,34 @@ describe("iteration compatibility", () => {
     expect(result.overallResult).toBe("incompatible");
   });
 
+  it("marks repository pins and hashes as semantic compatibility fields", () => {
+    const repository = {
+      id: "example",
+      url: "https://github.com/example/project.git",
+      commit: "a".repeat(40),
+      licenseHash: hash("c"),
+      lockfileHash: hash("d"),
+      sourceManifestHash: hash("e"),
+      braidConfigurationHash: hash("f"),
+      qualificationStatus: "qualified" as const,
+      sourceFiles: 10,
+      sourceLinesOfCode: 100,
+      moduleCount: 2,
+      installStatus: "passed" as const,
+      buildStatus: "passed" as const,
+      testStatus: "passed" as const,
+      braidAnalysisStatus: "passed" as const,
+    };
+    const result = compare(
+      manifest({ repositories: [repository] }),
+      manifest({
+        repositories: [{ ...repository, commit: "b".repeat(40) }],
+      }),
+    );
+    expect(result.compatible).toBe(false);
+    expect(result.incompatibilities.join(" ")).toContain("repositories");
+  });
+
   it("allows correctness but warns about timing across environments", () => {
     const baseline = manifest();
     const candidate = manifest({

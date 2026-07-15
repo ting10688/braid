@@ -143,4 +143,29 @@ describe("proposal evaluator", () => {
       reversibilityClassificationAgreement: 0,
     });
   });
+
+  it("separates reviewed rejected and ambiguous proposals from unknown output", () => {
+    const proposal = extractionProposal();
+    const reviewed = (classification: "rejected" | "ambiguous") =>
+      evaluate([proposal], {
+        schemaVersion: 1,
+        version: "v1",
+        issues: [],
+        reviewedProposals: [
+          { ...expected(), classification, maximumAffectedFiles: 1 },
+        ],
+      });
+    expect(reviewed("rejected")).toMatchObject({
+      proposalValidity: 0,
+      rejectedProposalIds: [proposal.id],
+      ambiguousProposalIds: [],
+      unexpectedProposalIds: [],
+    });
+    expect(reviewed("ambiguous")).toMatchObject({
+      proposalValidity: 1,
+      rejectedProposalIds: [],
+      ambiguousProposalIds: [proposal.id],
+      unexpectedProposalIds: [],
+    });
+  });
 });
