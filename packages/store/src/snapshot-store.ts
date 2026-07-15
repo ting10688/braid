@@ -1,5 +1,5 @@
 import path from "node:path";
-import { link, mkdir, rm, writeFile } from "node:fs/promises";
+import { link, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import {
   architectureSnapshotSchema,
@@ -10,6 +10,7 @@ import { PersistenceError, SNAPSHOTS_DIRECTORY } from "@braid/shared";
 
 export interface SnapshotStore {
   save(snapshot: ArchitectureSnapshot): Promise<string>;
+  load(snapshotId: string): Promise<ArchitectureSnapshot>;
 }
 
 const compare = (left: string, right: string): number =>
@@ -25,6 +26,21 @@ export const normalizeSnapshot = (
         ...file,
         exportedSymbols: [...file.exportedSymbols].sort(compare),
         importedFiles: [...file.importedFiles].sort(compare),
+        ...(file.declarations
+          ? {
+              declarations: file.declarations
+                .map((declaration) => ({
+                  ...declaration,
+                  references: [...declaration.references].sort(compare),
+                }))
+                .sort((left, right) =>
+                  compare(
+                    `${left.startLine}\0${left.name}`,
+                    `${right.startLine}\0${right.name}`,
+                  ),
+                ),
+            }
+          : {}),
       }))
       .sort((left, right) => compare(left.path, right.path)),
     modules: snapshot.repository.modules
@@ -97,6 +113,25 @@ export class JsonSnapshotStore implements SnapshotStore {
       });
     } finally {
       await rm(temporary, { force: true });
+    }
+  }
+
+  async load(snapshotId: string): Promise<ArchitectureSnapshot> {
+    if (!/^S-[a-f0-9]{12}-\d{8}T\d{9}Z$/u.test(snapshotId))
+      throw new PersistenceError(`Invalid snapshot ID: ${snapshotId}`);
+    const source = path.join(
+      this.projectRoot,
+      SNAPSHOTS_DIRECTORY,
+      `${snapshotId}.json`,
+    );
+    try {
+      return architectureSnapshotSchema.parse(
+        JSON.parse(await readFile(source, "utf8")),
+      );
+    } catch (error) {
+      throw new PersistenceError(`Could not load snapshot ${snapshotId}`, {
+        cause: error,
+      });
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@braid/store",
+  "name": "@braid/planner",
   "version": "0.2.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@braid/core": "workspace:*",
-    "@braid/shared": "workspace:*"
+    "@braid/analyzer": "workspace:*",
+    "@braid/core": "workspace:*"
   }
 }

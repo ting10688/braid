@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+export const plannerConfigSchema = z.object({
+  enabled_proposals: z
+    .array(z.enum(["extract-module", "break-cycle"]))
+    .min(1)
+    .max(2)
+    .refine((values) => new Set(values).size === values.length, {
+      message: "must not contain duplicate proposal types",
+    })
+    .default(["extract-module", "break-cycle"]),
+  max_proposals: z.number().int().min(1).max(100).default(10),
+  min_symbol_cluster_size: z.number().int().min(2).max(20).default(2),
+  preferred_max_affected_files: z.number().int().min(1).max(1000).default(10),
+  include_high_risk: z.boolean().default(true),
+});
+
 export const architectureConfigSchema = z.object({
   project: z.object({
     language: z.literal("typescript"),
@@ -23,6 +38,13 @@ export const architectureConfigSchema = z.object({
   }),
   protected_paths: z.array(z.string()),
   modules: z.record(z.unknown()),
+  planner: plannerConfigSchema.default({
+    enabled_proposals: ["extract-module", "break-cycle"],
+    max_proposals: 10,
+    min_symbol_cluster_size: 2,
+    preferred_max_affected_files: 10,
+    include_high_risk: true,
+  }),
 });
 
 export type ArchitectureConfig = z.infer<typeof architectureConfigSchema>;
@@ -55,4 +77,13 @@ thresholds:
 
 protected_paths: []
 modules: {}
+
+planner:
+  enabled_proposals:
+    - extract-module
+    - break-cycle
+  max_proposals: 10
+  min_symbol_cluster_size: 2
+  preferred_max_affected_files: 10
+  include_high_risk: true
 `;

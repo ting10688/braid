@@ -38,6 +38,9 @@ importers:
       '@braid/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@braid/planner':
+        specifier: workspace:*
+        version: link:../../packages/planner
       '@braid/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -73,6 +76,15 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+
+  packages/planner:
+    dependencies:
+      '@braid/analyzer':
+        specifier: workspace:*
+        version: link:../analyzer
+      '@braid/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/shared: {}
 

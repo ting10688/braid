@@ -1,6 +1,6 @@
 {
   "name": "braid",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "type": "module",
@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "braid": "node apps/cli/dist/index.js",
-    "analyze:example": "pnpm build && node apps/cli/dist/index.js analyze examples/bloated-saas --no-save"
+    "analyze:example": "pnpm build && node apps/cli/dist/index.js analyze examples/bloated-saas --no-save",
+    "propose:example": "pnpm build && node apps/cli/dist/index.js propose examples/bloated-saas --no-save"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
