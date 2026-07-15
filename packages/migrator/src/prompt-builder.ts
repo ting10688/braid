@@ -36,6 +36,23 @@ export const buildMigrationPrompt = (
     planId: plan.planId,
     proposalId: plan.proposalId,
     selectedSymbols: sorted(plan.expectedChange.symbols),
+    primarySymbols:
+      plan.readiness?.primarySymbols.map(({ name }) => name) ??
+      sorted(plan.expectedChange.symbols),
+    approvedCompanionSymbols: plan.expectedChange.companionSymbols ?? [],
+    readinessState: plan.readiness?.state,
+    requiredCompanionSymbols:
+      plan.readiness?.requiredCompanionSymbols.map(({ file, name }) => ({
+        file,
+        name,
+      })) ?? [],
+    retainedDependencies:
+      plan.readiness?.retainedDependencies.map(({ symbol }) => ({
+        file: symbol.file,
+        name: symbol.name,
+        module: symbol.module,
+      })) ?? [],
+    predictedImportEdges: plan.readiness?.predictedImportEdges ?? [],
     sourceFile: plan.expectedChange.sourceFile,
     sourceModule: plan.expectedChange.sourceModule,
     destinationModule: plan.expectedChange.suggestedModule,
@@ -68,7 +85,7 @@ APPROVED EXTRACTION DATA (JSON)
 ${JSON.stringify(executionData, null, 2)}
 
 TASK
-Move exactly the selected symbols from the source file into the approved destination module, update only approved static references needed to preserve behavior, and make no other changes.
+Move exactly the primary symbols from sourceFile and each approved companion symbol from its listed file into the approved destination module. Update only approved static references needed to preserve behavior, and make no other changes.
 
 FINAL RESPONSE
 Return only one JSON object matching this schema. Git inspection, not this summary, is the source of truth.

@@ -118,17 +118,28 @@ export const migratePlanCommand = async (
     executor: { kind: "codex" },
   });
   if (options.json) writeJson(plan);
-  else
+  else {
+    const readiness = plan.readiness;
     process.stdout.write(
       [
         `Plan: ${plan.planId}`,
         `Proposal: ${plan.proposalId}`,
         `Base: ${plan.repository.baseCommit}`,
+        `Readiness: ${readiness?.state ?? "unknown"}`,
+        `Primary symbols: ${readiness?.primarySymbols.map(({ file, name }) => `${file}#${name}`).join(", ") || "none"}`,
+        `Required companions: ${readiness?.requiredCompanionSymbols.map(({ file, name }) => `${file}#${name}`).join(", ") || "none"}`,
+        `Retained dependencies: ${readiness?.retainedDependencies.map(({ symbol }) => `${symbol.file}#${symbol.name}`).join(", ") || "none"}`,
+        `Unresolved dependencies: ${readiness?.unresolvedDependencies.map(({ name }) => name).join(", ") || "none"}`,
+        `Predicted imports: ${readiness?.predictedImportEdges.map(({ fromModule, toModule }) => `${fromModule} -> ${toModule}`).join(", ") || "none"}`,
+        `Possible cycles: ${readiness?.predictedCycleRisks.map(({ modules }) => modules.join(" -> ")).join(", ") || "none"}`,
+        `Blocking reasons: ${readiness?.blockingReasons.map(({ code, message }) => `${code}: ${message}`).join(" | ") || "none"}`,
+        `Warnings: ${readiness?.warnings.map(({ code, message }) => `${code}: ${message}`).join(" | ") || "none"}`,
         `Destination: ${plan.expectedChange.destinationDirectory}`,
         `Changed-file limit: ${plan.scope.maximumChangedFiles}`,
         "No worktree was created.",
       ].join("\n") + "\n",
     );
+  }
 };
 
 export const migrateRunCommand = async (

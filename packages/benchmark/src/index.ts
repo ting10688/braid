@@ -11,6 +11,7 @@ export * from "./fixtures/fixture-manifest.js";
 export * from "./fixtures/source-hasher.js";
 export * from "./models/benchmark.js";
 export * from "./migration-execution-suite.js";
+export * from "./readiness-suite.js";
 export * from "./repositories/repository-materializer.js";
 export * from "./repositories/repository-qualification.js";
 export * from "./reports/reporters.js";

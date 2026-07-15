@@ -1,0 +1,27 @@
+{
+  "suiteId": "phase-3-1-execution-readiness",
+  "suiteVersion": "1.0.0",
+  "protocolVersion": "1.0.0",
+  "requiredCases": [
+    "local-interface-companion",
+    "local-type-alias-companion",
+    "safe-retained-helper",
+    "shared-type-retained",
+    "unresolved-declaration",
+    "predicted-reverse-dependency",
+    "predicted-new-cycle",
+    "file-budget-exceeded",
+    "protected-public-entrypoint-companion",
+    "complete-closure-execution"
+  ],
+  "blocking": {
+    "readinessAccuracyMinimum": 1,
+    "companionPrecisionMinimum": 1,
+    "companionRecallMinimum": 1,
+    "falseReadyMaximum": 0,
+    "falseNotReadyMaximum": 0,
+    "nondeterministicOutputsMaximum": 0,
+    "verifiedZeroLaunchRejectionsMinimum": 1,
+    "mainCheckoutMutationsMaximum": 0
+  }
+}

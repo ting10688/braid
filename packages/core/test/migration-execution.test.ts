@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  executionReadinessResultSchema,
   migrationExecutionPlanSchema,
   migrationExecutionRecordSchema,
   sourceFingerprintSchema,
@@ -58,6 +59,58 @@ const plan = {
 } as const;
 
 describe("migration execution schemas", () => {
+  it("validates versioned readiness states and their evidence invariants", () => {
+    const ready = {
+      schemaVersion: 1,
+      proposalId: "P-EM-a18d42f3",
+      fingerprints: {
+        snapshotId: "S-example",
+        configHash: hash,
+        sourceFingerprint: hash,
+      },
+      state: "ready",
+      primarySymbols: [
+        {
+          file: "src/orders/order-service.ts",
+          name: "sendNotification",
+          kind: "function",
+          module: "orders",
+          exported: true,
+        },
+      ],
+      requiredCompanionSymbols: [],
+      retainedDependencies: [],
+      externalDependencies: [],
+      unresolvedDependencies: [],
+      predictedImportEdges: [],
+      predictedCycleRisks: [],
+      warnings: [],
+      deterministicEvidence: {
+        algorithmVersion: "1.0.0",
+        inputHash: hash,
+        firstResultHash: hash,
+        repeatedResultHash: hash,
+        stable: true,
+      },
+      blockingReasons: [],
+    } as const;
+
+    expect(executionReadinessResultSchema.parse(ready).state).toBe("ready");
+    expect(
+      executionReadinessResultSchema.safeParse({
+        ...ready,
+        blockingReasons: [
+          {
+            code: "companion-not-authorized",
+            message: "Companion is not approved.",
+            files: ["src/orders/order-service.ts"],
+            symbols: ["Notification"],
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it("validates deterministic plans without absolute paths", () => {
     expect(migrationExecutionPlanSchema.parse(plan)).toEqual(plan);
     expect(() =>

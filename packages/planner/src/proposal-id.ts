@@ -27,7 +27,19 @@ const snapshotContent = (snapshot: ArchitectureSnapshot): unknown => {
     gitCommit: snapshot.gitCommit,
     repository: {
       language,
-      files,
+      files: files.map((file) => ({
+        ...file,
+        ...(file.declarations
+          ? {
+              declarations: file.declarations.map((declaration) => {
+                const { symbolReferences: _symbolReferences, ...phaseTwo } =
+                  declaration;
+                void _symbolReferences;
+                return phaseTwo;
+              }),
+            }
+          : {}),
+      })),
       modules,
       imports,
       cycles,

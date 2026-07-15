@@ -14,6 +14,12 @@
       "sendOrderNotification",
       "resetNotifications"
     ],
+    "approvedCompanionSymbols": [
+      {
+        "file": "src/orders/order-service.ts",
+        "symbol": "SentNotification"
+      }
+    ],
     "risk": "low",
     "reversibility": "easy",
     "protectedPathsInvolved": false,

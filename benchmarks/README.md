@@ -22,6 +22,9 @@ installations or `.braid/state` writes.
   reports safe success, each unsafe rejection, worktree isolation, main-checkout integrity, validation,
   candidate commits, predicted/actual comparison, deterministic plans, complete records, and runtime.
   Its frozen 1.0.0 blocking contract is under `migration/phase-3-execution-v1.json`.
+- `phase-3-1-execution-readiness`: ten independent symbol-closure cases covering companion precision,
+  retained dependencies, unresolved/reverse/cycle/budget/protected blockers, deterministic output, a
+  zero-launch rejection, and one complete orchestrated extraction.
 
 Run them from the repository root:
 
@@ -38,6 +41,7 @@ pnpm benchmark:real:regression
 pnpm benchmark:migration:smoke
 pnpm benchmark:migration:run
 pnpm benchmark:migration:regression
+pnpm benchmark:readiness
 node packages/benchmark/dist/cli/index.js repositories inspect consola
 node packages/benchmark/dist/cli/index.js repositories refresh consola
 node packages/benchmark/dist/cli/index.js run --suite phase-2-core --json
