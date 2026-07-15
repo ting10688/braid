@@ -7,6 +7,7 @@ import { analyzeRepository } from "@braid/analyzer";
 import {
   architectureSnapshotSchema,
   configHash,
+  migrationConfigHash,
   createArchitectureSnapshot,
   loadArchitectureConfig,
 } from "@braid/core";
@@ -69,6 +70,7 @@ describe("bloated SaaS analysis", () => {
       projectRoot,
       gitCommit: null,
       configHash: configHash(config),
+      migrationConfigHash: migrationConfigHash(config),
       repository: first.repository,
       metrics: first.metrics,
       createdAt: new Date("2026-07-15T00:00:00.000Z"),

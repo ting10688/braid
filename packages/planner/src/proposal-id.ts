@@ -46,13 +46,15 @@ export const createProposalId = (
   affectedModules: readonly string[],
 ): string => {
   const prefix = type === "extract-module" ? "EM" : "BC";
+  const { migration: _migration, ...analysisAndPlannerConfig } = config;
+  void _migration;
   const hash = createHash("sha256")
     .update(
       normalizedJson({
         schemaVersion: 1,
         plannerVersion: PLANNER_VERSION,
         snapshot: snapshotContent(snapshot),
-        config,
+        config: analysisAndPlannerConfig,
         type,
         target,
         affectedFiles: [...affectedFiles].sort(),

@@ -18,6 +18,10 @@ installations or `.braid/state` writes.
   repetitions, one warm-up, and seven timing repetitions. Qualification, accepted/rejected/ambiguous
   proposal review, repository hashes, and source-size metadata live under `repositories/`. The 1.1.0
   precision review groups SCC actions and distinguishes root files, entrypoints, and barrels.
+- `phase-3-execution`: ten direct orchestrator cases using the CI-only scripted executor. It separately
+  reports safe success, each unsafe rejection, worktree isolation, main-checkout integrity, validation,
+  candidate commits, predicted/actual comparison, deterministic plans, complete records, and runtime.
+  Its frozen 1.0.0 blocking contract is under `migration/phase-3-execution-v1.json`.
 
 Run them from the repository root:
 
@@ -31,6 +35,9 @@ pnpm benchmark:real:list
 pnpm benchmark:real:qualify
 pnpm benchmark:real:run
 pnpm benchmark:real:regression
+pnpm benchmark:migration:smoke
+pnpm benchmark:migration:run
+pnpm benchmark:migration:regression
 node packages/benchmark/dist/cli/index.js repositories inspect consola
 node packages/benchmark/dist/cli/index.js repositories refresh consola
 node packages/benchmark/dist/cli/index.js run --suite phase-2-core --json

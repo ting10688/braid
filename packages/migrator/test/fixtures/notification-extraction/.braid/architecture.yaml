@@ -1,0 +1,81 @@
+project:
+  language: typescript
+  architecture_style: modular-monolith
+
+source:
+  include:
+    - src/**/*.ts
+    - test/**/*.ts
+  exclude:
+    - "**/*.d.ts"
+    - "**/dist/**"
+    - "**/node_modules/**"
+
+constraints:
+  circular_dependencies: forbidden
+  public_api_changes: approval_required
+  allow_new_dependencies: false
+  preserve_existing_import_paths: true
+
+thresholds:
+  oversized_file_lines: 35
+  oversized_module_files: 20
+  oversized_module_exports: 25
+  max_module_dependencies: 8
+
+protected_paths:
+  - package.json
+  - package-lock.json
+  - .braid/architecture.yaml
+
+modules:
+  orders:
+    paths:
+      - src/orders/**
+  notification:
+    paths:
+      - src/notification/**
+
+planner:
+  enabled_proposals:
+    - extract-module
+  max_proposals: 3
+  min_symbol_cluster_size: 2
+  preferred_max_affected_files: 3
+  include_high_risk: false
+
+migration:
+  enabled: true
+  supportedProposalTypes:
+    - extract-module
+  maximumChangedFiles: 3
+  codex:
+    executable: codex
+    timeoutMs: 120000
+    model: null
+    reasoningEffort: null
+    sandbox: workspace-write
+  validation:
+    commands:
+      - id: typecheck
+        stage: typecheck
+        executable: node
+        arguments:
+          - scripts/typecheck.mjs
+        workingDirectory: .
+        timeoutMs: 30000
+      - id: unit-test
+        stage: unit-test
+        executable: node
+        arguments:
+          - --test
+          - test/order-service.test.ts
+        workingDirectory: .
+        timeoutMs: 30000
+      - id: build
+        stage: build
+        executable: node
+        arguments:
+          - scripts/build.mjs
+        workingDirectory: .
+        timeoutMs: 30000

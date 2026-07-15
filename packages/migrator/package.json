@@ -1,0 +1,26 @@
+{
+  "name": "@braid/migrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/notification-fixture.d.ts",
+      "default": "./dist/testing/notification-fixture.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@braid/analyzer": "workspace:*",
+    "@braid/core": "workspace:*",
+    "@braid/shared": "workspace:*",
+    "@braid/store": "workspace:*"
+  }
+}

@@ -1,7 +1,8 @@
 # Migration proposals
 
-Phase 2 turns validated architecture facts into planning records. It does not edit source, execute a
-migration, call a model, create a worktree, or execute rollback.
+Phase 2 turns validated architecture facts into planning records. Proposal generation remains read-only:
+it does not edit source, call a model, create a worktree, or execute rollback. Phase 3 is a separate
+consumer that may execute only the strict proposal subset described below.
 
 ## Break cycle
 
@@ -64,3 +65,15 @@ correct architecture decision.
 Proposal JSON is validated and written atomically to `.braid/state/proposals/<id>.json`. Identical
 content is idempotent; repeated unchanged fresh snapshots reuse the same proposal while preserving the
 original stored snapshot lineage. A same-ID proposal with materially different content is rejected.
+
+## Phase 3 execution eligibility
+
+A visible proposal is not automatically executable. Phase 3 accepts only `extract-module` with `low`
+risk, `easy` reversibility, no protected-path evidence, no public-entrypoint evidence or affected public
+entrypoint, a current source fingerprint/configuration/HEAD, a clean Git checkout, configured validation
+commands, and an approval value exactly equal to the proposal ID.
+
+`break-cycle`, medium/high risk, conditional/difficult reversal, missing fingerprints, stale files,
+package or lockfile scope, and public surfaces are hard rejections rather than warnings. Planner rollback
+text remains review guidance only; Phase 3 does not execute it. See [safe migration execution](migrations.md)
+for plan identity, worktree lifecycle, validation, and discard behavior.

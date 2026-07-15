@@ -6,6 +6,7 @@ export const STATE_DIRECTORY = path.join(BRAID_DIRECTORY, "state");
 export const PROJECT_FILE = path.join(STATE_DIRECTORY, "project.json");
 export const SNAPSHOTS_DIRECTORY = path.join(STATE_DIRECTORY, "snapshots");
 export const PROPOSALS_DIRECTORY = path.join(STATE_DIRECTORY, "proposals");
+export const EXECUTIONS_DIRECTORY = path.join(BRAID_DIRECTORY, "executions");
 
 export const toPosixPath = (value: string): string =>
   value.split(path.sep).join("/");

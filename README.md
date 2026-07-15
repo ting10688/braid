@@ -6,8 +6,8 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.2.3 adds deterministic migration proposals for local
-TypeScript projects. Braid still does not modify analyzed source code or execute migrations.
+reversible architecture changes. Version 0.3.0 adds explicitly approved, isolated execution of a
+strict low-risk subset of deterministic migration proposals for local TypeScript projects.
 
 ## Current scope
 
@@ -19,6 +19,10 @@ modules. It can then generate evidence-backed `break-cycle` and `extract-module`
 atomically save them under `.braid/state/proposals/`. Cycle proposals use one ranked primary plus typed
 alternatives for each deterministic strongly connected root cause.
 Proposal precision is measured with reproducible synthetic and pinned real-world benchmark suites.
+An approved low-risk, easy-reversibility `extract-module` proposal can now run through a deterministic
+plan, an owned external Git worktree, a disposable no-remote executor staging repository, a bounded
+Codex `workspace-write` process, independent Git diff inspection, configured validation, architecture
+comparison, and one local candidate commit.
 
 The long-term vision has two modes:
 
@@ -27,8 +31,8 @@ The long-term vision has two modes:
 - Recovery Mode will propose, execute, validate, and roll back small evidence-based migrations for
   existing architectural drift.
 
-Migration execution, Codex runtime integration, worktrees, and rollback execution are not implemented.
-Braid does not autonomously apply proposals.
+Automatic merge, push, pull-request creation, rollback execution, Growth Mode, and `break-cycle`
+execution are not implemented. Braid never autonomously applies a proposal to the main checkout.
 
 ## Requirements and installation
 
@@ -123,6 +127,25 @@ Saved: .braid/state/snapshots/S-abc123def456-20260715T120000000Z.json
 `--json` writes only valid snapshot JSON to stdout. Diagnostics go to stderr. `--no-save` performs the
 same analysis without creating a snapshot file.
 
+Plan, execute, inspect, or explicitly discard a safe extraction candidate:
+
+```bash
+braid migrate plan P-EM-a18d42f3
+braid migrate run P-EM-a18d42f3 --approve P-EM-a18d42f3
+braid migrate list
+braid migrate status E-00000000-0000-4000-8000-000000000001
+braid migrate inspect E-00000000-0000-4000-8000-000000000001
+braid migrate diff E-00000000-0000-4000-8000-000000000001
+braid migrate discard E-00000000-0000-4000-8000-000000000001 \
+  --confirm E-00000000-0000-4000-8000-000000000001
+```
+
+Migration is disabled by default. The project configuration must explicitly enable it and provide
+trusted executable-plus-argument validation commands. `run` accepts only the production `codex`
+executor, requires the exact proposal ID in `--approve`, and supports `--model`,
+`--reasoning-effort`, `--timeout`, `--json`, and `--no-commit`. It never merges or pushes. See the
+[migration safety and lifecycle guide](docs/migrations.md).
+
 ## Development
 
 ```bash
@@ -144,6 +167,9 @@ pnpm benchmark:real:list
 pnpm benchmark:real:qualify
 pnpm benchmark:real:run
 pnpm benchmark:real:regression
+pnpm benchmark:migration:smoke
+pnpm benchmark:migration:run
+pnpm benchmark:migration:regression
 ```
 
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
@@ -173,7 +199,9 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/core`: Zod domain schemas and validated YAML configuration.
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
 - `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
-- `packages/store`: atomic JSON project, snapshot, and proposal persistence.
+- `packages/migrator`: deterministic plans, worktree ownership, bounded executors, scope enforcement,
+  validation, architecture comparison, and candidate commits.
+- `packages/store`: atomic JSON project, snapshot, proposal, and execution-record persistence.
 - `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
   iteration comparison, and reports.
 - `packages/shared`: errors and project-local path constants.
@@ -182,8 +210,8 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `examples/bloated-saas`: deterministic integration fixture and runnable TypeScript application.
 
 See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
-[benchmark methodology](docs/benchmarking.md), [metric definitions](docs/metrics.md), and the
-[roadmap](docs/roadmap.md).
+[safe migration execution](docs/migrations.md), [benchmark methodology](docs/benchmarking.md),
+[metric definitions](docs/metrics.md), and the [roadmap](docs/roadmap.md).
 
 ## Known limitations
 
@@ -198,11 +226,22 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 - A grouped SCC can expose several statically plausible alternatives; their presence is not a claim that
   every alternative is architecturally desirable.
 - Extraction impact is estimated because caller rewrites are not simulated.
-- Migration execution, validation, and rollback execution remain roadmap work.
+- Execution supports only approved `extract-module` proposals with low risk, easy reversibility, no
+  protected paths, and no predicted public-entrypoint changes.
+- Validation dependencies must already be usable inside the newly created worktree; Braid never runs a
+  dependency installation command during migration.
+- Candidate branches and commits are local review artifacts. There is no automatic merge or push.
+- Validation definitions and their transitively executed scripts are trusted code. Direct Git/network
+  executables are rejected, and HEAD, diff, shared refs, and ordinary process-group descendants are
+  checked after configured commands finish; this is not an OS sandbox for deliberately detached code.
+- Recognizable credential material in changed lines is rejected and omitted from portable patches, but
+  this static detector cannot prove that arbitrary application data is non-sensitive.
+- `break-cycle` execution and rollback execution remain roadmap work.
 
 ## Status
 
-Braid v0.2.3 is the initial public release. Snapshot schema version 1 may evolve in future releases.
+Braid v0.3.0 implements Phase 3 safe isolated extraction execution. Snapshot, proposal, and execution
+schemas remain version 1 and may evolve in future releases.
 
 ## License
 
