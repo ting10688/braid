@@ -2,12 +2,14 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { analyzeRepository } from "@braid/analyzer";
+import { createSourceFingerprint } from "@braid/migrator";
 import {
   type ArchitectureConfig,
   type ArchitectureSnapshot,
   configHash,
   createArchitectureSnapshot,
   loadArchitectureConfig,
+  migrationConfigHash,
 } from "@braid/core";
 import { CONFIG_FILE } from "@braid/shared";
 import { JsonSnapshotStore } from "@braid/store";
@@ -43,12 +45,20 @@ export const createCurrentSnapshot = async (
   projectRoot: string,
   config: ArchitectureConfig,
 ): Promise<CurrentSnapshot> => {
-  const analysis = await analyzeRepository(projectRoot, config);
+  const [analysis, gitCommit] = await Promise.all([
+    analyzeRepository(projectRoot, config),
+    readGitCommit(projectRoot),
+  ]);
+  const sourceFingerprint = gitCommit
+    ? (await createSourceFingerprint(projectRoot)).hash
+    : undefined;
   return {
     snapshot: createArchitectureSnapshot({
       projectRoot,
-      gitCommit: await readGitCommit(projectRoot),
+      gitCommit,
       configHash: configHash(config),
+      migrationConfigHash: migrationConfigHash(config),
+      ...(sourceFingerprint ? { sourceFingerprint } : {}),
       repository: analysis.repository,
       metrics: analysis.metrics,
     }),

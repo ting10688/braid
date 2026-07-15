@@ -3,6 +3,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .braid/state/snapshots/*.json
+.braid/executions/
 coverage/
 benchmarks/results/**
 !benchmarks/results/.gitkeep

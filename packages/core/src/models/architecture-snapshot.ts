@@ -16,6 +16,14 @@ export const architectureSnapshotSchema = z.object({
   createdAt: z.string().datetime(),
   gitCommit: z.string().min(1).nullable(),
   configHash: z.string().regex(/^[a-f0-9]{64}$/),
+  migrationConfigHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  sourceFingerprint: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   repository: repositoryModelSchema,
   metrics: architectureMetricsSchema,
 });
@@ -26,8 +34,10 @@ export interface CreateSnapshotInput {
   projectRoot: string;
   gitCommit: string | null;
   configHash: string;
+  migrationConfigHash?: string;
   repository: RepositoryModel;
   metrics: ArchitectureMetrics;
+  sourceFingerprint?: string;
   createdAt?: Date;
 }
 
@@ -39,6 +49,9 @@ export const createArchitectureSnapshot = (
     .update(
       JSON.stringify({
         configHash: input.configHash,
+        ...(input.sourceFingerprint
+          ? { sourceFingerprint: input.sourceFingerprint }
+          : {}),
         gitCommit: input.gitCommit,
         repository: input.repository,
         metrics: input.metrics,
@@ -55,6 +68,12 @@ export const createArchitectureSnapshot = (
     createdAt,
     gitCommit: input.gitCommit,
     configHash: input.configHash,
+    ...(input.migrationConfigHash
+      ? { migrationConfigHash: input.migrationConfigHash }
+      : {}),
+    ...(input.sourceFingerprint
+      ? { sourceFingerprint: input.sourceFingerprint }
+      : {}),
     repository: input.repository,
     metrics: input.metrics,
   });

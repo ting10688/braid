@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "notification-extraction",
+  "description": "Extract order notification state and behavior into src/notification.",
+  "proposalSeed": {
+    "id": "P-EM-a18d42f3",
+    "type": "extract-module",
+    "sourceFile": "src/orders/order-service.ts",
+    "sourceModule": "orders",
+    "suggestedModuleName": "notification",
+    "candidateSymbols": [
+      "notificationLog",
+      "sentNotifications",
+      "sendOrderNotification",
+      "resetNotifications"
+    ],
+    "risk": "low",
+    "reversibility": "easy",
+    "protectedPathsInvolved": false,
+    "publicEntrypointChangesPredicted": false
+  },
+  "expectedScope": {
+    "allowedExistingFiles": ["src/orders/order-service.ts"],
+    "allowedTestFiles": ["test/order-service.test.ts"],
+    "allowedNewFilePatterns": ["src/notification/**"],
+    "forbiddenFiles": [
+      "package.json",
+      "package-lock.json",
+      ".braid/architecture.yaml"
+    ],
+    "maximumChangedFiles": 3
+  },
+  "expectedCandidateFiles": [
+    "src/notification/notification-service.ts",
+    "src/orders/order-service.ts",
+    "test/order-service.test.ts"
+  ]
+}

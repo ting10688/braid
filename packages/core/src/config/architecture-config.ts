@@ -1,4 +1,31 @@
 import { z } from "zod";
+import { validationCommandSchema } from "../models/migration-execution.js";
+
+const migrationConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  supportedProposalTypes: z
+    .array(z.literal("extract-module"))
+    .length(1)
+    .default(["extract-module"]),
+  maximumChangedFiles: z.number().int().min(1).max(8).default(8),
+  codex: z
+    .object({
+      executable: z
+        .string()
+        .regex(/^[A-Za-z0-9._+-]+$/u)
+        .default("codex"),
+      timeoutMs: z.number().int().min(1_000).max(900_000).default(900_000),
+      model: z.string().min(1).nullable().default(null),
+      reasoningEffort: z.string().min(1).nullable().default(null),
+      sandbox: z.literal("workspace-write").default("workspace-write"),
+    })
+    .default({}),
+  validation: z
+    .object({
+      commands: z.array(validationCommandSchema).default([]),
+    })
+    .default({}),
+});
 
 export const plannerConfigSchema = z.object({
   enabled_proposals: z
@@ -45,6 +72,7 @@ export const architectureConfigSchema = z.object({
     preferred_max_affected_files: 10,
     include_high_risk: true,
   }),
+  migration: migrationConfigSchema.default({}),
 });
 
 export type ArchitectureConfig = z.infer<typeof architectureConfigSchema>;
@@ -86,4 +114,18 @@ planner:
   min_symbol_cluster_size: 2
   preferred_max_affected_files: 10
   include_high_risk: true
+
+migration:
+  enabled: false
+  supportedProposalTypes:
+    - extract-module
+  maximumChangedFiles: 8
+  codex:
+    executable: codex
+    timeoutMs: 900000
+    model: null
+    reasoningEffort: null
+    sandbox: workspace-write
+  validation:
+    commands: []
 `;
