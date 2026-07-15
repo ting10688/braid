@@ -19,6 +19,7 @@ export interface ScannedImport {
   fromFile: string;
   specifier: string;
   resolvedFile: string | null;
+  typeOnly: boolean;
 }
 
 export interface ScanResult {
@@ -52,15 +53,36 @@ const isTestFile = (filePath: string): boolean =>
     filePath,
   );
 
-const sourceModuleSpecifiers = (sourceFile: SourceFile): string[] => [
-  ...sourceFile
-    .getImportDeclarations()
-    .map((declaration) => declaration.getModuleSpecifierValue()),
-  ...sourceFile
-    .getExportDeclarations()
-    .map((declaration) => declaration.getModuleSpecifierValue())
-    .filter((value): value is string => value !== undefined),
-];
+const sourceModuleSpecifiers = (
+  sourceFile: SourceFile,
+): Array<{ specifier: string; typeOnly: boolean }> => {
+  const imports = sourceFile.getImportDeclarations().map((declaration) => {
+    const named = declaration.getNamedImports();
+    return {
+      specifier: declaration.getModuleSpecifierValue(),
+      typeOnly:
+        declaration.isTypeOnly() ||
+        (declaration.getDefaultImport() === undefined &&
+          declaration.getNamespaceImport() === undefined &&
+          named.length > 0 &&
+          named.every((specifier) => specifier.isTypeOnly())),
+    };
+  });
+  const exports = sourceFile.getExportDeclarations().flatMap((declaration) => {
+    const specifier = declaration.getModuleSpecifierValue();
+    return specifier ? [{ specifier, typeOnly: declaration.isTypeOnly() }] : [];
+  });
+  const combined = new Map<string, boolean>();
+  for (const item of [...imports, ...exports])
+    combined.set(
+      item.specifier,
+      (combined.get(item.specifier) ?? true) && item.typeOnly,
+    );
+  return [...combined].map(([specifier, typeOnly]) => ({
+    specifier,
+    typeOnly,
+  }));
+};
 
 interface NamedDeclaration {
   name: string;
@@ -126,6 +148,23 @@ const topLevelDeclarations = (
       ),
     ].sort(),
   }));
+};
+
+const topLevelStatements = (sourceFile: SourceFile) => {
+  const statements = sourceFile.getStatements();
+  const imports = statements.filter(
+    (statement) =>
+      statement.getKind() === SyntaxKind.ImportDeclaration ||
+      statement.getKind() === SyntaxKind.ImportEqualsDeclaration,
+  ).length;
+  const reExports = statements.filter(
+    (statement) => statement.getKind() === SyntaxKind.ExportDeclaration,
+  ).length;
+  return {
+    imports,
+    reExports,
+    implementation: statements.length - imports - reExports,
+  };
 };
 
 const resolveImport = (
@@ -230,10 +269,11 @@ export const scanRepository = async (
     if (syntaxErrors.length > 0)
       warnings.push(`${relativePath} contains TypeScript syntax errors`);
 
-    const fileImports = [...new Set(sourceModuleSpecifiers(sourceFile))]
-      .map((specifier) => ({
+    const fileImports = sourceModuleSpecifiers(sourceFile)
+      .map(({ specifier, typeOnly }) => ({
         fromFile: relativePath,
         specifier,
+        typeOnly,
         resolvedFile: resolveImport(
           specifier,
           absolutePath,
@@ -252,6 +292,7 @@ export const scanRepository = async (
         .sort(),
       isTestFile: isTestFile(relativePath),
       declarations: topLevelDeclarations(sourceFile),
+      topLevelStatements: topLevelStatements(sourceFile),
     });
   }
 

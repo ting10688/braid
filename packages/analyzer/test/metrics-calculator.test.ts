@@ -80,4 +80,52 @@ describe("architecture metrics", () => {
       publicEntrypointCount: 1,
     });
   });
+
+  it("excludes entrypoint and barrel modules from ordinary oversized-module counts", () => {
+    const repository = {
+      projectRoot: "/project",
+      language: "typescript" as const,
+      files: [],
+      modules: [
+        {
+          id: "entrypoint:index",
+          kind: "entrypoint" as const,
+          paths: ["src/index.ts"],
+          fileCount: 50,
+          exportedSymbolCount: 50,
+          incomingDependencies: [],
+          outgoingDependencies: [],
+        },
+        {
+          id: "barrel:public",
+          kind: "barrel" as const,
+          paths: ["src/public.ts"],
+          fileCount: 50,
+          exportedSymbolCount: 50,
+          incomingDependencies: [],
+          outgoingDependencies: [],
+        },
+        {
+          id: "root:worker",
+          kind: "root-file" as const,
+          paths: ["src/worker.ts"],
+          fileCount: 1,
+          exportedSymbolCount: 1,
+          incomingDependencies: [],
+          outgoingDependencies: [],
+        },
+      ],
+      imports: [],
+      cycles: [],
+      publicEntrypoints: ["src/index.ts"],
+    };
+    expect(
+      calculateMetrics(repository, {
+        oversized_file_lines: 10,
+        oversized_module_files: 10,
+        oversized_module_exports: 10,
+        max_module_dependencies: 8,
+      }).oversizedModules,
+    ).toBe(0);
+  });
 });
