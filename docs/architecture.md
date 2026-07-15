@@ -41,7 +41,8 @@ tracked inputs; every benchmark run operates on disposable local Git copies.
 2. Zod validates the parsed YAML and reports exact invalid field paths.
 3. The scanner uses configured globs and ts-morph without executing target code.
 4. Static imports and re-exports become stable-sorted internal or external edges.
-5. Directory rules classify modules; adjacency lists feed canonical file/module cycle detection.
+5. Package fields, public-entrypoint facts, normalized paths, and top-level statement shape classify
+   modules; adjacency lists feed canonical file/module cycle detection.
 6. Pure metric calculations apply the configured thresholds.
 7. The CLI reads Git's current commit when available and creates a schema-versioned snapshot.
 8. The JSON store validates, normalizes, pretty-prints, and atomically links a new snapshot file.
@@ -50,6 +51,14 @@ Analysis is deterministic because project-relative paths use POSIX separators, u
 are sorted, duplicate graph traversals are canonicalized, configuration hashing uses normalized key
 order, and metrics are raw calculations over the normalized model. Snapshot content remains equivalent
 between unchanged analyses; only the ID and creation time identify an individual observation.
+
+Module records carry one of five explicit kinds. Meaningful first-level directories are `feature`
+modules; only deterministic directory names such as `platform`, `runtime`, `adapters`, and `internal`
+become `infrastructure`. Package surfaces and top-level public indexes use
+`entrypoint:<relative-stem>`, implementation-free multi-re-export files use `barrel:<relative-stem>`,
+and other top-level implementation files use `root:<relative-stem>`. Consequently unrelated root files
+never form one artificial `root` bucket. Entrypoints and barrels remain graph facts, but are excluded
+from ordinary extraction and oversized-module interpretation.
 
 ## Proposal data flow
 
@@ -62,22 +71,26 @@ flowchart LR
     Repository --> Analysis["Deterministic analysis"]
     Analysis --> Snapshot["ArchitectureSnapshot facts"]
     Snapshot --> Candidates["Cycle + symbol candidates"]
-    Candidates --> Evidence["Typed evidence + impact certainty"]
+    Candidates --> Roots["Canonical SCC root causes"]
+    Roots --> Evidence["Typed evidence + impact certainty"]
     Evidence --> Classification["Risk + reversibility"]
     Classification --> Ranking["Transparent tuple ranking"]
     Ranking --> Proposals["MigrationProposal JSON"]
 ```
 
-Proposal IDs hash schema version, planner version, normalized snapshot content, type, target, affected
+Cycle root signatures hash the planner version, snapshot configuration/commit identity, canonical SCC
+module set, relevant internal module edges, and normalized participating files. Proposal IDs hash schema
+version, planner version, normalized snapshot content, type, target, affected
 files, and modules. Absolute paths, timestamps, filesystem order, and randomness are excluded. Ranking
 compares severity, confidence, expected benefit, risk penalty, affected-file count, type, and ID in that
 order. It is a recommendation ordering, not an opaque architecture score.
 
-Snapshot schema version 1 remains readable. Phase 2 adds optional top-level declaration facts; this is
-backward compatible because the facts refine existing source analysis without adding planner
-conclusions. Old snapshots can still produce cycle proposals. Extraction is skipped, or an explicit
-`--type extract-module` request reports that a fresh analysis is required. Adding normalized planner
-defaults changes the configuration hash compared with the same Phase 1 YAML parsed by the old version.
+Snapshot schema version 1 remains readable. Phase 2 adds optional declaration and top-level statement
+facts; Phase 2.1 adds module kinds with a `feature` default and import type-only facts with a `false`
+default. These are backward-compatible refinements rather than planner conclusions. Old snapshots can
+still produce cycle proposals. Extraction is skipped, or an explicit `--type extract-module` request
+reports that a fresh analysis is required. Adding normalized planner defaults changes the configuration
+hash compared with the same Phase 1 YAML parsed by the old version.
 
 No runtime model is used. The bounded heuristics are intentionally reproducible, inspectable, and able
 to run offline.

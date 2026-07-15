@@ -4,7 +4,7 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.2 adds deterministic migration proposals for local
+reversible architecture changes. Version 0.2.3 adds deterministic migration proposals for local
 TypeScript projects. Braid still does not modify analyzed source code or execute migrations.
 
 ## Current scope
@@ -12,8 +12,10 @@ TypeScript projects. Braid still does not modify analyzed source code or execute
 Braid scans configured TypeScript and TSX files without executing them, resolves relative and
 tsconfig-aliased imports, classifies modules, finds file/module dependency cycles, calculates raw
 architecture metrics, and saves validated JSON snapshots under `.braid/state/snapshots/`.
-It can then generate evidence-backed `break-cycle` and `extract-module` proposals and atomically save
-them under `.braid/state/proposals/`.
+It explicitly distinguishes feature, infrastructure, entrypoint, barrel, and top-level root-file
+modules. It can then generate evidence-backed `break-cycle` and `extract-module` proposals and
+atomically save them under `.braid/state/proposals/`. Cycle proposals use one ranked primary plus typed
+alternatives for each deterministic strongly connected root cause.
 
 The long-term vision has two modes:
 
@@ -86,6 +88,7 @@ Recommended first candidate: P-BC-4d35cc34
    Risk: low
    Reversibility: conditional
    Expected impact (simulated): circularDependencies decrease (-1)
+   Alternatives: 1
 
 2. [extract-module] Extract notification responsibilities from order-service.ts
    Risk: low
@@ -152,7 +155,9 @@ The real-world Phase 2 suite evaluates pinned Consola and tslog checkouts from t
 runtime, transport, preset, serializer, subpath, and CLI boundaries. Normal runs are network-free and
 clone each verified cache checkout into a fresh remote-free temporary directory. Network refresh is
 always explicit, for example `node packages/benchmark/dist/cli/index.js repositories refresh consola`.
-Neither third-party repository is vendored or used as a Braid source dependency.
+Neither third-party repository is vendored or used as a Braid source dependency. Phase 2.1 reduced the
+reviewed real-world output from 11 to 2 top-level proposals, raised action validity from 37.5% to 75%,
+and reduced false positives from 5 to 1 while retaining 100% expected-issue and evidence correctness.
 
 The example app is intentionally healthy at runtime but architecturally awkward. It contains a
 users/orders cycle, mixed notification logic, cross-module imports, a large shared module, and a local
@@ -181,10 +186,13 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 - Only TypeScript/TSX source is supported.
 - Import analysis covers static `import` and `export ... from`; dynamic imports and runtime resolution
   are not modeled.
-- Module classification is directory-based, not responsibility-aware.
+- Module classification uses normalized paths, package entrypoint fields, and static statement shape; it
+  is not responsibility-aware.
 - Line counting is lexical and intentionally simple.
 - No quality score is produced; metrics require context.
 - Symbol clustering uses identifiers and static references, not semantic or runtime behavior.
+- A grouped SCC can expose several statically plausible alternatives; their presence is not a claim that
+  every alternative is architecturally desirable.
 - Extraction impact is estimated because caller rewrites are not simulated.
 - Migration execution, validation, and rollback execution remain roadmap work.
 

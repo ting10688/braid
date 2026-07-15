@@ -6,7 +6,7 @@ Consola is the false-positive control candidate. The canonical repository is `ht
 
 ## Scope and size
 
-Included: `src/**/*.ts`. Excluded: declarations, `test`, examples, generated `dist`/`lib`, and dependencies. The pin contains 21 included source files, 1 TypeScript test file, 1,809 nonblank/non-comment LOC, and 3 Braid-classified modules. It is below the preferred 30–150 file range but is fast enough for repetition. Largest files are recorded in `repository.yaml`.
+Included: `src/**/*.ts`. Excluded: declarations, `test`, examples, generated `dist`/`lib`, and dependencies. The pin contains 21 included source files, 1 TypeScript test file, 1,809 nonblank/non-comment LOC, and 3 qualification-time directory buckets. It is below the preferred 30–150 file range but is fast enough for repetition. Largest files are recorded in `repository.yaml`.
 
 ## Commands and qualification
 
@@ -19,11 +19,11 @@ No configured size threshold differs from Braid's defaults. Public package entry
 
 ## Architecture and independent proposal review
 
-The source has a public/composition root, a `reporters` directory, and a `utils` directory. Manual import inspection found that `src/basic.ts`, `src/browser.ts`, and `src/index.ts` import reporters, while reporters import shared `src/types.ts`, `src/constants.ts`, and the root re-export `src/utils.ts`.
+The source has a public/composition surface, a `reporters` directory, and a `utils` directory. Manual import inspection found that `src/basic.ts`, `src/browser.ts`, and `src/index.ts` import reporters, while reporters import shared `src/types.ts`, `src/constants.ts`, and the root re-export `src/utils.ts`.
 
-Braid emitted one proposal: break `root → reporters` across 9 files. Its import counts and file evidence are factually correct, and high risk/difficult reversibility correctly reflect protected public entrypoints. It is nevertheless rejected as an actionable issue: `root` is not a cohesive implementation module—it combines public composition entrypoints, shared types, constants, and a utility re-export. The reported cycle is therefore produced by coarse module classification; dependency inversion would add a contract to a small library without demonstrating a real boundary defect.
+The Phase 2 baseline emitted one rejected proposal: break `root → reporters` across 9 files. Its import facts were accurate, but `root` combined public entrypoints, shared types, constants, and a utility re-export rather than one cohesive implementation module. Phase 2.1 classifies those files separately as entrypoints, barrels, or `root:<stem>` identities and suppresses a cycle action whose root cause contains only surface/root-file artifacts.
 
-Accepted issues: none. Rejected proposals/false positives: 1. Ambiguous proposals: none. Informational proposals: none. The expectation intentionally does not force the control to zero output; it records the independently reviewed false positive.
+Current top-level proposals: zero. Accepted issues: none. Rejected proposals/false positives: zero. Ambiguous proposals: none. Informational proposals: none. Three repeated runs retain identical empty output and zero source mutation. The historical rejected expectation remains recorded so the eliminated artifact is auditable.
 
 ## Limitations
 
