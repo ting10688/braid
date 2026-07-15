@@ -8,6 +8,7 @@ import type {
   FixtureManifest,
   RunManifest,
 } from "../models/benchmark.js";
+import { loadRepositoryManifest } from "../repositories/repository-materializer.js";
 import { benchmarkAssetPath } from "./fixture-loader.js";
 
 const sha256 = (value: string | Uint8Array): string =>
@@ -84,8 +85,10 @@ export const createFixtureManifest = async (
   manifest: FixtureManifest;
   configurationHash: string;
   execution: ExecutionPolicy;
+  repositories: NonNullable<RunManifest["repositories"]>;
 }> => {
   const fixtures: FixtureManifest["fixtures"] = [];
+  const repositories: NonNullable<RunManifest["repositories"]> = [];
   const add = async (
     fixtureId: string,
     fixturePath: string,
@@ -115,7 +118,47 @@ export const createFixtureManifest = async (
         benchmarkCase.fixture,
         benchmarkCase.expectationFile,
       );
-    else if (benchmarkCase.type === "static-comparison") {
+    else if (benchmarkCase.type === "repository-proposal") {
+      const repository = await loadRepositoryManifest(
+        benchmarksRoot,
+        benchmarkCase.repositoryId,
+      );
+      const root = benchmarkAssetPath(
+        benchmarksRoot,
+        path.join("repositories", repository.id),
+      );
+      fixtures.push({
+        fixtureId: benchmarkCase.id,
+        files: await fixtureFiles(root),
+        configurationHash: configHash(
+          await loadArchitectureConfig(
+            path.join(root, repository.braidConfiguration.file),
+          ),
+        ),
+        expectationFileHash: sha256(
+          await readFile(
+            benchmarkAssetPath(benchmarksRoot, benchmarkCase.expectationFile),
+          ),
+        ),
+      });
+      repositories.push({
+        id: repository.id,
+        url: repository.repository.url,
+        commit: repository.repository.commit,
+        licenseHash: repository.license.contentHash,
+        lockfileHash: repository.packageManager.lockfileHash,
+        sourceManifestHash: repository.source.manifestHash,
+        braidConfigurationHash: repository.braidConfiguration.hash,
+        qualificationStatus: repository.qualification.status,
+        sourceFiles: repository.source.fileCount,
+        sourceLinesOfCode: repository.source.linesOfCode,
+        moduleCount: repository.source.moduleCount,
+        installStatus: repository.qualification.install.status,
+        buildStatus: repository.qualification.build.status,
+        testStatus: repository.qualification.test.status,
+        braidAnalysisStatus: repository.qualification.braidAnalysis.status,
+      });
+    } else if (benchmarkCase.type === "static-comparison") {
       await add(`${benchmarkCase.id}:before`, benchmarkCase.beforeFixture);
       await add(`${benchmarkCase.id}:after`, benchmarkCase.afterFixture);
     }
@@ -143,6 +186,9 @@ export const createFixtureManifest = async (
       }),
     ),
     execution,
+    repositories: repositories.sort((left, right) =>
+      left.id.localeCompare(right.id),
+    ),
   };
 };
 
@@ -156,6 +202,7 @@ export const manifestCompatibilityFields = (
   fixtureManifestVersion: manifest.fixtureManifestVersion,
   fixtureManifestHash: manifest.fixtureManifestHash,
   configurationHash: manifest.configurationHash,
+  repositories: normalizedJson(manifest.repositories ?? []),
   correctnessRepetitions: manifest.execution.correctnessRepetitions,
   timeoutMs: manifest.execution.timeoutMs,
 });

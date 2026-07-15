@@ -10,6 +10,8 @@ export * from "./fixtures/fixture-loader.js";
 export * from "./fixtures/fixture-manifest.js";
 export * from "./fixtures/source-hasher.js";
 export * from "./models/benchmark.js";
+export * from "./repositories/repository-materializer.js";
+export * from "./repositories/repository-qualification.js";
 export * from "./reports/reporters.js";
 export * from "./runner/benchmark-runner.js";
 export * from "./runner/command-runner.js";

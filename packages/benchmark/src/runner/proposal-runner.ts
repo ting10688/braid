@@ -21,12 +21,26 @@ import {
   benchmarkAssetPath,
   loadExpectation,
 } from "../fixtures/fixture-loader.js";
-import { changedFiles, hashSourceTree } from "../fixtures/source-hasher.js";
+import {
+  changedFiles,
+  hashSelectedTree,
+  hashSourceTree,
+  type TreeHash,
+} from "../fixtures/source-hasher.js";
 import type {
   BenchmarkProtocol,
   ProposalBenchmarkCase,
   ProposalCaseResult,
+  RepositoryManifest,
+  RepositoryProposalBenchmarkCase,
 } from "../models/benchmark.js";
+import {
+  loadRepositoryManifest,
+  materializeRepository,
+  removeMaterializedRepository,
+  repositoryMetadataPath,
+  verifyRepositoryCache,
+} from "../repositories/repository-materializer.js";
 import { runCommand } from "./command-runner.js";
 
 const proposalOutputSchema = z.object({
@@ -35,6 +49,7 @@ const proposalOutputSchema = z.object({
 });
 
 export interface ProposalRunnerOptions {
+  workspaceRoot: string;
   benchmarksRoot: string;
   braidCommand: readonly string[];
   correctnessRepetitions: number;
@@ -70,29 +85,66 @@ const proposalFilesAreIdempotent = async (
 };
 
 export const runProposalCase = async (
-  benchmarkCase: ProposalBenchmarkCase,
+  benchmarkCase: ProposalBenchmarkCase | RepositoryProposalBenchmarkCase,
   options: ProposalRunnerOptions,
 ): Promise<ProposalCaseResult> => {
   if (options.correctnessRepetitions < 2)
     throw new Error(
       "Proposal benchmark suites require at least two repetitions",
     );
-  const template = benchmarkAssetPath(
-    options.benchmarksRoot,
-    benchmarkCase.fixture,
-  );
-  const templateBefore = await hashSourceTree(template);
-  const workdir = await copyFixture(template);
+  const setupStarted = performance.now();
+  let repository: RepositoryManifest | undefined;
+  let template: string | undefined;
+  let templateBefore: TreeHash | undefined;
+  let workdir: string;
+  let hashWorkdir: (root: string) => Promise<TreeHash>;
+  let configuredArchitecture: string;
+  if (benchmarkCase.type === "repository-proposal") {
+    repository = await loadRepositoryManifest(
+      options.benchmarksRoot,
+      benchmarkCase.repositoryId,
+    );
+    const materialized = await materializeRepository(
+      repository,
+      path.join(options.workspaceRoot, ".braid-bench-cache", "repositories"),
+    );
+    workdir = materialized.workdir;
+    hashWorkdir = (root) =>
+      hashSelectedTree(
+        root,
+        repository!.source.include,
+        repository!.source.exclude,
+      );
+    configuredArchitecture = await readFile(
+      path.join(
+        repositoryMetadataPath(options.benchmarksRoot, repository.id),
+        repository.braidConfiguration.file,
+      ),
+      "utf8",
+    );
+  } else {
+    template = benchmarkAssetPath(
+      options.benchmarksRoot,
+      benchmarkCase.fixture,
+    );
+    templateBefore = await hashSourceTree(template);
+    workdir = await copyFixture(template);
+    hashWorkdir = hashSourceTree;
+    configuredArchitecture = await readFile(
+      path.join(workdir, ".braid", "architecture.yaml"),
+      "utf8",
+    );
+  }
   const redactions = {
     [workdir]: "<fixture>",
     [path.dirname(options.benchmarksRoot)]: "<workspace>",
   };
 
   try {
-    await initializeFixtureGit(workdir, options.timeoutMs);
-    const sourceBefore = await hashSourceTree(workdir);
+    if (benchmarkCase.type === "proposal")
+      await initializeFixtureGit(workdir, options.timeoutMs);
+    const sourceBefore = await hashWorkdir(workdir);
     const configPath = path.join(workdir, ".braid", "architecture.yaml");
-    const configuredArchitecture = await readFile(configPath, "utf8");
     const initialized = await runCommand(
       invokeBraid(options.braidCommand, benchmarkCase.braidCommands.init),
       { cwd: workdir, timeoutMs: options.timeoutMs, redactions },
@@ -102,6 +154,7 @@ export const runProposalCase = async (
         `Braid init failed for ${benchmarkCase.id}: ${initialized.stderr}`,
       );
     await writeFile(configPath, configuredArchitecture, "utf8");
+    const setupDurationMs = performance.now() - setupStarted;
 
     const proposalRuns: MigrationProposal[][] = [];
     const observations: CorrectnessObservation[] = [];
@@ -111,7 +164,7 @@ export const runProposalCase = async (
       repetition < options.correctnessRepetitions;
       repetition += 1
     ) {
-      const repetitionBefore = await hashSourceTree(workdir);
+      const repetitionBefore = await hashWorkdir(workdir);
       const analyzed = await runCommand(
         invokeBraid(options.braidCommand, benchmarkCase.braidCommands.analyze),
         { cwd: workdir, timeoutMs: options.timeoutMs, redactions },
@@ -138,7 +191,7 @@ export const runProposalCase = async (
         exitCode: proposed.exitCode,
         sourceMutations: changedFiles(
           repetitionBefore,
-          await hashSourceTree(workdir),
+          await hashWorkdir(workdir),
         ),
       });
       if (options.verbose)
@@ -165,11 +218,18 @@ export const runProposalCase = async (
         );
     }
 
-    const sourceAfter = await hashSourceTree(workdir);
-    const templateAfter = await hashSourceTree(template);
-    if (templateBefore.digest !== templateAfter.digest)
-      throw new Error(
-        `Tracked fixture template mutated: ${benchmarkCase.fixture}`,
+    const sourceAfter = await hashWorkdir(workdir);
+    if (template && templateBefore) {
+      const templateAfter = await hashSourceTree(template);
+      if (templateBefore.digest !== templateAfter.digest)
+        throw new Error(
+          `Tracked fixture template mutated: ${benchmarkCase.id}`,
+        );
+    }
+    if (repository)
+      await verifyRepositoryCache(
+        repository,
+        path.join(options.workspaceRoot, ".braid-bench-cache", "repositories"),
       );
     const expectation = await loadExpectation(
       options.benchmarksRoot,
@@ -185,23 +245,29 @@ export const runProposalCase = async (
       options.normalizationRules,
       { temporaryDirectories: [workdir] },
     );
-    return evaluateProposalCase({
-      caseId: benchmarkCase.id,
-      expectation,
-      proposalRuns,
-      durations,
-      facts: await analyzeFixture(workdir),
-      persistenceIdempotent: await proposalFilesAreIdempotent(
-        workdir,
-        proposals,
-      ),
-      sourceMutations: changedFiles(sourceBefore, sourceAfter),
-      flakiness,
-      exitCodes: observations.map(({ exitCode }) => exitCode),
-      expectedExitCode: benchmarkCase.expectedExitCode,
-    });
+    return {
+      ...evaluateProposalCase({
+        caseId: benchmarkCase.id,
+        expectation,
+        proposalRuns,
+        durations,
+        facts: await analyzeFixture(workdir),
+        persistenceIdempotent: await proposalFilesAreIdempotent(
+          workdir,
+          proposals,
+        ),
+        sourceMutations: changedFiles(sourceBefore, sourceAfter),
+        flakiness,
+        exitCodes: observations.map(({ exitCode }) => exitCode),
+        expectedExitCode: benchmarkCase.expectedExitCode,
+      }),
+      setupDurationMs,
+    };
   } finally {
-    if (!options.keepWorkdirs) await removeFixture(workdir);
+    if (!options.keepWorkdirs)
+      await (repository
+        ? removeMaterializedRepository(workdir)
+        : removeFixture(workdir));
     else process.stderr.write(`Kept benchmark workdir: ${workdir}\n`);
   }
 };

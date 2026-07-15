@@ -25,7 +25,11 @@
     "benchmark:report": "node packages/benchmark/dist/cli/index.js report",
     "benchmark:iteration": "pnpm build && node packages/benchmark/dist/cli/index.js iteration",
     "benchmark:baseline": "pnpm build && node packages/benchmark/dist/cli/index.js baseline",
-    "benchmark:regression": "pnpm build && node packages/benchmark/dist/cli/index.js regression"
+    "benchmark:regression": "pnpm build && node packages/benchmark/dist/cli/index.js regression",
+    "benchmark:real:list": "pnpm build && node packages/benchmark/dist/cli/index.js repositories list",
+    "benchmark:real:qualify": "pnpm build && node packages/benchmark/dist/cli/index.js repositories qualify",
+    "benchmark:real:run": "pnpm build && node packages/benchmark/dist/cli/index.js run --suite real-world-phase-2",
+    "benchmark:real:regression": "pnpm build && node packages/benchmark/dist/cli/index.js regression --suite real-world-phase-2 --baseline real-world-phase-2-v1 --policy real-world"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

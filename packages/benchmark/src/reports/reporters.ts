@@ -47,10 +47,24 @@ export const proposalSummary = (run: BenchmarkRun): ProposalSummary => {
     (sum, result) => sum + result.proposals.length,
     0,
   );
+  const ambiguous = cases.reduce(
+    (sum, result) => sum + (result.ambiguousProposalIds?.length ?? 0),
+    0,
+  );
+  const informational = cases.reduce(
+    (sum, result) => sum + (result.informationalProposalIds?.length ?? 0),
+    0,
+  );
+  const falsePositives = (result: ProposalCaseResult): number =>
+    result.unexpectedProposalIds.length +
+    (result.rejectedProposalIds?.length ?? 0);
   return {
     cases: cases.length,
     expectedIssueCoverage: expected === 0 ? 1 : matched / expected,
-    proposalValidity: proposals === 0 ? 1 : matched / proposals,
+    proposalValidity:
+      proposals - ambiguous === 0
+        ? 1
+        : (matched + informational) / (proposals - ambiguous),
     topKCoverage: mean(
       cases
         .filter(({ expectedIssues }) => expectedIssues > 0)
@@ -82,12 +96,12 @@ export const proposalSummary = (run: BenchmarkRun): ProposalSummary => {
     deterministicCases: cases.filter(({ deterministic }) => deterministic)
       .length,
     falsePositives: cases.reduce(
-      (sum, result) => sum + result.unexpectedProposalIds.length,
+      (sum, result) => sum + falsePositives(result),
       0,
     ),
     cleanFalsePositives: cases
       .filter(({ expectedIssues }) => expectedIssues === 0)
-      .reduce((sum, result) => sum + result.unexpectedProposalIds.length, 0),
+      .reduce((sum, result) => sum + falsePositives(result), 0),
     sourceMutations: cases.reduce(
       (sum, result) => sum + result.sourceMutations.length,
       0,
@@ -101,6 +115,8 @@ const hasWarnings = (run: BenchmarkRun): boolean =>
     result.type === "proposal"
       ? result.unmatchedIssueIds.length > 0 ||
         result.unexpectedProposalIds.length > 0 ||
+        (result.rejectedProposalIds?.length ?? 0) > 0 ||
+        (result.ambiguousProposalIds?.length ?? 0) > 0 ||
         !result.deterministic ||
         !result.persistenceIdempotent ||
         result.sourceMutations.length > 0
@@ -130,7 +146,17 @@ export const consoleReport = (run: BenchmarkRun): string => {
       `Deterministic cases: ${proposal.deterministicCases}/${proposal.cases}`,
       `Flaky cases: ${run.cases.filter(({ flakiness }) => flakiness.flaky).length}`,
       `Source mutations: ${proposal.sourceMutations}`,
-      `False positives on clean fixtures: ${proposal.cleanFalsePositives}`,
+      `False positives: ${proposal.falsePositives}`,
+      `Total setup duration: ${run.cases
+        .filter(
+          (result): result is ProposalCaseResult => result.type === "proposal",
+        )
+        .reduce((sum, result) => sum + (result.setupDurationMs ?? 0), 0)
+        .toFixed(2)} ms`,
+    );
+  for (const repository of run.manifest.repositories ?? [])
+    lines.push(
+      `Repository ${repository.id}: ${repository.qualificationStatus}; install ${repository.installStatus}; build ${repository.buildStatus}; test ${repository.testStatus}; analysis ${repository.braidAnalysisStatus}`,
     );
   for (const result of run.cases) {
     if (result.type !== "static-comparison") continue;
@@ -174,6 +200,21 @@ export const markdownReport = (run: BenchmarkRun): string => {
     "| --- | --- | --- | --- | --- | --- | ---: | ---: |",
     `| ${run.environment.operatingSystem} | ${run.environment.architecture} | ${run.environment.nodeVersion} | ${run.environment.pnpmVersion} | ${run.environment.gitVersion} | ${run.environment.cpuModel ?? "unknown"} | ${run.environment.logicalCpuCount} | ${run.environment.totalMemoryBytes} |`,
   ];
+  if ((run.manifest.repositories?.length ?? 0) > 0) {
+    lines.push(
+      "",
+      "## Repository qualification",
+      "",
+      "| Repository | Status | Install | Build | Test | Braid | Source files | LOC | Modules |",
+      "| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: |",
+      ...(run.manifest.repositories ?? []).map(
+        (repository) =>
+          `| ${repository.id} | ${repository.qualificationStatus} | ${repository.installStatus} | ${repository.buildStatus} | ${repository.testStatus} | ${repository.braidAnalysisStatus} | ${repository.sourceFiles} | ${repository.sourceLinesOfCode} | ${repository.moduleCount} |`,
+      ),
+      "",
+      "The evaluated repositories are third-party inputs; Braid does not own them.",
+    );
+  }
   for (const result of run.cases) {
     lines.push("", `## Case: ${result.caseId}`, "");
     if (result.type === "proposal") {
@@ -190,11 +231,16 @@ export const markdownReport = (run: BenchmarkRun): string => {
         `- Flaky fields: ${result.flakiness.differences.map(({ field, repetitions }) => `${field} (runs ${repetitions.join(", ")})`).join("; ") || "none"}`,
         `- Correctness repetitions: ${result.correctnessRepetitions}`,
         `- Timing repetitions: ${result.durations.repetitions}`,
+        `- Proposal median runtime: ${result.durations.medianMs.toFixed(2)} ms`,
+        `- Setup duration: ${(result.setupDurationMs ?? 0).toFixed(2)} ms`,
         `- Persistence idempotent: ${result.persistenceIdempotent ? "yes" : "no"}`,
         `- Source mutations: ${result.sourceMutations.length}`,
         `- Matched: ${result.matchedIssueIds.join(", ") || "none"}`,
         `- Unmatched: ${result.unmatchedIssueIds.join(", ") || "none"}`,
         `- Unexpected proposals: ${result.unexpectedProposalIds.join(", ") || "none"}`,
+        `- Rejected proposals / false positives: ${result.rejectedProposalIds?.join(", ") || "none"}`,
+        `- Ambiguous proposals: ${result.ambiguousProposalIds?.join(", ") || "none"}`,
+        `- Informational proposals: ${result.informationalProposalIds?.join(", ") || "none"}`,
       );
     } else {
       lines.push(
@@ -237,7 +283,7 @@ export const markdownReport = (run: BenchmarkRun): string => {
     "",
     "## Limitations",
     "",
-    "Synthetic fixtures are not equivalent to real repositories. Human-authored expectations may be incomplete. Timing on uncontrolled machines is noisy, and these small samples do not establish statistical significance. Phase C agent orchestration and Phase D rollback execution are not implemented.",
+    "Human-authored expectations may be incomplete. Timing on uncontrolled machines is noisy and is not a cross-machine blocking baseline. Optional runtime and browser tests remain explicitly excluded where recorded. Phase 3 migration execution is not implemented or exercised.",
     "",
   );
   return lines.join("\n");

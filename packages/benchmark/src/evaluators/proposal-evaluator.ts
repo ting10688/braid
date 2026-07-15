@@ -18,11 +18,46 @@ const acceptedSet = (
 ): boolean =>
   !acceptable || acceptable.some((candidate) => sameSet(actual, candidate));
 
+const independentlyConnectedCycle = (
+  modules: readonly string[],
+  facts: IndependentFacts,
+): boolean => {
+  if (modules.length < 2) return false;
+  const selected = new Set(modules);
+  const adjacency = new Map(
+    modules.map((module) => [module, new Set<string>()]),
+  );
+  for (const edge of facts.imports)
+    if (
+      edge.kind === "internal" &&
+      selected.has(edge.fromModule) &&
+      selected.has(edge.toModule) &&
+      edge.fromModule !== edge.toModule
+    )
+      adjacency.get(edge.fromModule)?.add(edge.toModule);
+  return modules.every((start) => {
+    const reached = new Set([start]);
+    const pending = [start];
+    while (pending.length > 0)
+      for (const target of adjacency.get(pending.pop()!) ?? [])
+        if (!reached.has(target)) {
+          reached.add(target);
+          pending.push(target);
+        }
+    return modules.every((module) => reached.has(module));
+  });
+};
+
 export const proposalMatchesExpectation = (
   proposal: MigrationProposal,
   expected: IssueExpectation,
 ): boolean => {
   if (proposal.type !== expected.type) return false;
+  if (
+    expected.maximumAffectedFiles !== undefined &&
+    proposal.affectedFiles.length > expected.maximumAffectedFiles
+  )
+    return false;
   if (!acceptedSet(proposal.affectedFiles, expected.acceptableFiles))
     return false;
   if (!acceptedSet(proposal.affectedModules, expected.acceptableModules))
@@ -105,7 +140,7 @@ const evidenceCorrect = (
     }
     case "dependency-cycle":
       return (
-        facts.cycles.some((cycle) => sameSet(cycle, evidence.modules)) &&
+        independentlyConnectedCycle(evidence.modules, facts) &&
         evidence.files.every((file) => facts.files.has(file))
       );
     case "cycle-edge": {
@@ -194,6 +229,27 @@ export const evaluateProposalCase = (
 ): ProposalCaseResult => {
   const proposals = [...(input.proposalRuns[0] ?? [])];
   const matched = matchProposals(proposals, input.expectation.issues);
+  const reviewed = matchProposals(
+    matched.unexpected,
+    input.expectation.reviewedProposals ?? [],
+  );
+  const reviewClassification = new Map(
+    (input.expectation.reviewedProposals ?? []).map(
+      ({ id, classification }) => [id, classification],
+    ),
+  );
+  const reviewedIds = (
+    classification: "rejected" | "ambiguous" | "informational",
+  ) =>
+    reviewed.matches
+      .filter(
+        ({ expectation }) =>
+          reviewClassification.get(expectation.id) === classification,
+      )
+      .map(({ proposal }) => proposal.id);
+  const rejectedProposalIds = reviewedIds("rejected");
+  const ambiguousProposalIds = reviewedIds("ambiguous");
+  const informationalProposalIds = reviewedIds("informational");
   const requiredEvidence = matched.matches.flatMap(
     ({ expectation }) => expectation.requiredEvidenceTypes,
   );
@@ -228,12 +284,18 @@ export const evaluateProposalCase = (
     proposals,
     matchedIssueIds: matched.matches.map(({ expectation }) => expectation.id),
     unmatchedIssueIds: matched.unmatched.map(({ id }) => id),
-    unexpectedProposalIds: matched.unexpected.map(({ id }) => id),
+    unexpectedProposalIds: reviewed.unexpected.map(({ id }) => id),
+    rejectedProposalIds,
+    ambiguousProposalIds,
+    informationalProposalIds,
     expectedIssueCoverage: ratio(
       matched.matches.length,
       input.expectation.issues.length,
     ),
-    proposalValidity: ratio(matched.matches.length, proposals.length),
+    proposalValidity: ratio(
+      matched.matches.length + informationalProposalIds.length,
+      proposals.length - ambiguousProposalIds.length,
+    ),
     topKCoverage: ratio(
       ranked.filter(
         ({ expectation, proposalIndex }) =>
