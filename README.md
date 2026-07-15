@@ -1,5 +1,7 @@
 # Braid
 
+**Continuous architecture evolution for growing codebases.**
+
 > Braid continuously restructures growing codebases, weaving new features into healthier architecture while keeping every change verifiable and reversible.
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
@@ -16,6 +18,7 @@ It explicitly distinguishes feature, infrastructure, entrypoint, barrel, and top
 modules. It can then generate evidence-backed `break-cycle` and `extract-module` proposals and
 atomically save them under `.braid/state/proposals/`. Cycle proposals use one ranked primary plus typed
 alternatives for each deterministic strongly connected root cause.
+Proposal precision is measured with reproducible synthetic and pinned real-world benchmark suites.
 
 The long-term vision has two modes:
 
@@ -25,6 +28,7 @@ The long-term vision has two modes:
   existing architectural drift.
 
 Migration execution, Codex runtime integration, worktrees, and rollback execution are not implemented.
+Braid does not autonomously apply proposals.
 
 ## Requirements and installation
 
@@ -198,5 +202,8 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 
 ## Status
 
-Braid is an unreleased OpenAI Codex hackathon project. Snapshot schema version 1 may evolve before a
-public release.
+Braid v0.2.3 is the initial public release. Snapshot schema version 1 may evolve in future releases.
+
+## License
+
+Braid is available under the [MIT License](LICENSE).

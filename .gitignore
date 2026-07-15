@@ -7,4 +7,10 @@ coverage/
 benchmarks/results/**
 !benchmarks/results/.gitkeep
 .braid-bench-cache/
+.env
+.env.*
+!.env.example
+*.log
+tmp/
+temp/
 .DS_Store
