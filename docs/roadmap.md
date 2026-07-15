@@ -34,4 +34,5 @@ These milestones describe evaluator coverage and are distinct from product execu
 - Benchmark B: Static before/after comparison — complete
 - Benchmark C: Downstream feature change cost — scaffolded
 - Benchmark D: Migration rollback validation — scaffolded
-- Real-world repository suite — planned
+- Real-world repository suite — complete (`real-world-phase-2`, Consola and tslog)
+- Real-world-guided proposal precision (module-boundary classification and duplicate cycle actions) — next

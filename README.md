@@ -133,6 +133,10 @@ pnpm benchmark:smoke
 pnpm benchmark:run
 pnpm benchmark:compare
 pnpm benchmark:regression
+pnpm benchmark:real:list
+pnpm benchmark:real:qualify
+pnpm benchmark:real:run
+pnpm benchmark:real:regression
 ```
 
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
@@ -142,6 +146,13 @@ Create a reviewable baseline with `pnpm benchmark:baseline create --run <run> --
 --force`, or run a direct comparison with `pnpm benchmark:iteration --suite phase-2-core
 --baseline-braid <path> --candidate-braid <path>`. See the benchmark methodology for report formats,
 compatibility rules, and exit codes.
+
+The real-world Phase 2 suite evaluates pinned Consola and tslog checkouts from the ignored
+`.braid-bench-cache/repositories/` cache. Consola is the false-positive control; tslog exercises dense
+runtime, transport, preset, serializer, subpath, and CLI boundaries. Normal runs are network-free and
+clone each verified cache checkout into a fresh remote-free temporary directory. Network refresh is
+always explicit, for example `node packages/benchmark/dist/cli/index.js repositories refresh consola`.
+Neither third-party repository is vendored or used as a Braid source dependency.
 
 The example app is intentionally healthy at runtime but architecturally awkward. It contains a
 users/orders cycle, mixed notification logic, cross-module imports, a large shared module, and a local
@@ -157,7 +168,8 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
   iteration comparison, and reports.
 - `packages/shared`: errors and project-local path constants.
-- `benchmarks`: versioned synthetic suites, expectations, fixture templates, and ignored run results.
+- `benchmarks`: versioned synthetic and pinned real-world suites, reviewed expectations, fixture templates,
+  repository metadata, and ignored run results.
 - `examples/bloated-saas`: deterministic integration fixture and runnable TypeScript application.
 
 See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
