@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "issues": [],
+  "reviewedProposals": [
+    {
+      "id": "coarse-root-reporters-cycle",
+      "classification": "rejected",
+      "type": "break-cycle",
+      "acceptableModules": [["reporters", "root"]],
+      "acceptableCycleEdges": [
+        { "fromModule": "root", "toModule": "reporters" }
+      ],
+      "maximumAffectedFiles": 9,
+      "requiredEvidenceTypes": [
+        "dependency-cycle",
+        "cycle-edge",
+        "public-entrypoint-impact",
+        "protected-path-impact",
+        "architecture-constraint"
+      ],
+      "notes": "Rejected after import inspection: the root bucket combines public composition entrypoints with shared types, so the module-level cycle is a classification artifact rather than an actionable boundary defect."
+    }
+  ]
+}
