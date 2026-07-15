@@ -25,3 +25,13 @@ Analyze requested features before implementation and identify prerequisite archi
 ## Phase 6: Migration dependency graph and reverse migrations
 
 Model migration ordering, feature dependencies, and explicit reverse migrations for complex evolution.
+
+## Benchmark roadmap
+
+These milestones describe evaluator coverage and are distinct from product execution phases.
+
+- Benchmark A: Proposal quality and determinism — complete
+- Benchmark B: Static before/after comparison — complete
+- Benchmark C: Downstream feature change cost — scaffolded
+- Benchmark D: Migration rollback validation — scaffolded
+- Real-world repository suite — planned

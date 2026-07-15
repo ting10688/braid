@@ -7,7 +7,9 @@ deterministic transformation from project files to a repository model and metric
 persists validated snapshots and proposals without knowing how they were calculated. `@braid/planner`
 interprets snapshot facts as bounded migration proposals without filesystem access or console output.
 `@braid/cli` coordinates the workflow and owns all human or machine output. `@braid/shared` contains
-only the error hierarchy and stable project-local paths used across those boundaries.
+only the error hierarchy and stable project-local paths used across those boundaries. `@braid/benchmark`
+is outside the product planning path: it invokes the CLI as a subprocess, validates public schemas, and
+owns independent fixture analysis, expectation matching, command measurement, and reports.
 
 ```mermaid
 flowchart LR
@@ -24,7 +26,14 @@ flowchart LR
     Store --> Shared
     Project["Target TypeScript project"] --> Analyzer
     Store --> State[".braid/state<br/>snapshots + proposals"]
+    Bench["@braid/benchmark<br/>independent evaluator"] -. CLI boundary .-> CLI
+    Bench --> Core
+    Fixtures["Copied benchmark fixtures"] --> Bench
 ```
+
+The benchmark package has no dependency on `@braid/planner` or `@braid/analyzer`. This prevents Braid's
+candidate selection, ranking, or metric implementation from grading itself. Fixture templates remain
+tracked inputs; every benchmark run operates on disposable local Git copies.
 
 ## Analysis data flow
 
