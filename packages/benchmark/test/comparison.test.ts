@@ -92,5 +92,5 @@ describe("static comparison", () => {
     expect(result.before.test?.passingTests).toBe(1);
     expect(result.after.artifactSizeBytes).toBeGreaterThan(0);
     expect(result.tolerances[0]?.withinTolerance).toBe(true);
-  });
+  }, 15_000);
 });

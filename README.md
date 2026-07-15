@@ -138,8 +138,8 @@ pnpm benchmark:regression
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
 inputs before comparing two Braid executables. A run records immutable manifests, separates
 correctness/stability/cost metrics, and treats timing across different environments as informational.
-Create a reviewable baseline with `pnpm benchmark:baseline -- create --run <run> --name <name>
---force`, or run a direct comparison with `pnpm benchmark:iteration -- --suite phase-2-core
+Create a reviewable baseline with `pnpm benchmark:baseline create --run <run> --name <name>
+--force`, or run a direct comparison with `pnpm benchmark:iteration --suite phase-2-core
 --baseline-braid <path> --candidate-braid <path>`. See the benchmark methodology for report formats,
 compatibility rules, and exit codes.
 
