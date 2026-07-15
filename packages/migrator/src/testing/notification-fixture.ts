@@ -126,6 +126,12 @@ export const createMigrationFixture = async (
         "sendOrderNotification",
         "sentNotifications",
       ],
+      approvedCompanionSymbols: [
+        {
+          file: "src/orders/order-service.ts",
+          symbol: "SentNotification",
+        },
+      ],
       suggestedModuleName: "notification",
     },
     evidence: [

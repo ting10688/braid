@@ -1,6 +1,6 @@
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import { JsonExecutionStore } from "@braid/store";
@@ -78,6 +78,59 @@ const runInput = (
 });
 
 describe("migration orchestrator", () => {
+  it("rejects an incomplete symbol closure before worktree or executor launch", async () => {
+    const item = await fixture();
+    const executionId = "E-01000000-0000-4000-8000-000000000031";
+    const store = new JsonExecutionStore(item.repositoryRoot);
+    let executorLaunches = 0;
+    const executor = new ScriptedTestExecutor(() => {
+      executorLaunches += 1;
+      return executorResult();
+    });
+    const proposal = {
+      ...item.proposal,
+      target: {
+        ...item.proposal.target,
+        approvedCompanionSymbols: undefined,
+      },
+    };
+
+    await expect(
+      runMigration({
+        ...runInput(item, executionId, executor),
+        proposal,
+        approval: proposal.id,
+        executionStore: store,
+      }),
+    ).rejects.toMatchObject({
+      exitCode: 13,
+      code: "execution-not-ready",
+    });
+
+    const [plan, record] = await Promise.all([
+      store.loadPlan(executionId),
+      store.loadRecord(executionId),
+    ]);
+    expect(plan.readiness).toMatchObject({
+      state: "not-ready",
+      requiredCompanionSymbols: [
+        { name: "SentNotification", file: "src/orders/order-service.ts" },
+      ],
+    });
+    expect(record).toMatchObject({
+      status: "preflight-failed",
+      failure: { stage: "readiness", code: "execution-not-ready" },
+    });
+    expect(record.candidateBranch).toBeUndefined();
+    expect(executorLaunches).toBe(0);
+    expect(
+      await git(item.repositoryRoot, ["branch", "--list", "braid/exec/*"]),
+    ).toBe("");
+    await expect(
+      access(path.join(item.executionRoot, executionId)),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("runs the full scripted path, proves isolation, and creates one candidate commit", async () => {
     const item = await fixture();
     const executionId = "E-10000000-0000-4000-8000-000000000001";

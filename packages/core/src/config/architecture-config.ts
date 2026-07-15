@@ -8,6 +8,7 @@ const migrationConfigSchema = z.object({
     .length(1)
     .default(["extract-module"]),
   maximumChangedFiles: z.number().int().min(1).max(8).default(8),
+  maximumSymbols: z.number().int().min(2).max(100).default(20),
   codex: z
     .object({
       executable: z
@@ -120,6 +121,7 @@ migration:
   supportedProposalTypes:
     - extract-module
   maximumChangedFiles: 8
+  maximumSymbols: 20
   codex:
     executable: codex
     timeoutMs: 900000

@@ -15,6 +15,7 @@ import {
   MIGRATOR_VERSION,
   SCOPE_POLICY_VERSION,
 } from "./safety.js";
+import { evaluateExecutionReadiness } from "./execution-readiness.js";
 
 export interface CreateExecutionPlanInput {
   proposal: MigrationProposal;
@@ -77,9 +78,22 @@ export const createExecutionPlan = (
       "unsupported-proposal-type",
     );
   const target = input.proposal.target;
+  const readiness = evaluateExecutionReadiness({
+    proposal: input.proposal,
+    snapshot: input.snapshot,
+    config: input.config,
+    configHash: executionConfigHash(input.config),
+    sourceFingerprint: input.sourceFingerprint,
+  });
+  const approvedCompanionFiles =
+    target.approvedCompanionSymbols?.map(({ file }) => file) ?? [];
+  const movedFromFiles = new Set([
+    target.sourceFile,
+    ...approvedCompanionFiles,
+  ]);
   const importers = input.snapshot.repository.imports
     .filter(
-      (edge) => edge.kind === "internal" && edge.toFile === target.sourceFile,
+      (edge) => edge.kind === "internal" && movedFromFiles.has(edge.toFile),
     )
     .map((edge) => edge.fromFile);
   const referenceFiles = input.snapshot.repository.files
@@ -96,13 +110,16 @@ export const createExecutionPlan = (
       .filter(
         (file) =>
           file.isTestFile &&
-          (file.importedFiles.includes(target.sourceFile) ||
+          (file.importedFiles.some((imported) =>
+            movedFromFiles.has(imported),
+          ) ||
             importers.includes(file.path)),
       )
       .map((file) => file.path),
   );
   const allowedExistingFiles = sorted([
     ...input.proposal.affectedFiles,
+    ...approvedCompanionFiles,
     ...importers,
     ...referenceFiles,
   ]).filter((file) => !allowedTestFiles.includes(file));
@@ -140,6 +157,7 @@ export const createExecutionPlan = (
     validation: input.config.migration.validation.commands,
     executor,
     migratorVersion: MIGRATOR_VERSION,
+    readinessHash: readiness.deterministicEvidence.firstResultHash,
   };
   const planId = `PL-${createHash("sha256")
     .update(canonical(identity))
@@ -170,12 +188,27 @@ export const createExecutionPlan = (
       sourceModule: target.sourceModule,
       suggestedModule: target.suggestedModuleName,
       destinationDirectory: destination,
-      symbols: sorted(target.candidateSymbols),
+      symbols: sorted([
+        ...target.candidateSymbols,
+        ...(target.approvedCompanionSymbols?.map(({ symbol }) => symbol) ?? []),
+      ]),
+      ...(target.approvedCompanionSymbols
+        ? {
+            companionSymbols: [...target.approvedCompanionSymbols].sort(
+              (left, right) =>
+                compare(
+                  `${left.file}\0${left.symbol}`,
+                  `${right.file}\0${right.symbol}`,
+                ),
+            ),
+          }
+        : {}),
       predictedImpact: input.proposal.expectedImpact,
     },
     validation: {
       commands: input.config.migration.validation.commands,
     },
     executor,
+    readiness,
   });
 };

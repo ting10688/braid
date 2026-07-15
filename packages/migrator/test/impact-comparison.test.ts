@@ -206,6 +206,42 @@ describe("migration impact comparison", () => {
     expect(result.failures).toContain("selected-symbols-not-moved");
   });
 
+  it("fails when a cross-file companion is copied instead of moved", () => {
+    const companion = file("src/contracts/notification.ts", [
+      "SentNotification",
+    ]);
+    const destinationWithCompanion = file("src/notification/index.ts", [
+      "notificationLog",
+      "sentNotifications",
+      "SentNotification",
+    ]);
+    const crossFilePlan = migrationExecutionPlanSchema.parse({
+      ...plan(),
+      expectedChange: {
+        ...plan().expectedChange,
+        symbols: [...plan().expectedChange.symbols, "SentNotification"],
+        companionSymbols: [
+          {
+            file: "src/contracts/notification.ts",
+            symbol: "SentNotification",
+          },
+        ],
+      },
+    });
+
+    const result = compareMigrationImpact({
+      plan: crossFilePlan,
+      before: snapshot({ files: [sourceBefore, companion] }),
+      after: snapshot({
+        after: true,
+        files: [sourceAfter, companion, destinationWithCompanion],
+      }),
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.failures).toContain("selected-symbols-not-moved");
+  });
+
   it("fails when the approved destination is missing", () => {
     const result = compareMigrationImpact({
       plan: plan(),

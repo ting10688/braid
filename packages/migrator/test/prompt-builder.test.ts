@@ -29,7 +29,13 @@ const plan = migrationExecutionPlanSchema.parse({
     sourceModule: "orders",
     suggestedModule: "notification",
     destinationDirectory: "src/notification",
-    symbols: ["sentNotifications", "notificationLog"],
+    symbols: ["sentNotifications", "notificationLog", "SentNotification"],
+    companionSymbols: [
+      {
+        file: "src/orders/order-service.ts",
+        symbol: "SentNotification",
+      },
+    ],
     predictedImpact: { simulated: [], estimated: [], unknowns: [] },
   },
   validation: {
@@ -67,6 +73,11 @@ describe("buildMigrationPrompt", () => {
     expect(first).toContain("P-EM-a18d42f3");
     expect(first).toContain('"destinationDirectory": "src/notification"');
     expect(first).toContain('"maximumChangedFiles": 4');
+    expect(first).toContain('"approvedCompanionSymbols"');
+    expect(first).toContain('"symbol": "SentNotification"');
+    expect(first).toContain(
+      "each approved companion symbol from its listed file",
+    );
     expect(first).toContain('"executable": "pnpm"');
     expect(first).toContain('"additionalProperties": false');
   });

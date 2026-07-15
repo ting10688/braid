@@ -7,10 +7,12 @@ import {
   ts,
   type Node,
   type SourceFile,
+  type Symbol as MorphSymbol,
 } from "ts-morph";
 import type {
   ArchitectureConfig,
   SourceFileRecord,
+  SymbolReferenceRecord,
   TopLevelDeclarationRecord,
 } from "@braid/core";
 import { AnalysisError, projectRelativePath } from "@braid/shared";
@@ -88,38 +90,85 @@ interface NamedDeclaration {
   name: string;
   kind: TopLevelDeclarationRecord["kind"];
   node: Node;
+  referenceNodes: Node[];
 }
+
+const terminalAliasedSymbol = (
+  symbol: MorphSymbol | undefined,
+): MorphSymbol | undefined => {
+  const visited = new Set<ts.Symbol>();
+  let current = symbol;
+  while (current?.isAlias()) {
+    if (visited.has(current.compilerSymbol)) return current;
+    visited.add(current.compilerSymbol);
+    current = current.getAliasedSymbol();
+  }
+  return current;
+};
+
+const declarationName = (node: Node): string | undefined => {
+  const named = node as Node & { getName?: () => string | undefined };
+  return named.getName?.();
+};
+
+const matchesModulePattern = (specifier: string, pattern: string): boolean => {
+  const expression = pattern
+    .replace(/[.+^${}()|[\]\\]/gu, "\\$&")
+    .replaceAll("*", ".*");
+  return new RegExp(`^${expression}$`, "u").test(specifier);
+};
 
 const topLevelDeclarations = (
   sourceFile: SourceFile,
+  relativePath: string,
+  imports: ScannedImport[],
+  selectedFiles: ReadonlyMap<string, string>,
+  localModulePatterns: readonly string[],
 ): TopLevelDeclarationRecord[] => {
   const declarations: NamedDeclaration[] = [
     ...sourceFile.getFunctions().flatMap((node) => {
       const name = node.getName();
-      return name ? [{ name, kind: "function" as const, node }] : [];
+      return name
+        ? [
+            {
+              name,
+              kind: "function" as const,
+              node,
+              referenceNodes: [...node.getOverloads(), node],
+            },
+          ]
+        : [];
     }),
     ...sourceFile.getClasses().flatMap((node) => {
       const name = node.getName();
-      return name ? [{ name, kind: "class" as const, node }] : [];
+      return name
+        ? [{ name, kind: "class" as const, node, referenceNodes: [node] }]
+        : [];
     }),
     ...sourceFile.getInterfaces().map((node) => ({
       name: node.getName(),
       kind: "interface" as const,
       node,
+      referenceNodes: [node],
     })),
     ...sourceFile.getTypeAliases().map((node) => ({
       name: node.getName(),
       kind: "type-alias" as const,
       node,
+      referenceNodes: [node],
     })),
-    ...sourceFile
-      .getEnums()
-      .map((node) => ({ name: node.getName(), kind: "enum" as const, node })),
+    ...sourceFile.getEnums().map((node) => ({
+      name: node.getName(),
+      kind: "enum" as const,
+      node,
+      referenceNodes: [node],
+    })),
     ...sourceFile.getVariableStatements().flatMap((statement) =>
       statement.getDeclarations().map((node) => ({
         name: node.getName(),
         kind: "variable" as const,
         node,
+        referenceNodes: [node],
       })),
     ),
   ].sort((left, right) =>
@@ -128,9 +177,179 @@ const topLevelDeclarations = (
     }),
   );
   const declarationNames = new Set(declarations.map(({ name }) => name));
+  const declarationNodes = new Map<string, Node[]>(
+    [...declarationNames].map((name) => [
+      name,
+      declarations
+        .filter((declaration) => declaration.name === name)
+        .flatMap(({ referenceNodes }) => referenceNodes),
+    ]),
+  );
   const exportedNames = new Set(sourceFile.getExportedDeclarations().keys());
 
-  return declarations.map(({ name, kind, node }) => ({
+  const isReferenceIdentifier = (identifier: Node<ts.Identifier>): boolean => {
+    const compilerNode = identifier.compilerNode;
+    const parent = compilerNode.parent;
+    if (
+      (parent as ts.NamedDeclaration).name === compilerNode &&
+      !ts.isShorthandPropertyAssignment(parent)
+    )
+      return false;
+    if (
+      ((ts.isBindingElement(parent) || ts.isImportSpecifier(parent)) &&
+        parent.propertyName === compilerNode) ||
+      ((ts.isBreakStatement(parent) || ts.isContinueStatement(parent)) &&
+        parent.label === compilerNode) ||
+      (ts.isLabeledStatement(parent) && parent.label === compilerNode)
+    )
+      return false;
+    return true;
+  };
+
+  const symbolReferences = (
+    name: string,
+    referenceNodes: readonly Node[],
+  ): SymbolReferenceRecord[] => {
+    const references = new Map<string, SymbolReferenceRecord>();
+    const identifiers = referenceNodes.flatMap((node) =>
+      node
+        .getDescendantsOfKind(SyntaxKind.Identifier)
+        .filter(isReferenceIdentifier),
+    );
+    for (const identifier of identifiers) {
+      const referenceName = identifier.getText();
+      if (referenceName === "" || referenceName === name) continue;
+
+      const symbol = identifier.getSymbol();
+      const symbolDeclarations = symbol?.getDeclarations() ?? [];
+      const directImportDeclaration = symbolDeclarations
+        .map((declaration) =>
+          declaration.getFirstAncestorByKind(SyntaxKind.ImportDeclaration),
+        )
+        .find((declaration) => declaration?.getSourceFile() === sourceFile);
+      const qualifiedParent = identifier.getParentIfKind(
+        SyntaxKind.QualifiedName,
+      );
+      const propertyParent = identifier.getParentIfKind(
+        SyntaxKind.PropertyAccessExpression,
+      );
+      const qualifier =
+        qualifiedParent?.getRight() === identifier
+          ? qualifiedParent.getLeft()
+          : propertyParent?.getNameNode() === identifier
+            ? propertyParent.getExpression()
+            : undefined;
+      const qualifierIdentifier =
+        qualifier?.asKind(SyntaxKind.Identifier) ??
+        qualifier?.getFirstDescendantByKind(SyntaxKind.Identifier);
+      const namespaceImportDeclaration = qualifierIdentifier
+        ?.getSymbol()
+        ?.getDeclarations()
+        .map((declaration) =>
+          declaration.getFirstAncestorByKind(SyntaxKind.ImportDeclaration),
+        )
+        .find((declaration) => declaration?.getSourceFile() === sourceFile);
+      const importDeclaration =
+        directImportDeclaration ?? namespaceImportDeclaration;
+      let reference: SymbolReferenceRecord | undefined;
+
+      if (importDeclaration) {
+        const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
+        const importedFile = imports.find(
+          (item) => item.specifier === moduleSpecifier,
+        )?.resolvedFile;
+        const fallbackDeclarationName = symbolDeclarations
+          .map((declaration) => declaration.asKind(SyntaxKind.ImportSpecifier))
+          .find(
+            (specifier) =>
+              specifier?.getAliasNode()?.getText() === referenceName,
+          )
+          ?.getName();
+        const targetDeclarations =
+          terminalAliasedSymbol(symbol)?.getDeclarations() ?? [];
+        const targetDeclaration = targetDeclarations.find(
+          (declaration) =>
+            declarationName(declaration) !== undefined &&
+            selectedFiles.has(
+              path.resolve(declaration.getSourceFile().getFilePath()),
+            ),
+        );
+        const targetFile = targetDeclaration
+          ? selectedFiles.get(
+              path.resolve(targetDeclaration.getSourceFile().getFilePath()),
+            )
+          : undefined;
+        const targetName = targetDeclaration
+          ? declarationName(targetDeclaration)
+          : fallbackDeclarationName;
+        const localSpecifier =
+          moduleSpecifier.startsWith(".") ||
+          localModulePatterns.some((pattern) =>
+            matchesModulePattern(moduleSpecifier, pattern),
+          );
+        const namespaceBinding = symbolDeclarations.some(
+          (declaration) =>
+            declaration.asKind(SyntaxKind.NamespaceImport) !== undefined,
+        );
+        if (namespaceBinding && targetName === undefined) continue;
+        reference =
+          (targetFile ?? importedFile)
+            ? {
+                name: referenceName,
+                ...(targetName ? { declarationName: targetName } : {}),
+                resolution: "internal",
+                declarationFile: targetFile ?? importedFile!,
+                moduleSpecifier,
+              }
+            : localSpecifier
+              ? {
+                  name: referenceName,
+                  resolution: "unresolved",
+                  moduleSpecifier,
+                }
+              : {
+                  name: referenceName,
+                  resolution: "external",
+                  moduleSpecifier,
+                };
+      } else if (
+        declarationNames.has(referenceName) &&
+        symbolDeclarations.some(
+          (declaration) =>
+            declarationNodes
+              .get(referenceName)
+              ?.some(
+                (topLevel) =>
+                  topLevel.compilerNode === declaration.compilerNode,
+              ) === true,
+        )
+      ) {
+        reference = {
+          name: referenceName,
+          resolution: "local",
+          declarationFile: relativePath,
+        };
+      } else if (symbolDeclarations.length === 0) {
+        reference = { name: referenceName, resolution: "unresolved" };
+      }
+
+      if (reference) {
+        const key = [
+          reference.name,
+          reference.declarationName ?? "",
+          reference.resolution,
+          reference.declarationFile ?? "",
+          reference.moduleSpecifier ?? "",
+        ].join("\0");
+        references.set(key, reference);
+      }
+    }
+    return [...references.entries()]
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([, reference]) => reference);
+  };
+
+  return declarations.map(({ name, kind, node, referenceNodes }) => ({
     name,
     kind,
     exported: exportedNames.has(name),
@@ -147,6 +366,7 @@ const topLevelDeclarations = (
           ),
       ),
     ].sort(),
+    symbolReferences: symbolReferences(name, referenceNodes),
   }));
 };
 
@@ -255,6 +475,9 @@ export const scanRepository = async (
 
   const files: SourceFileRecord[] = [];
   const imports: ScannedImport[] = [];
+  const localModulePatterns = Object.keys(
+    project.getCompilerOptions().paths ?? {},
+  ).sort();
   for (const sourceFile of sourceFiles) {
     const absolutePath = path.resolve(sourceFile.getFilePath());
     const relativePath = selectedFiles.get(absolutePath);
@@ -291,7 +514,13 @@ export const scanRepository = async (
         .map((item) => item.resolvedFile ?? item.specifier)
         .sort(),
       isTestFile: isTestFile(relativePath),
-      declarations: topLevelDeclarations(sourceFile),
+      declarations: topLevelDeclarations(
+        sourceFile,
+        relativePath,
+        fileImports,
+        selectedFiles,
+        localModulePatterns,
+      ),
       topLevelStatements: topLevelStatements(sourceFile),
     });
   }

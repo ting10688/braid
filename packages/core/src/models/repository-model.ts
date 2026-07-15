@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const symbolReferenceRecordSchema = z.object({
+  name: z.string().min(1),
+  declarationName: z.string().min(1).optional(),
+  resolution: z.enum(["local", "internal", "external", "unresolved"]),
+  declarationFile: z.string().min(1).optional(),
+  moduleSpecifier: z.string().min(1).optional(),
+});
+
 export const topLevelDeclarationRecordSchema = z.object({
   name: z.string().min(1),
   kind: z.enum([
@@ -14,6 +22,7 @@ export const topLevelDeclarationRecordSchema = z.object({
   startLine: z.number().int().positive(),
   endLine: z.number().int().positive(),
   references: z.array(z.string().min(1)),
+  symbolReferences: z.array(symbolReferenceRecordSchema).optional(),
 });
 
 export const sourceFileRecordSchema = z.object({
@@ -75,6 +84,7 @@ export const repositoryModelSchema = z.object({
 });
 
 export type SourceFileRecord = z.infer<typeof sourceFileRecordSchema>;
+export type SymbolReferenceRecord = z.infer<typeof symbolReferenceRecordSchema>;
 export type TopLevelDeclarationRecord = z.infer<
   typeof topLevelDeclarationRecordSchema
 >;
