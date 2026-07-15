@@ -39,6 +39,15 @@ export const benchmarkSummary = (run: BenchmarkRun): BenchmarkSummary => {
     (sum, result) => sum + result.proposals.length,
     0,
   );
+  const ambiguous = proposalCases.reduce(
+    (sum, result) => sum + (result.ambiguousProposalIds?.length ?? 0),
+    0,
+  );
+  const informational = proposalCases.reduce(
+    (sum, result) => sum + (result.informationalProposalIds?.length ?? 0),
+    0,
+  );
+  const repositories = run.manifest.repositories ?? [];
   const timings = [
     ...proposalCases.map(({ durations }) => durations),
     ...staticCases.flatMap(({ before, after }) =>
@@ -54,7 +63,7 @@ export const benchmarkSummary = (run: BenchmarkRun): BenchmarkSummary => {
   return {
     correctness: {
       expectedIssueCoverage: ratio(matched, expected),
-      proposalValidity: ratio(matched, proposals),
+      proposalValidity: ratio(matched + informational, proposals - ambiguous),
       topKCoverage: mean(
         proposalCases
           .filter(({ expectedIssues }) => expectedIssues > 0)
@@ -85,19 +94,25 @@ export const benchmarkSummary = (run: BenchmarkRun): BenchmarkSummary => {
               reversibilityClassificationAgreement,
           ),
       ),
-      falsePositiveCount: proposalCases
-        .filter(({ expectedIssues }) => expectedIssues === 0)
-        .reduce((sum, result) => sum + result.unexpectedProposalIds.length, 0),
+      falsePositiveCount: proposalCases.reduce(
+        (sum, result) =>
+          sum +
+          result.unexpectedProposalIds.length +
+          (result.rejectedProposalIds?.length ?? 0),
+        0,
+      ),
       sourceMutations: run.cases.reduce(
         (sum, result) => sum + result.sourceMutations.length,
         0,
       ),
-      buildSuccess: staticCases.every(
-        ({ before, after }) => passed(before.build) && passed(after.build),
-      ),
-      testSuccess: staticCases.every(
-        ({ before, after }) => passed(before.test) && passed(after.test),
-      ),
+      buildSuccess:
+        staticCases.every(
+          ({ before, after }) => passed(before.build) && passed(after.build),
+        ) && repositories.every(({ buildStatus }) => buildStatus === "passed"),
+      testSuccess:
+        staticCases.every(
+          ({ before, after }) => passed(before.test) && passed(after.test),
+        ) && repositories.every(({ testStatus }) => testStatus === "passed"),
       expectedExitCodeMatched: proposalCases.every(
         ({ expectedExitCodeMatched }) => expectedExitCodeMatched,
       ),

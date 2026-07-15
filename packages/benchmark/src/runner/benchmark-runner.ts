@@ -43,7 +43,9 @@ export const runBenchmarkSuite = async (
   const startedAt = new Date();
   const selected = suite.cases.filter(
     (benchmarkCase) =>
-      benchmarkCase.type === options.kind &&
+      (benchmarkCase.type === options.kind ||
+        (options.kind === "proposal" &&
+          benchmarkCase.type === "repository-proposal")) &&
       (!options.caseId || benchmarkCase.id === options.caseId) &&
       (!options.smoke || ("smoke" in benchmarkCase && benchmarkCase.smoke)),
   );
@@ -61,9 +63,13 @@ export const runBenchmarkSuite = async (
   const cases = [];
   for (const benchmarkCase of selected) {
     if (options.verbose) process.stderr.write(`Running ${benchmarkCase.id}\n`);
-    if (benchmarkCase.type === "proposal")
+    if (
+      benchmarkCase.type === "proposal" ||
+      benchmarkCase.type === "repository-proposal"
+    )
       cases.push(
         await runProposalCase(benchmarkCase, {
+          workspaceRoot: options.workspaceRoot,
           benchmarksRoot: options.benchmarksRoot,
           braidCommand: options.braidCommand,
           correctnessRepetitions: fixture.execution.correctnessRepetitions,
@@ -133,6 +139,7 @@ export const runBenchmarkSuite = async (
       fixtureManifestVersion: fixture.manifest.manifestVersion,
       fixtureManifestHash: fixture.manifest.hash,
       configurationHash: fixture.configurationHash,
+      repositories: fixture.repositories,
       braidVersion: version,
       braidCommit,
       benchmarkVersion: "0.2.0",

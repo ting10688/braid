@@ -32,10 +32,22 @@ import {
   defaultBraidCommand,
   runBenchmarkSuite,
 } from "../runner/benchmark-runner.js";
+import {
+  listRepositoryManifests,
+  loadRepositoryManifest,
+  refreshRepositoryCache,
+  verifyRepositoryCache,
+} from "../repositories/repository-materializer.js";
+import { qualifyRepository } from "../repositories/repository-qualification.js";
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
 const baselinesRoot = path.join(benchmarksRoot, "baselines");
+const repositoryCacheRoot = path.join(
+  workspaceRoot,
+  ".braid-bench-cache",
+  "repositories",
+);
 
 interface CommonOptions {
   suite: string;
@@ -73,7 +85,7 @@ const executableCommand = (input: string): string[] => {
 const suiteKind = (suite: BenchmarkSuite): "proposal" | "static-comparison" => {
   const kinds = new Set(
     suite.cases
-      .map(({ type }) => type)
+      .map(({ type }) => (type === "repository-proposal" ? "proposal" : type))
       .filter((type) => ["proposal", "static-comparison"].includes(type)),
   );
   if (kinds.size !== 1)
@@ -153,6 +165,79 @@ program
         )
         .join("\n")}\n`,
     );
+  });
+
+const repositories = program
+  .command("repositories")
+  .description("Manage pinned real-world repository inputs");
+
+repositories.command("list").action(async () => {
+  const manifests = await listRepositoryManifests(benchmarksRoot);
+  process.stdout.write(
+    `${manifests
+      .map(
+        (manifest) =>
+          `${manifest.id}\t${manifest.qualification.status}\t${manifest.repository.commit}\t${manifest.repository.url}`,
+      )
+      .join("\n")}\n`,
+  );
+});
+
+repositories
+  .command("inspect")
+  .argument("<id>")
+  .action(async (id: string) => {
+    const manifest = await loadRepositoryManifest(benchmarksRoot, id);
+    const verification = await verifyRepositoryCache(
+      manifest,
+      repositoryCacheRoot,
+    );
+    process.stdout.write(
+      `${JSON.stringify({ manifest, verification }, null, 2)}\n`,
+    );
+  });
+
+repositories
+  .command("qualify")
+  .argument("[id]")
+  .option("--keep-workdirs", "keep temporary repository copies")
+  .action(
+    async (id: string | undefined, options: { keepWorkdirs?: boolean }) => {
+      const manifests = id
+        ? [await loadRepositoryManifest(benchmarksRoot, id)]
+        : await listRepositoryManifests(benchmarksRoot);
+      const results = [];
+      for (const manifest of manifests)
+        results.push(
+          await qualifyRepository(manifest, {
+            workspaceRoot,
+            benchmarksRoot,
+            braidCommand: defaultBraidCommand(workspaceRoot),
+            keepWorkdir: options.keepWorkdirs ?? false,
+          }),
+        );
+      process.stdout.write(`${JSON.stringify(results, null, 2)}\n`);
+      if (
+        results.some(
+          ({ outcome, recordedStatus }) =>
+            outcome === "rejected" || outcome !== recordedStatus,
+        )
+      )
+        process.exitCode = 2;
+    },
+  );
+
+repositories
+  .command("refresh")
+  .description("Explicitly download and reverify one pinned repository")
+  .argument("<id>")
+  .action(async (id: string) => {
+    const manifest = await loadRepositoryManifest(benchmarksRoot, id);
+    const verification = await refreshRepositoryCache(
+      manifest,
+      repositoryCacheRoot,
+    );
+    process.stdout.write(`${JSON.stringify(verification, null, 2)}\n`);
   });
 
 const common = (command: Command, defaultSuite: string): Command =>

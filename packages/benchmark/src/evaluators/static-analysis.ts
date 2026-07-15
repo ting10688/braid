@@ -50,7 +50,7 @@ const moduleFor = (file: string): string => {
 };
 
 const specifiers = (contents: string): string[] => {
-  // ponytail: static import regex is sufficient for synthetic fixtures; use a TS parser before real-world suites.
+  // ponytail: independently re-derive static imports without sharing Braid's graph; add alias resolution when a qualified repository needs it.
   const values = new Set<string>();
   const pattern = /(?:\bfrom\s*|\bimport\s*)["']([^"']+)["']/gu;
   for (const match of contents.matchAll(pattern))
@@ -132,8 +132,9 @@ export const analyzeFixture = async (
     ),
   );
   const files = new Map<string, { lines: number; contents: string }>();
-  for await (const file of glob(["src/**/*.ts", "src/**/*.tsx"], {
+  for await (const file of glob(config.source.include, {
     cwd: root,
+    exclude: config.source.exclude,
   })) {
     const normalized = file.replaceAll(path.sep, "/");
     if (/\.d\.[cm]?tsx?$/u.test(normalized)) continue;

@@ -6,6 +6,91 @@ const commandSchema = z.array(z.string().min(1)).min(1);
 const percentSchema = z.number().finite().nonnegative();
 const versionSchema = z.string().regex(/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/u);
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
+const commitShaSchema = z.string().regex(/^[a-f0-9]{40}$/u);
+
+export const canonicalGitHubUrlSchema = z
+  .string()
+  .regex(/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/u);
+
+export const repositoryCommandSchema = z.object({
+  executable: z.string().min(1),
+  arguments: z.array(z.string().min(1)),
+});
+
+export const qualificationStatusSchema = z.enum([
+  "qualified",
+  "qualified-with-limitations",
+  "rejected",
+]);
+
+const recordedCommandStatusSchema = z.object({
+  status: z.enum(["passed", "failed", "excluded"]),
+  command: z.string().min(1),
+  detail: z.string().min(1),
+});
+
+export const repositoryManifestSchema = z.object({
+  schemaVersion: z.literal(1),
+  id: idSchema,
+  title: z.string().min(1),
+  role: z.enum(["control", "complexity"]),
+  repository: z.object({
+    url: canonicalGitHubUrlSchema,
+    commit: commitShaSchema,
+  }),
+  license: z.object({
+    spdxId: z.literal("MIT"),
+    file: z.string().min(1),
+    contentHash: sha256Schema,
+    attribution: z.string().min(1),
+  }),
+  packageManager: z.object({
+    name: z.enum(["npm", "pnpm"]),
+    version: z.string().min(1),
+    lockfile: z.string().min(1),
+    lockfileHash: sha256Schema,
+  }),
+  environment: z.object({
+    node: z.string().min(1),
+    networkRequiredAfterCheckout: z.literal(false),
+  }),
+  source: z.object({
+    include: z.array(z.string().min(1)).min(1),
+    exclude: z.array(z.string().min(1)),
+    tests: z.array(z.string().min(1)).min(1),
+    testExclude: z.array(z.string().min(1)).default([]),
+    manifestHash: sha256Schema,
+    fileCount: z.number().int().nonnegative(),
+    testFileCount: z.number().int().nonnegative(),
+    linesOfCode: z.number().int().nonnegative(),
+    moduleCount: z.number().int().nonnegative(),
+    preferredRange: z.enum(["below", "within", "above"]),
+    largestFiles: z.array(
+      z.object({
+        path: z.string().min(1),
+        linesOfCode: z.number().int().positive(),
+      }),
+    ),
+  }),
+  braidConfiguration: z.object({
+    file: z.string().min(1),
+    hash: sha256Schema,
+  }),
+  commands: z.object({
+    install: repositoryCommandSchema,
+    build: repositoryCommandSchema,
+    test: repositoryCommandSchema,
+  }),
+  qualification: z.object({
+    status: qualificationStatusSchema,
+    reviewedAt: z.string().date(),
+    install: recordedCommandStatusSchema,
+    build: recordedCommandStatusSchema,
+    test: recordedCommandStatusSchema,
+    braidAnalysis: recordedCommandStatusSchema,
+    limitations: z.array(z.string().min(1)),
+  }),
+});
 
 export const normalizationRuleSchema = z.enum([
   "run-ids",
@@ -39,6 +124,7 @@ export const issueExpectationSchema = z.object({
       }),
     )
     .optional(),
+  maximumAffectedFiles: z.number().int().positive().optional(),
   requiredEvidenceTypes: z.array(z.string().min(1)),
   expectedRisk: z
     .object({ allowed: z.array(z.enum(["low", "medium", "high"])).min(1) })
@@ -58,12 +144,33 @@ export const expectationFileSchema = z.object({
   schemaVersion: z.literal(1),
   version: versionSchema,
   issues: z.array(issueExpectationSchema),
+  reviewedProposals: z
+    .array(
+      issueExpectationSchema.extend({
+        classification: z.enum(["rejected", "ambiguous", "informational"]),
+      }),
+    )
+    .default([]),
 });
 
 export const proposalBenchmarkCaseSchema = z.object({
   type: z.literal("proposal"),
   id: idSchema,
   fixture: z.string().min(1),
+  expectationFile: z.string().min(1),
+  braidCommands: z.object({
+    init: commandSchema,
+    analyze: commandSchema,
+    propose: commandSchema,
+  }),
+  expectedExitCode: z.number().int().min(0).max(255),
+  smoke: z.boolean().default(false),
+});
+
+export const repositoryProposalBenchmarkCaseSchema = z.object({
+  type: z.literal("repository-proposal"),
+  id: idSchema,
+  repositoryId: idSchema,
   expectationFile: z.string().min(1),
   braidCommands: z.object({
     init: commandSchema,
@@ -175,6 +282,7 @@ export const rollbackResultSchema = z.object({
 
 export const benchmarkCaseSchema = z.discriminatedUnion("type", [
   proposalBenchmarkCaseSchema,
+  repositoryProposalBenchmarkCaseSchema,
   staticComparisonCaseSchema,
   changeTaskBenchmarkCaseSchema,
   rollbackBenchmarkCaseSchema,
@@ -228,6 +336,27 @@ export const runManifestSchema = z.object({
   fixtureManifestVersion: versionSchema,
   fixtureManifestHash: sha256Schema,
   configurationHash: sha256Schema,
+  repositories: z
+    .array(
+      z.object({
+        id: idSchema,
+        url: canonicalGitHubUrlSchema,
+        commit: commitShaSchema,
+        licenseHash: sha256Schema,
+        lockfileHash: sha256Schema,
+        sourceManifestHash: sha256Schema,
+        braidConfigurationHash: sha256Schema,
+        qualificationStatus: qualificationStatusSchema,
+        sourceFiles: z.number().int().nonnegative(),
+        sourceLinesOfCode: z.number().int().nonnegative(),
+        moduleCount: z.number().int().nonnegative(),
+        installStatus: z.enum(["passed", "failed", "excluded"]),
+        buildStatus: z.enum(["passed", "failed", "excluded"]),
+        testStatus: z.enum(["passed", "failed", "excluded"]),
+        braidAnalysisStatus: z.enum(["passed", "failed", "excluded"]),
+      }),
+    )
+    .optional(),
   braidVersion: z.string().min(1),
   braidCommit: z.string().min(1).nullable(),
   benchmarkVersion: z.string().min(1),
@@ -309,6 +438,9 @@ export const proposalCaseResultSchema = z.object({
   matchedIssueIds: z.array(idSchema),
   unmatchedIssueIds: z.array(idSchema),
   unexpectedProposalIds: z.array(z.string()),
+  rejectedProposalIds: z.array(z.string()).optional(),
+  ambiguousProposalIds: z.array(z.string()).optional(),
+  informationalProposalIds: z.array(z.string()).optional(),
   expectedIssueCoverage: z.number().min(0).max(1),
   proposalValidity: z.number().min(0).max(1),
   topKCoverage: z.number().min(0).max(1),
@@ -326,6 +458,7 @@ export const proposalCaseResultSchema = z.object({
   sourceMutations: z.array(z.string()),
   durations: timingSummarySchema,
   correctnessRepetitions: z.number().int().min(2),
+  setupDurationMs: z.number().finite().nonnegative().optional(),
 });
 
 export const toleranceResultSchema = z.object({
@@ -493,7 +626,12 @@ export const benchmarkBaselineSchema = goldenBaselineSchema;
 export type IssueExpectation = z.infer<typeof issueExpectationSchema>;
 export type BenchmarkProtocol = z.infer<typeof benchmarkProtocolSchema>;
 export type ExpectationFile = z.infer<typeof expectationFileSchema>;
+export type RepositoryManifest = z.infer<typeof repositoryManifestSchema>;
+export type RepositoryCommand = z.infer<typeof repositoryCommandSchema>;
 export type ProposalBenchmarkCase = z.infer<typeof proposalBenchmarkCaseSchema>;
+export type RepositoryProposalBenchmarkCase = z.infer<
+  typeof repositoryProposalBenchmarkCaseSchema
+>;
 export type StaticComparisonCase = z.infer<typeof staticComparisonCaseSchema>;
 export type ChangeTaskBenchmarkCase = z.infer<
   typeof changeTaskBenchmarkCaseSchema

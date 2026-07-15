@@ -6,4 +6,5 @@ dist/
 coverage/
 benchmarks/results/**
 !benchmarks/results/.gitkeep
+.braid-bench-cache/
 .DS_Store
