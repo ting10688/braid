@@ -1,0 +1,13 @@
+{
+  "name": "@topiary/example-bloated-saas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#shared/*": "./dist/shared/*"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run test"
+  }
+}

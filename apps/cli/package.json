@@ -1,0 +1,26 @@
+{
+  "name": "@topiary/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "topiary": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@topiary/analyzer": "workspace:*",
+    "@topiary/core": "workspace:*",
+    "@topiary/shared": "workspace:*",
+    "@topiary/store": "workspace:*",
+    "commander": "^14.0.0"
+  }
+}

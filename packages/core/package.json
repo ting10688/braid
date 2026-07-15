@@ -1,0 +1,21 @@
+{
+  "name": "@topiary/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@topiary/shared": "workspace:*",
+    "yaml": "^2.8.0",
+    "zod": "^3.25.76"
+  }
+}
