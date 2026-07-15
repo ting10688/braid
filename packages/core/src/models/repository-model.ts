@@ -1,11 +1,28 @@
 import { z } from "zod";
 
+export const topLevelDeclarationRecordSchema = z.object({
+  name: z.string().min(1),
+  kind: z.enum([
+    "function",
+    "class",
+    "interface",
+    "type-alias",
+    "enum",
+    "variable",
+  ]),
+  exported: z.boolean(),
+  startLine: z.number().int().positive(),
+  endLine: z.number().int().positive(),
+  references: z.array(z.string().min(1)),
+});
+
 export const sourceFileRecordSchema = z.object({
   path: z.string().min(1),
   linesOfCode: z.number().int().nonnegative(),
   exportedSymbols: z.array(z.string()),
   importedFiles: z.array(z.string()),
   isTestFile: z.boolean(),
+  declarations: z.array(topLevelDeclarationRecordSchema).optional(),
 });
 
 export const moduleRecordSchema = z.object({
@@ -41,6 +58,9 @@ export const repositoryModelSchema = z.object({
 });
 
 export type SourceFileRecord = z.infer<typeof sourceFileRecordSchema>;
+export type TopLevelDeclarationRecord = z.infer<
+  typeof topLevelDeclarationRecordSchema
+>;
 export type ModuleRecord = z.infer<typeof moduleRecordSchema>;
 export type ImportEdge = z.infer<typeof importEdgeSchema>;
 export type DependencyCycle = z.infer<typeof dependencyCycleSchema>;

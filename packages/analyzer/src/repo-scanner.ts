@@ -1,7 +1,18 @@
 import path from "node:path";
 import { access, glob } from "node:fs/promises";
-import { DiagnosticCategory, Project, ts, type SourceFile } from "ts-morph";
-import type { ArchitectureConfig, SourceFileRecord } from "@braid/core";
+import {
+  DiagnosticCategory,
+  Project,
+  SyntaxKind,
+  ts,
+  type Node,
+  type SourceFile,
+} from "ts-morph";
+import type {
+  ArchitectureConfig,
+  SourceFileRecord,
+  TopLevelDeclarationRecord,
+} from "@braid/core";
 import { AnalysisError, projectRelativePath } from "@braid/shared";
 
 export interface ScannedImport {
@@ -50,6 +61,72 @@ const sourceModuleSpecifiers = (sourceFile: SourceFile): string[] => [
     .map((declaration) => declaration.getModuleSpecifierValue())
     .filter((value): value is string => value !== undefined),
 ];
+
+interface NamedDeclaration {
+  name: string;
+  kind: TopLevelDeclarationRecord["kind"];
+  node: Node;
+}
+
+const topLevelDeclarations = (
+  sourceFile: SourceFile,
+): TopLevelDeclarationRecord[] => {
+  const declarations: NamedDeclaration[] = [
+    ...sourceFile.getFunctions().flatMap((node) => {
+      const name = node.getName();
+      return name ? [{ name, kind: "function" as const, node }] : [];
+    }),
+    ...sourceFile.getClasses().flatMap((node) => {
+      const name = node.getName();
+      return name ? [{ name, kind: "class" as const, node }] : [];
+    }),
+    ...sourceFile.getInterfaces().map((node) => ({
+      name: node.getName(),
+      kind: "interface" as const,
+      node,
+    })),
+    ...sourceFile.getTypeAliases().map((node) => ({
+      name: node.getName(),
+      kind: "type-alias" as const,
+      node,
+    })),
+    ...sourceFile
+      .getEnums()
+      .map((node) => ({ name: node.getName(), kind: "enum" as const, node })),
+    ...sourceFile.getVariableStatements().flatMap((statement) =>
+      statement.getDeclarations().map((node) => ({
+        name: node.getName(),
+        kind: "variable" as const,
+        node,
+      })),
+    ),
+  ].sort((left, right) =>
+    `${left.node.getStart()}`.localeCompare(`${right.node.getStart()}`, "en", {
+      numeric: true,
+    }),
+  );
+  const declarationNames = new Set(declarations.map(({ name }) => name));
+  const exportedNames = new Set(sourceFile.getExportedDeclarations().keys());
+
+  return declarations.map(({ name, kind, node }) => ({
+    name,
+    kind,
+    exported: exportedNames.has(name),
+    startLine: node.getStartLineNumber(),
+    endLine: node.getEndLineNumber(),
+    references: [
+      ...new Set(
+        node
+          .getDescendantsOfKind(SyntaxKind.Identifier)
+          .map((identifier) => identifier.getText())
+          .filter(
+            (reference) =>
+              reference !== name && declarationNames.has(reference),
+          ),
+      ),
+    ].sort(),
+  }));
+};
 
 const resolveImport = (
   specifier: string,
@@ -174,6 +251,7 @@ export const scanRepository = async (
         .map((item) => item.resolvedFile ?? item.specifier)
         .sort(),
       isTestFile: isTestFile(relativePath),
+      declarations: topLevelDeclarations(sourceFile),
     });
   }
 
