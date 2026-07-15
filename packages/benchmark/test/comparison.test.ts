@@ -76,9 +76,8 @@ describe("static comparison", () => {
         commands: {
           build: [
             "node",
-            "{workspaceRoot}/node_modules/typescript/bin/tsc",
-            "-p",
-            ".",
+            "-e",
+            "const fs=require('node:fs');fs.mkdirSync('dist',{recursive:true});fs.writeFileSync('dist/index.js',\"export const createOrder=()=> 'o1:Ada:order:email';\\n\")",
           ],
           test: ["node", "--test", "test/order.test.mjs"],
         },
@@ -92,5 +91,6 @@ describe("static comparison", () => {
     expect(result.before.test?.passingTests).toBe(1);
     expect(result.after.artifactSizeBytes).toBeGreaterThan(0);
     expect(result.tolerances[0]?.withinTolerance).toBe(true);
+    expect(result.sourceMutations).toEqual([]);
   }, 15_000);
 });
