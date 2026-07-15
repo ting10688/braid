@@ -19,8 +19,23 @@ const normalizedJson = (value: unknown): string => {
   return JSON.stringify(value) ?? "null";
 };
 
-export const configHash = (config: ArchitectureConfig): string =>
-  createHash("sha256").update(normalizedJson(config)).digest("hex");
+const hashNormalized = (value: unknown): string =>
+  createHash("sha256").update(normalizedJson(value)).digest("hex");
+
+export const configHash = (config: ArchitectureConfig): string => {
+  const { migration: _migration, ...analysisAndPlannerConfig } = config;
+  void _migration;
+  return hashNormalized(analysisAndPlannerConfig);
+};
+
+export const migrationConfigHash = (config: ArchitectureConfig): string =>
+  hashNormalized(config.migration);
+
+export const executionConfigHash = (config: ArchitectureConfig): string =>
+  hashNormalized({
+    analysisAndPlanner: configHash(config),
+    migration: migrationConfigHash(config),
+  });
 
 export const parseArchitectureConfig = (
   contents: string,

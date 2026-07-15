@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { analyzeRepository } from "@braid/analyzer";
 import {
   configHash,
+  migrationConfigHash,
   createArchitectureSnapshot,
   loadArchitectureConfig,
   migrationProposalSchema,
@@ -49,6 +50,7 @@ describe("Phase 2 proposal integration", () => {
       projectRoot,
       gitCommit: null,
       configHash: configHash(config),
+      migrationConfigHash: migrationConfigHash(config),
       repository: analysis.repository,
       metrics: analysis.metrics,
       createdAt: new Date("2026-07-15T00:00:00.000Z"),

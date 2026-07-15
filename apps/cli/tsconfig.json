@@ -10,6 +10,7 @@
     { "path": "../../packages/shared" },
     { "path": "../../packages/core" },
     { "path": "../../packages/analyzer" },
+    { "path": "../../packages/migrator" },
     { "path": "../../packages/planner" },
     { "path": "../../packages/store" }
   ]

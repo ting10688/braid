@@ -1,0 +1,24 @@
+{
+  "suiteId": "phase-3-execution",
+  "suiteVersion": "1.0.0",
+  "protocolVersion": "1.0.0",
+  "requiredCases": [
+    "valid-notification-extraction",
+    "stale-proposal-rejection",
+    "wrong-approval-rejection",
+    "unauthorized-file-modification",
+    "dependency-modification",
+    "validation-failure",
+    "new-cycle-introduction",
+    "no-op-executor",
+    "executor-timeout",
+    "safe-discard"
+  ],
+  "blocking": {
+    "mainCheckoutMutationsMaximum": 0,
+    "scopeViolationsAcceptedMaximum": 0,
+    "unsafeCasesAcceptedMaximum": 0,
+    "missingExecutionRecordsMaximum": 0,
+    "nondeterministicPlansMaximum": 0
+  }
+}

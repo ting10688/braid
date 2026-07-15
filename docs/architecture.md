@@ -6,34 +6,42 @@
 deterministic transformation from project files to a repository model and metrics. `@braid/store`
 persists validated snapshots and proposals without knowing how they were calculated. `@braid/planner`
 interprets snapshot facts as bounded migration proposals without filesystem access or console output.
+`@braid/migrator` consumes one approved proposal, owns execution safety policy, and coordinates only
+execution-owned external Git worktrees. It does not change analyzer or planner facts.
 `@braid/cli` coordinates the workflow and owns all human or machine output. `@braid/shared` contains
 only the error hierarchy and stable project-local paths used across those boundaries. `@braid/benchmark`
-is outside the product planning path: it invokes the CLI as a subprocess, validates public schemas, and
-owns independent fixture analysis, expectation matching, command measurement, and reports.
+is outside the product planning path: proposal suites invoke the CLI as a subprocess, while the Phase 3
+suite drives the public migrator interface with its deterministic scripted executor.
 
 ```mermaid
 flowchart LR
     CLI["@braid/cli"] --> Core["@braid/core<br/>config + schemas"]
     CLI --> Analyzer["@braid/analyzer<br/>read-only analysis"]
     CLI --> Planner["@braid/planner<br/>proposal interpretations"]
+    CLI --> Migrator["@braid/migrator<br/>isolated execution policy"]
     CLI --> Store["@braid/store<br/>atomic JSON"]
     Analyzer --> Core
     Planner --> Analyzer
     Planner --> Core
+    Migrator --> Analyzer
+    Migrator --> Core
+    Migrator --> Store
     Store --> Core
     Core --> Shared["@braid/shared"]
     Analyzer --> Shared
     Store --> Shared
     Project["Target TypeScript project"] --> Analyzer
-    Store --> State[".braid/state<br/>snapshots + proposals"]
+    Store --> State[".braid/state + .braid/executions<br/>portable records"]
+    Migrator --> Worktree["external owned Git worktree<br/>braid/exec/*"]
     Bench["@braid/benchmark<br/>independent evaluator"] -. CLI boundary .-> CLI
     Bench --> Core
     Fixtures["Copied benchmark fixtures"] --> Bench
 ```
 
-The benchmark package has no dependency on `@braid/planner` or `@braid/analyzer`. This prevents Braid's
-candidate selection, ranking, or metric implementation from grading itself. Fixture templates remain
-tracked inputs; every benchmark run operates on disposable local Git copies.
+The proposal-quality evaluator still has no dependency on `@braid/planner` or `@braid/analyzer`, so
+candidate selection and ranking do not grade themselves. The migration suite intentionally exercises
+the product orchestrator and independently asserts status, Git isolation, records, and safety outcomes.
+Fixture templates remain tracked inputs; every benchmark run operates on disposable local Git copies.
 
 ## Analysis data flow
 
@@ -44,13 +52,16 @@ tracked inputs; every benchmark run operates on disposable local Git copies.
 5. Package fields, public-entrypoint facts, normalized paths, and top-level statement shape classify
    modules; adjacency lists feed canonical file/module cycle detection.
 6. Pure metric calculations apply the configured thresholds.
-7. The CLI reads Git's current commit when available and creates a schema-versioned snapshot.
+7. The CLI reads Git's current commit and, for Git repositories, a deterministic tracked-source
+   fingerprint before creating a schema-versioned snapshot.
 8. The JSON store validates, normalizes, pretty-prints, and atomically links a new snapshot file.
 
 Analysis is deterministic because project-relative paths use POSIX separators, unordered collections
 are sorted, duplicate graph traversals are canonicalized, configuration hashing uses normalized key
 order, and metrics are raw calculations over the normalized model. Snapshot content remains equivalent
 between unchanged analyses; only the ID and creation time identify an individual observation.
+Execution-only migration settings have a separate fingerprint, so adding disabled Phase 3 defaults
+does not change Phase 2 analysis/planning configuration identity.
 
 Module records carry one of five explicit kinds. Meaningful first-level directories are `feature`
 modules; only deterministic directory names such as `platform`, `runtime`, `adapters`, and `internal`
@@ -95,14 +106,41 @@ hash compared with the same Phase 1 YAML parsed by the old version.
 No runtime model is used. The bounded heuristics are intentionally reproducible, inspectable, and able
 to run offline.
 
-## Future Codex execution boundary
+## Migration execution boundary
 
-Codex execution will live in a separate package and process: it will receive an approved proposal,
-operate in an isolated Git worktree, and return validation evidence. It will not be imported into the
-analyzer or planner. This preserves a read-only, reproducible proposal path even when execution capabilities are
-added.
+Codex execution lives in `@braid/migrator` behind a `MigrationExecutor` interface. The planner never
+creates a branch, worktree, process, or commit. The production adapter invokes `codex exec` with an
+argument array, ephemeral JSONL output, `workspace-write`, approval disabled inside the bounded run,
+and an explicit disposable staging repository, with workspace network access disabled. The standalone
+stage has no remote and shares no object database with the source repository. A capability check chooses
+the installed CLI's supported `--cd` or `-C` form and either the approval flag or its safe config
+equivalent. The CI-only scripted executor goes through the same orchestration path.
+
+```mermaid
+flowchart LR
+    Approved["approved low-risk extract-module"] --> Fresh["freshness + safety preflight"]
+    Fresh --> Plan["deterministic execution plan"]
+    Plan --> WT["owned external worktree + local branch"]
+    WT --> Stage["standalone no-remote executor stage"]
+    Stage --> Executor["bounded executor"]
+    Executor --> Diff["Git diff + scope enforcement"]
+    Diff --> Materialize["verified regular-file materialization"]
+    Materialize --> Validate["trusted argv validation in candidate"]
+    Validate --> Analyze["candidate architecture snapshot"]
+    Analyze --> Compare["predicted vs actual impact"]
+    Compare --> Commit["one Braid-owned candidate commit"]
+    Commit --> Record["atomic portable execution record"]
+```
+
+The source checkout is fingerprinted immediately before worktree execution and checked again before and
+after candidate commit creation. HEAD, symbolic branch, index tree, tracked-source manifest,
+non-runtime status, local Git configuration, protected shared refs, repository metadata, and lock files
+must remain identical. Only the exact execution-owned candidate ref and worktree administration are
+excluded; sibling `braid/exec/*` refs remain protected. Package
+manifests, lockfiles, TypeScript configuration, public entrypoint contents, and public export facts
+receive a second independent before/after check. Machine-local worktree paths exist only in an ignored
+locator; portable reports contain project-relative paths and hashes.
 
 Feature changes and architecture migrations will be separate transactions. A prerequisite migration can
 therefore be reviewed, validated, reverted, or reused independently of the feature that motivated it.
-That separation also keeps rollback scope explicit and prevents a failed feature from obscuring whether
-an architecture change was sound.
+Phase 3 creates reviewable local candidates but does not execute rollback, merge, or push operations.

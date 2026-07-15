@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const projectRelativePathSchema = z
+export const projectRelativePathSchema = z
   .string()
   .min(1)
   .refine(

@@ -1,6 +1,6 @@
 {
   "name": "braid",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "license": "MIT",
@@ -30,7 +30,10 @@
     "benchmark:real:list": "pnpm build && node packages/benchmark/dist/cli/index.js repositories list",
     "benchmark:real:qualify": "pnpm build && node packages/benchmark/dist/cli/index.js repositories qualify",
     "benchmark:real:run": "pnpm build && node packages/benchmark/dist/cli/index.js run --suite real-world-phase-2",
-    "benchmark:real:regression": "pnpm build && node packages/benchmark/dist/cli/index.js regression --suite real-world-phase-2 --baseline real-world-phase-2-precision-v1 --policy real-world"
+    "benchmark:real:regression": "pnpm build && node packages/benchmark/dist/cli/index.js regression --suite real-world-phase-2 --baseline real-world-phase-2-precision-v1 --policy real-world",
+    "benchmark:migration:smoke": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode smoke",
+    "benchmark:migration:run": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode run",
+    "benchmark:migration:regression": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode regression"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

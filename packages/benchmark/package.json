@@ -1,6 +1,6 @@
 {
   "name": "@braid/benchmark",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "description": "Independent reproducible benchmarks for Braid.",
   "type": "module",
@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@braid/core": "workspace:*",
+    "@braid/migrator": "workspace:*",
+    "@braid/store": "workspace:*",
     "commander": "^14.0.0",
     "yaml": "^2.8.0",
     "zod": "^3.25.76"

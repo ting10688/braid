@@ -38,6 +38,9 @@ importers:
       '@braid/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@braid/migrator':
+        specifier: workspace:*
+        version: link:../../packages/migrator
       '@braid/planner':
         specifier: workspace:*
         version: link:../../packages/planner
@@ -70,6 +73,12 @@ importers:
       '@braid/core':
         specifier: workspace:*
         version: link:../core
+      '@braid/migrator':
+        specifier: workspace:*
+        version: link:../migrator
+      '@braid/store':
+        specifier: workspace:*
+        version: link:../store
       commander:
         specifier: ^14.0.0
         version: 14.0.3
@@ -91,6 +100,21 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+
+  packages/migrator:
+    dependencies:
+      '@braid/analyzer':
+        specifier: workspace:*
+        version: link:../analyzer
+      '@braid/core':
+        specifier: workspace:*
+        version: link:../core
+      '@braid/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@braid/store':
+        specifier: workspace:*
+        version: link:../store
 
   packages/planner:
     dependencies:
