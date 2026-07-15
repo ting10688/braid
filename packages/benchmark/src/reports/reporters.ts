@@ -314,11 +314,23 @@ const writeImmutableJson = async (
   }
 };
 
-const metricLabel = (metric: string): string =>
-  metric
-    .replaceAll(/([a-z])([A-Z])/gu, "$1 $2")
-    .toLowerCase()
-    .replace(/^./u, (value) => value.toUpperCase());
+const metricLabel = (metric: string): string => {
+  const labels: Readonly<Record<string, string>> = {
+    topKCoverage: "Top-K coverage",
+    falsePositiveCount: "False positives",
+    medianRuntimeMs: "Median runtime",
+    minimumRuntimeMs: "Minimum runtime",
+    maximumRuntimeMs: "Maximum runtime",
+    reportSizeBytes: "Report size",
+  };
+  return (
+    labels[metric] ??
+    metric
+      .replaceAll(/([a-z])([A-Z])/gu, "$1 $2")
+      .toLowerCase()
+      .replace(/^./u, (value) => value.toUpperCase())
+  );
+};
 
 const metricValue = (
   metric: MetricComparison,

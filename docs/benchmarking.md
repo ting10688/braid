@@ -19,6 +19,87 @@ Source size may increase after a useful boundary is introduced. Runtime on a tin
 either direction due to noise. Neither outcome automatically decides architecture quality, and no opaque
 aggregate benchmark score is produced.
 
+## Fair iteration protocol
+
+`benchmarks/protocol.yaml` is the versioned execution contract. A comparison is intended to change only
+the Braid implementation. It freezes the protocol version, suite ID and version, expectation version,
+selected case configuration, fixture manifest, correctness repetition count, timing repetition count,
+warm-up count, and timeout. Suite `execution` fields may override protocol defaults, but both runs must
+resolve to the same values.
+
+Every run writes two immutable sidecars:
+
+- `manifest.json` records Braid and benchmark versions/commits, semantic input hashes, environment fields,
+  execution counts, timeout, and a path-redacted command.
+- `fixture-manifest.json` records fixture IDs, relative file paths and SHA-256 content hashes,
+  architecture-configuration hashes, expectation-file hashes, and its normalized SHA-256 hash.
+
+Compatibility hashes contain no timestamps or absolute paths. `compare-runs` marks a comparison
+incompatible if protocol version, suite ID/version, expectation version, fixture manifest hash,
+configuration hash, correctness repetitions, or timeout policy differs. Timing/warm-up counts are also
+held fixed. `--allow-incompatible` reveals informational metric rows but never hides the incompatibility
+or changes the overall result from `incompatible`.
+
+Material environment differences in platform, architecture, Node, pnpm, or Git do not prevent
+correctness comparison when semantic inputs match. They do force runtime rows to warning/informational
+status; Braid Bench never presents cross-machine timing as controlled evidence.
+
+## Repetitions, normalization, and flakiness
+
+Correctness defaults to three repetitions. Timing defaults to seven measured repetitions after one
+excluded warm-up; reports use median as the primary runtime measure and retain minimum/maximum. Suite
+overrides are explicit and recorded in the run manifest.
+
+Correctness normalization removes only protocol-listed volatility: run IDs, timestamps, temporary
+directory paths, timing samples, and generated `.braid/state` paths. Proposal IDs and order, targets,
+affected files, evidence, risk, reversibility, ranking components, exit codes, and source mutations remain
+meaningful. A case is flaky if any normalized correctness output differs. Reports identify each differing
+field and the one-based repetitions involved. The default policy treats any flaky case as blocking.
+
+## Regression policy and metric categories
+
+`benchmarks/policies/default.yaml` is validated and versioned. Every metric status includes the rule and
+observed outcome that produced it; thresholds are not embedded in report rendering.
+
+- **Correctness:** expected-issue coverage, proposal validity, Top-K and evidence coverage, evidence
+  correctness, risk/reversibility agreement, clean-fixture false positives, source mutations, build/test
+  success, and expected exit-code matching. Coverage/validity/evidence-correctness decreases, false
+  positives or source mutations above zero, and build/test failures block by default.
+- **Stability:** case and deterministic counts, flaky cases, proposal identity/order stability, and
+  persistence idempotency. New correctness flakiness blocks.
+- **Cost:** median/minimum/maximum runtime, proposal count, and serialized report size. Regressions are
+  normally warnings under policy tolerances. Peak memory is omitted because the current CLI runner cannot
+  measure it reliably and portably.
+
+No arithmetic mean is used as the primary timing statistic. A passing comparison may still contain cost
+warnings or improvements without changing correctness.
+
+## Golden baselines and iteration workflow
+
+Golden baselines under `benchmarks/baselines/` contain the complete compatibility manifest, normalized
+correctness/stability summaries, informational cost summary, and source Braid/benchmark versions and
+commits. They contain no raw logs, hostnames, usernames, absolute paths, temporary paths, or universal
+timing assertions. Creation and replacement require explicit `--force` confirmation:
+
+```bash
+pnpm benchmark:baseline -- create --run benchmarks/results/<run> --name phase-2-core --force
+pnpm benchmark:baseline -- list
+pnpm benchmark:baseline -- show phase-2-core
+node packages/benchmark/dist/cli/index.js compare-baseline phase-2-core <candidate-run>
+
+pnpm benchmark:iteration -- \
+  --suite phase-2-core \
+  --baseline-braid /path/to/baseline/braid \
+  --candidate-braid /path/to/candidate/braid \
+  --output benchmarks/results/my-iteration
+```
+
+`iteration` creates `baseline/` and `candidate/` normal run directories, then writes
+`comparison.json`, `comparison.md`, and `comparison.txt`. Exit code `0` means pass or warnings only,
+`2` means a blocking regression, `3` means incompatible inputs, and `1` means an execution or validation
+error. `benchmark:regression` repeats the smoke suite and compares correctness/stability with the tracked
+smoke baseline; cross-environment timing remains informational and cannot fail CI.
+
 ## Phases
 
 ### A — proposal quality and determinism
@@ -82,14 +163,11 @@ as infallible.
 
 JSON is the source-of-truth report; console and Markdown are projections. Persisted reports normalize
 workspace and fixture paths, and environment fingerprints omit username, home directory, hostname,
-secrets, and unrelated machine data. `compare-runs` requires compatible suite IDs and expectation versions
-unless explicitly overridden. It separates improvements from regressions and does not assume run B is
-newer or better.
+secrets, and unrelated machine data. Comparison reports separate blocking regressions, warnings,
+improvements, and unchanged results across correctness, stability, and cost.
 
-Tracked baselines include suite ID, expectation version, Braid commit/version, benchmark commit/version,
-and a normalized result summary. They may enforce architecture matching, determinism, and source safety.
-Timing baselines are informational on uncontrolled machines; a few tiny repetitions do not establish
-statistical significance.
+Tracked timing summaries are informational on uncontrolled machines; seven tiny repetitions do not
+establish statistical significance.
 
 ## Future real-world repositories
 

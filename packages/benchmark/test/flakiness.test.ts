@@ -84,7 +84,7 @@ describe("correctness normalization and flakiness", () => {
     ).toContain("proposalIds");
   });
 
-  it("detects evidence, risk, ranking, and meaningful target changes", () => {
+  it("detects evidence, risk, reversibility, ranking, and meaningful target changes", () => {
     const proposal = extractionProposal();
     const evidence = changed(proposal, {
       evidence: proposal.evidence.slice(0, 1),
@@ -105,6 +105,9 @@ describe("correctness normalization and flakiness", () => {
     const ranking = changed(proposal, {
       ranking: { ...proposal.ranking, severity: 3 },
     });
+    const reversibility = changed(proposal, {
+      reversibility: { level: "difficult", factors: ["changed"] },
+    });
     const target = extractionProposal(undefined, "src/changed.ts");
     expect(fields(observation([proposal]), observation([evidence]))).toContain(
       "evidence",
@@ -112,6 +115,9 @@ describe("correctness normalization and flakiness", () => {
     expect(fields(observation([proposal]), observation([risk]))).toContain(
       "risk",
     );
+    expect(
+      fields(observation([proposal]), observation([reversibility])),
+    ).toContain("reversibility");
     expect(fields(observation([proposal]), observation([ranking]))).toContain(
       "ranking",
     );
@@ -131,5 +137,14 @@ describe("correctness normalization and flakiness", () => {
       field: "exitCode",
       repetitions: [1, 2],
     });
+    expect(
+      detectProposalFlakiness(
+        [
+          observation([proposal]),
+          { proposals: [proposal], exitCode: 0, sourceMutations: ["src/a.ts"] },
+        ],
+        rules,
+      ).differences,
+    ).toContainEqual({ field: "sourceMutations", repetitions: [1, 2] });
   });
 });
