@@ -14,6 +14,9 @@ installations or `.braid/state` writes.
   persistence idempotency, exit codes, and source hashes are checked for flakiness.
 - `static-comparison`: a behavior-equivalent manual notification-boundary refactor. It independently
   measures architecture, build/test behavior, timing, runtime command duration, and configured artifacts.
+- `real-world-phase-2`: pinned Consola control and tslog complexity cases. Both use three correctness
+  repetitions, one warm-up, and seven timing repetitions. Qualification, accepted/rejected/ambiguous
+  proposal review, repository hashes, and source-size metadata live under `repositories/`.
 
 Run them from the repository root:
 
@@ -23,6 +26,12 @@ pnpm benchmark:smoke
 pnpm benchmark:run
 pnpm benchmark:compare
 pnpm benchmark:regression
+pnpm benchmark:real:list
+pnpm benchmark:real:qualify
+pnpm benchmark:real:run
+pnpm benchmark:real:regression
+node packages/benchmark/dist/cli/index.js repositories inspect consola
+node packages/benchmark/dist/cli/index.js repositories refresh consola
 node packages/benchmark/dist/cli/index.js run --suite phase-2-core --json
 node packages/benchmark/dist/cli/index.js compare-runs <run-a> <run-b>
 node packages/benchmark/dist/cli/index.js baseline create --run <run> --name <name> --force
@@ -42,6 +51,17 @@ under `baselines/`; creating or replacing one requires `--force`. Baselines excl
 hostnames, usernames, temporary repositories, full logs, and universal timing assertions. The default
 policy blocks correctness and stability regressions but only warns on material cost increases. Timing is
 informational when environment fields differ.
+
+Real repositories are cloned only by the explicit `repositories refresh <id>` command. The verified
+canonical checkout lives under the ignored `.braid-bench-cache/repositories/` directory with detached
+HEAD and a disabled push URL. Cached suite runs require no network: each run locally clones the cache to
+a new temporary directory, removes its remote, runs Braid, checks source hashes, and deletes the copy.
+Normal CI validates schemas, manifests, configs, and synthetic regression; it never refreshes repositories.
+
+Changing a repository commit requires a new suite version, expectation version, source/lockfile/license
+hash review, fresh qualification, proposal review, and a newly named baseline. If a candidate is rejected,
+remove it from the suite, document the rejection, and submit an independently reviewed replacement in a
+separate change—never silently substitute another repository.
 
 To add a case, keep the fixture deterministic, supply an exact lockfile if dependencies are permitted,
 write independent expectation labels with equivalent valid targets where needed, and verify build/test

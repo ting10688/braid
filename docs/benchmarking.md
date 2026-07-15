@@ -40,6 +40,11 @@ configuration hash, correctness repetitions, or timeout policy differs. Timing/w
 held fixed. `--allow-incompatible` reveals informational metric rows but never hides the incompatibility
 or changes the overall result from `incompatible`.
 
+For repository cases, compatibility additionally freezes the manifest version, canonical URL, full
+commit SHA, license hash, lockfile hash, source-manifest hash, repository-specific Braid configuration
+hash, qualification status, source size, and recorded install/build/test/analysis status. Any difference
+is semantically incompatible; a changed pin therefore requires a suite/expectation review and new baseline.
+
 Material environment differences in platform, architecture, Node, pnpm, or Git do not prevent
 correctness comparison when semantic inputs match. They do force runtime rows to warning/informational
 status; Braid Bench never presents cross-machine timing as controlled evidence.
@@ -62,7 +67,7 @@ field and the one-based repetitions involved. The default policy treats any flak
 observed outcome that produced it; thresholds are not embedded in report rendering.
 
 - **Correctness:** expected-issue coverage, proposal validity, Top-K and evidence coverage, evidence
-  correctness, risk/reversibility agreement, clean-fixture false positives, source mutations, build/test
+  correctness, risk/reversibility agreement, reviewed false positives, source mutations, build/test
   success, and expected exit-code matching. Coverage/validity/evidence-correctness decreases, false
   positives or source mutations above zero, and build/test failures block by default.
 - **Stability:** case and deterministic counts, flaky cases, proposal identity/order stability, and
@@ -153,12 +158,23 @@ excluded from source mutation results; source, tests, manifests, lockfiles, Type
 the architecture configuration are not. Temporary directories are deleted unless `--keep-workdirs` is
 specified. Synthetic suites require no network.
 
+Every real-world run first verifies the ignored canonical cache checkout: exact detached HEAD, canonical
+fetch URL, disabled push URL, MIT license hash, exact lockfile hash, source manifest, source counts, LOC,
+and module count. It then makes a local no-hardlink clone in a fresh temporary directory, removes `origin`,
+and runs Braid only there. Cached runs never fetch and never execute dependency installation; explicit
+qualification may restore dependencies, while explicit refresh is the only repository network operation.
+
 ## Expectations, reproducibility, and reports
 
 Expectation files are versioned. They label issue type, equivalent acceptable targets, required evidence,
 allowed human risk/reversibility labels, and Top-K requirements without requiring exact titles or prose.
 Human labels can be incomplete, so disagreements remain visible rather than silently treating the label
 as infallible.
+
+Real-world expectations also classify reviewed non-required output as `rejected`, `ambiguous`, or
+`informational`. Rejected output counts as a false positive, ambiguous output is reported but excluded
+from the proposal-validity denominator, and informational output is allowed. Matchers use technical shape
+(such as a cycle edge and bounded affected scope), never current proposal IDs or exact summary wording.
 
 JSON is the source-of-truth report; console and Markdown are projections. Persisted reports normalize
 workspace and fixture paths, and environment fingerprints omit username, home directory, hostname,
@@ -168,20 +184,37 @@ improvements, and unchanged results across correctness, stability, and cost.
 Tracked timing summaries are informational on uncontrolled machines; seven tiny repetitions do not
 establish statistical significance.
 
-## Future real-world repositories
+## Real-world Phase 2 suite
 
-Real-world cases will record repository URL, exact commit SHA, license metadata, setup/build/test commands,
-and local cache metadata. Network cloning is intentionally absent from the current runner. The workflow is:
+`real-world-phase-2` contains two independently reviewed MIT TypeScript repositories:
 
-```text
-pin repository commit
-review license
-prepare local cached checkout
-define architecture expectations
-define one or more downstream feature tasks
-run baseline
-apply Braid migration
-rerun comparison
+- **Consola** at `c47faac1738b7383971c6c20b5a34ffa15e7cc3b` is the low-complexity
+  false-positive control. It is `qualified`, although its 21 source files are below the preferred range.
+- **tslog** at `07d3e31ea36ae1074accb0097bdc53bd73c93e13` is the complexity case with
+  multiple runtime entrypoints, subpaths, transports, presets, serializers, and CLI code. It is
+  `qualified-with-limitations`: browser/Bun/Deno tests are excluded and six native-preview files produce
+  parser diagnostics while still yielding imports and declarations.
+
+Qualification uses pinned lockfiles and disabled lifecycle scripts. Consola runs `pnpm build` and
+`pnpm vitest run`; tslog runs `npm test` and `npm run build`. The latter's upstream build includes a local
+`prepare-publish` file-preparation step, but no release, pre-publish, credentialed, or publishing command
+is run. The suite itself runs only Braid analysis/proposal work from cache and remains network-free.
+
+```bash
+pnpm benchmark:real:list
+node packages/benchmark/dist/cli/index.js repositories inspect consola
+pnpm benchmark:real:qualify
+pnpm benchmark:real:run
+pnpm benchmark:real:regression
+
+# Explicit network refresh; never implicit in CI
+node packages/benchmark/dist/cli/index.js repositories refresh consola
 ```
 
-A moving default branch is never a valid benchmark input.
+The tracked `real-world-phase-2-v1` baseline freezes correctness and stability. Timing is retained for the
+local report but is warning-only across differing environments and is never a cross-machine gate. Normal
+CI runs synthetic regression plus schema/manifest validation; it does not clone or refresh external input.
+
+To replace a rejected candidate, record the rejection, select a replacement in a separate reviewed change,
+repeat license/lockfile/source/build/test/Braid qualification, then bump suite and expectation versions.
+A moving branch, silent replacement, or reused baseline is never compatible.
