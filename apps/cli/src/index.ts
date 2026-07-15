@@ -8,7 +8,7 @@ import { proposeCommand } from "./commands/propose.js";
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.2.0");
+  .version("0.2.3");
 
 program
   .command("init")

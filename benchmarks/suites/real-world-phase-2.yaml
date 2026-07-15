@@ -1,6 +1,6 @@
 schemaVersion: 1
-suiteVersion: 1.0.0
-expectationVersion: 1.0.0
+suiteVersion: 1.1.0
+expectationVersion: 1.1.0
 id: real-world-phase-2
 title: Phase 2 real-world repository proposal quality
 description: Independently reviewed false-positive control and complex-project proposal quality on pinned TypeScript repositories.

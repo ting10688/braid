@@ -143,7 +143,7 @@ const printComparison = (
 const program = new Command()
   .name("braid-bench")
   .description("Independent reproducible benchmarks for Braid")
-  .version("0.2.0");
+  .version("0.2.3");
 
 program
   .command("list")

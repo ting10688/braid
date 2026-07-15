@@ -16,7 +16,8 @@ installations or `.braid/state` writes.
   measures architecture, build/test behavior, timing, runtime command duration, and configured artifacts.
 - `real-world-phase-2`: pinned Consola control and tslog complexity cases. Both use three correctness
   repetitions, one warm-up, and seven timing repetitions. Qualification, accepted/rejected/ambiguous
-  proposal review, repository hashes, and source-size metadata live under `repositories/`.
+  proposal review, repository hashes, and source-size metadata live under `repositories/`. The 1.1.0
+  precision review groups SCC actions and distinguishes root files, entrypoints, and barrels.
 
 Run them from the repository root:
 
@@ -51,6 +52,12 @@ under `baselines/`; creating or replacing one requires `--force`. Baselines excl
 hostnames, usernames, temporary repositories, full logs, and universal timing assertions. The default
 policy blocks correctness and stability regressions but only warns on material cost increases. Timing is
 informational when environment fields differ.
+
+`real-world-phase-2-v1` is preserved as the historical 1.0.0 baseline;
+`real-world-phase-2-precision-v1` is the 1.1.0 precision baseline. The controlled 1.0.0-input comparison
+records 11 → 2 top-level proposals, 37.5% → 75% proposal-action validity, and 5 → 1 false positives with
+coverage, evidence correctness, determinism, and source safety unchanged. A direct cross-version
+baseline comparison remains intentionally incompatible because suite and expectation hashes are frozen.
 
 Real repositories are cloned only by the explicit `repositories refresh <id>` command. The verified
 canonical checkout lives under the ignored `.braid-bench-cache/repositories/` directory with detached

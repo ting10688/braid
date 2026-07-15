@@ -10,6 +10,12 @@ and persist validated deterministic snapshots.
 Generate deterministic evidence-backed proposals with explainable risk, reversibility, impact certainty,
 stable identity, ranking, persistence, and source-safety guards.
 
+### Phase 2.1: Proposal precision improvements — complete
+
+Classify root files, package entrypoints, and barrels explicitly; group cycle actions by deterministic
+SCC root cause; retain one ranked primary with typed alternatives; and suppress equivalent or subsumed
+cycle actions. The reviewed real-world comparison preserves recall and reduces false positives.
+
 ## Phase 3: Codex migration execution in Git worktrees — next
 
 Execute approved migrations through Codex in isolated worktrees without contaminating read-only analysis.
@@ -35,4 +41,4 @@ These milestones describe evaluator coverage and are distinct from product execu
 - Benchmark C: Downstream feature change cost — scaffolded
 - Benchmark D: Migration rollback validation — scaffolded
 - Real-world repository suite — complete (`real-world-phase-2`, Consola and tslog)
-- Real-world-guided proposal precision (module-boundary classification and duplicate cycle actions) — next
+- Real-world-guided proposal precision (module-boundary classification and duplicate cycle actions) — complete

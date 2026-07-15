@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "issues": [
     {
       "id": "render-core-boundary-cycle",
@@ -151,6 +151,19 @@
         "architecture-constraint"
       ],
       "notes": "Duplicates the accepted internal-to-env edge with the broadest affected scope."
+    },
+    {
+      "id": "json-stringify-local-cluster",
+      "classification": "rejected",
+      "type": "extract-module",
+      "acceptableFiles": [["src/render/json.ts"]],
+      "acceptableModules": [["render"]],
+      "acceptableSymbols": [
+        ["jsonStringifySafe", "jsonStringifyValue", "stringifyFieldValue"]
+      ],
+      "maximumAffectedFiles": 1,
+      "requiredEvidenceTypes": ["oversized-file", "symbol-cluster"],
+      "notes": "The identifier cluster and references are factual, but these helpers are coupled to the renderer's field-serialization hot path and include its existing public stringify function. Static naming evidence does not establish an independent module boundary or a clear architectural benefit."
     }
   ]
 }

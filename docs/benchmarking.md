@@ -66,7 +66,7 @@ field and the one-based repetitions involved. The default policy treats any flak
 `benchmarks/policies/default.yaml` is validated and versioned. Every metric status includes the rule and
 observed outcome that produced it; thresholds are not embedded in report rendering.
 
-- **Correctness:** expected-issue coverage, proposal validity, Top-K and evidence coverage, evidence
+- **Correctness:** expected-issue coverage, proposal-action validity, Top-K and evidence coverage, evidence
   correctness, risk/reversibility agreement, reviewed false positives, source mutations, build/test
   success, and expected exit-code matching. Coverage/validity/evidence-correctness decreases, false
   positives or source mutations above zero, and build/test failures block by default.
@@ -78,6 +78,12 @@ observed outcome that produced it; thresholds are not embedded in report renderi
 
 No arithmetic mean is used as the primary timing statistic. A passing comparison may still contain cost
 warnings or improvements without changing correctness.
+
+Proposal validity uses independently reviewed technical actions: accepted primary/alternative matches
+plus informational actions divided by that count plus rejected or unexpected actions. An SCC primary
+can therefore retain several accepted actions without counting its alternatives as independently ranked
+top-level proposals. Matching consumes actions deterministically, so the ratio cannot exceed 100%.
+Ambiguous reviews remain outside the denominator.
 
 ## Golden baselines and iteration workflow
 
@@ -211,9 +217,19 @@ pnpm benchmark:real:regression
 node packages/benchmark/dist/cli/index.js repositories refresh consola
 ```
 
-The tracked `real-world-phase-2-v1` baseline freezes correctness and stability. Timing is retained for the
-local report but is warning-only across differing environments and is never a cross-machine gate. Normal
-CI runs synthetic regression plus schema/manifest validation; it does not clone or refresh external input.
+The tracked `real-world-phase-2-v1` baseline remains the Phase 2 historical record. Before the reviewed
+metadata version changed, the Phase 2.1 candidate was compared with those exact 1.0.0 inputs: output fell
+from 11 to 2 top-level proposals, validity rose from 37.5% to 75%, and false positives fell from 5 to 1;
+coverage, evidence correctness, deterministic cases, flakiness, and source mutations were unchanged.
+The separately named `real-world-phase-2-precision-v1` baseline freezes the reviewed 1.1.0 suite and
+expectation metadata. Timing is retained for local reports but is warning-only across differing
+environments and is never a cross-machine gate. Normal CI runs synthetic regression plus schema/manifest
+validation; it does not clone or refresh external input.
+
+The remaining reviewed false positive is a name-linked stringify helper cluster inside tslog's JSON
+renderer. Its references are factual, but static identifiers do not prove that moving the existing
+public helper and its private hot-path functions would create a better module boundary. SCC alternatives
+are likewise technically plausible graph actions, not semantic architecture judgments.
 
 To replace a rejected candidate, record the rejection, select a replacement in a separate reviewed change,
 repeat license/lockfile/source/build/test/Braid qualification, then bump suite and expectation versions.
