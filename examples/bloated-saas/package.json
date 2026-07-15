@@ -1,5 +1,5 @@
 {
-  "name": "@topiary/example-bloated-saas",
+  "name": "@braid/example-bloated-saas",
   "version": "0.1.0",
   "private": true,
   "type": "module",

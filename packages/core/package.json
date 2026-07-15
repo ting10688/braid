@@ -1,5 +1,5 @@
 {
-  "name": "@topiary/core",
+  "name": "@braid/core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@topiary/shared": "workspace:*",
+    "@braid/shared": "workspace:*",
     "yaml": "^2.8.0",
     "zod": "^3.25.76"
   }

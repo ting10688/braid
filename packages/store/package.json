@@ -1,5 +1,5 @@
 {
-  "name": "@topiary/store",
+  "name": "@braid/store",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@topiary/core": "workspace:*",
-    "@topiary/shared": "workspace:*"
+    "@braid/core": "workspace:*",
+    "@braid/shared": "workspace:*"
   }
 }

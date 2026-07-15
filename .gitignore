@@ -2,6 +2,6 @@ node_modules/
 .pnpm-store/
 dist/
 *.tsbuildinfo
-.topiary/state/snapshots/*.json
+.braid/state/snapshots/*.json
 coverage/
 .DS_Store

@@ -2,7 +2,7 @@ import type {
   ArchitectureConfig,
   ArchitectureMetrics,
   RepositoryModel,
-} from "@topiary/core";
+} from "@braid/core";
 
 export const calculateMetrics = (
   repository: RepositoryModel,

@@ -1,10 +1,11 @@
 {
-  "name": "@topiary/cli",
+  "name": "@braid/cli",
   "version": "0.1.0",
   "private": true,
+  "description": "Continuous architecture evolution for growing codebases.",
   "type": "module",
   "bin": {
-    "topiary": "./dist/index.js"
+    "braid": "./dist/index.js"
   },
   "exports": {
     ".": {
@@ -17,10 +18,10 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@topiary/analyzer": "workspace:*",
-    "@topiary/core": "workspace:*",
-    "@topiary/shared": "workspace:*",
-    "@topiary/store": "workspace:*",
+    "@braid/analyzer": "workspace:*",
+    "@braid/core": "workspace:*",
+    "@braid/shared": "workspace:*",
+    "@braid/store": "workspace:*",
     "commander": "^14.0.0"
   }
 }

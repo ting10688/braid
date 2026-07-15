@@ -1,0 +1,63 @@
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { analyzeRepository } from "@braid/analyzer";
+import {
+  configHash,
+  createArchitectureSnapshot,
+  loadArchitectureConfig,
+} from "@braid/core";
+import { CONFIG_FILE } from "@braid/shared";
+import { JsonSnapshotStore } from "@braid/store";
+import { formatConsoleReport } from "../output/console-reporter.js";
+
+const execFileAsync = promisify(execFile);
+
+export interface AnalyzeOptions {
+  json?: boolean;
+  save?: boolean;
+}
+
+const readGitCommit = async (projectRoot: string): Promise<string | null> => {
+  try {
+    const { stdout } = await execFileAsync("git", [
+      "-C",
+      projectRoot,
+      "rev-parse",
+      "HEAD",
+    ]);
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+};
+
+export const analyzeCommand = async (
+  targetPath: string,
+  options: AnalyzeOptions,
+): Promise<void> => {
+  const projectRoot = path.resolve(targetPath);
+  const config = await loadArchitectureConfig(
+    path.join(projectRoot, CONFIG_FILE),
+  );
+  const analysis = await analyzeRepository(projectRoot, config);
+  const snapshot = createArchitectureSnapshot({
+    projectRoot,
+    gitCommit: await readGitCommit(projectRoot),
+    configHash: configHash(config),
+    repository: analysis.repository,
+    metrics: analysis.metrics,
+  });
+  const savedPath =
+    options.save === false
+      ? null
+      : await new JsonSnapshotStore(projectRoot).save(snapshot);
+
+  for (const warning of analysis.warnings)
+    process.stderr.write(`Warning: ${warning}\n`);
+  process.stdout.write(
+    options.json
+      ? `${JSON.stringify(snapshot, null, 2)}\n`
+      : `${formatConsoleReport(snapshot, savedPath)}\n`,
+  );
+};

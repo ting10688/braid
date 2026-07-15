@@ -1,8 +1,8 @@
 import path from "node:path";
 import { access, glob } from "node:fs/promises";
 import { DiagnosticCategory, Project, ts, type SourceFile } from "ts-morph";
-import type { ArchitectureConfig, SourceFileRecord } from "@topiary/core";
-import { AnalysisError, projectRelativePath } from "@topiary/shared";
+import type { ArchitectureConfig, SourceFileRecord } from "@braid/core";
+import { AnalysisError, projectRelativePath } from "@braid/shared";
 
 export interface ScannedImport {
   fromFile: string;
