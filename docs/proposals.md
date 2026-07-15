@@ -73,6 +73,12 @@ risk, `easy` reversibility, no protected-path evidence, no public-entrypoint evi
 entrypoint, a current source fingerprint/configuration/HEAD, a clean Git checkout, configured validation
 commands, and an approval value exactly equal to the proposal ID.
 
+Phase 3.1 additionally computes execution readiness. Primary symbols come from `candidateSymbols`;
+separately reviewed proposal content may identify `approvedCompanionSymbols` with exact file/symbol
+locators. The planner does not infer those during execution, and adding readiness-only analyzer facts is
+excluded from the Phase 2 proposal-ID hash so existing proposal IDs remain stable. An unapproved
+required companion yields an explanation and a new or updated proposal must be reviewed separately.
+
 `break-cycle`, medium/high risk, conditional/difficult reversal, missing fingerprints, stale files,
 package or lockfile scope, and public surfaces are hard rejections rather than warnings. Planner rollback
 text remains review guidance only; Phase 3 does not execute it. See [safe migration execution](migrations.md)
