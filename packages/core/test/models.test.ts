@@ -109,6 +109,36 @@ describe("domain schemas", () => {
         riskPenalty: 0,
         deterministicTieBreaker: "P-BC-81ce1120",
       },
+      alternatives: [
+        {
+          strategy: "dependency-inversion",
+          selectedEdge: {
+            fromModule: "orders",
+            toModule: "users",
+            files: ["src/users/user-service.ts"],
+          },
+          affectedFiles: ["src/users/user-service.ts"],
+          affectedModules: ["orders", "users"],
+          rationale: "Invert the reverse edge instead.",
+          evidence: [
+            {
+              type: "dependency-cycle",
+              modules: ["orders", "users"],
+              files: ["src/users/user-service.ts"],
+            },
+          ],
+          expectedImpact: {
+            simulated: [],
+            estimated: [],
+            unknowns: [],
+          },
+          risk: { level: "low", points: 0, factors: [] },
+          reversibility: {
+            level: "conditional",
+            factors: ["Restore the reverse edge."],
+          },
+        },
+      ],
     });
 
     expect(

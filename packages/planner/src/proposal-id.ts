@@ -6,7 +6,7 @@ import type {
   ProposalType,
 } from "@braid/core";
 
-export const PLANNER_VERSION = "0.2.0";
+export const PLANNER_VERSION = "0.2.1";
 
 const normalizedJson = (value: unknown): string => {
   if (Array.isArray(value))

@@ -76,6 +76,31 @@ describe("extract-module proposal generation", () => {
     expect(extractProposal(file)).toBeUndefined();
   });
 
+  it("requires runtime declarations connected by internal references", () => {
+    const typeOnly = oversizedFile();
+    typeOnly.declarations = typeOnly.declarations?.map((declaration) => ({
+      ...declaration,
+      kind: "interface" as const,
+    }));
+    expect(extractProposal(typeOnly)).toBeUndefined();
+
+    const disconnected = oversizedFile();
+    disconnected.declarations = disconnected.declarations?.map(
+      (declaration) => ({ ...declaration, references: [] }),
+    );
+    expect(extractProposal(disconnected)).toBeUndefined();
+  });
+
+  it("rejects broad short-name clusters", () => {
+    const file = oversizedFile();
+    file.declarations = [
+      { ...file.declarations![0]!, name: "sendLog", references: ["buildLog"] },
+      { ...file.declarations![1]!, name: "buildLog" },
+      file.declarations![2]!,
+    ];
+    expect(extractProposal(file)).toBeUndefined();
+  });
+
   it("tokenizes camelCase and PascalCase and filters generic words", () => {
     expect(tokenizeSymbolName("buildNotificationPayload")).toEqual([
       "notification",
@@ -97,16 +122,20 @@ describe("extract-module proposal generation", () => {
       expect(extractProposal({ ...oversizedFile(), ...patch })).toBeUndefined();
   });
 
-  it("records public entrypoint impact", () => {
+  it("excludes public entrypoints from ordinary extraction", () => {
     const file = oversizedFile();
-    const proposal = extractProposal(file, [file.path])!;
-    expect(proposal.risk).toMatchObject({ level: "medium", points: 2 });
-    expect(proposal.reversibility.level).toBe("conditional");
-    expect(
-      proposal.evidence.some(
-        (evidence) => evidence.type === "public-entrypoint-impact",
-      ),
-    ).toBe(true);
+    expect(extractProposal(file, [file.path])).toBeUndefined();
+  });
+
+  it("excludes package entrypoints while keeping root implementation files analyzable", () => {
+    const entrypoint = { ...oversizedFile(), path: "src/public.ts" };
+    expect(extractProposal(entrypoint, [entrypoint.path])).toBeUndefined();
+
+    const root = { ...oversizedFile(), path: "src/worker.ts" };
+    expect(extractProposal(root)?.target).toMatchObject({
+      type: "extract-module",
+      sourceModule: "root:worker",
+    });
   });
 
   it("keeps protected extraction visible but high risk", () => {

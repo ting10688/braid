@@ -39,7 +39,10 @@ const moduleFor = (file: string): string => {
     .split("/")
     .slice(file.split("/").lastIndexOf("src") + 1);
   const first = belowSource[0];
-  if (!first || /\.[^.]+$/u.test(first)) return "root";
+  if (!first || /\.[^.]+$/u.test(first)) {
+    const stem = (first ?? file).replace(/\.[cm]?[jt]sx?$/u, "");
+    return /^index(?:\.|$)/u.test(stem) ? `entrypoint:${stem}` : `root:${stem}`;
+  }
   if (
     first === "modules" &&
     belowSource[1] &&

@@ -1,4 +1,8 @@
-import { classifyModule, findDependencyCycles } from "@braid/analyzer";
+import {
+  classifyModule,
+  classifyModuleIdentity,
+  findDependencyCycles,
+} from "@braid/analyzer";
 import {
   configHash,
   createArchitectureSnapshot,
@@ -41,15 +45,20 @@ export const createPlannerSnapshot = ({
           .sort(),
         isTestFile: false,
       }));
+  const moduleFor = (filePath: string) =>
+    classifyModule(filePath, { publicEntrypoints });
   const moduleIds = [
-    ...new Set(sourceFiles.map((file) => classifyModule(file.path))),
+    ...new Set(sourceFiles.map((file) => moduleFor(file.path))),
   ].sort();
   const modules = moduleIds.map((id) => {
     const moduleFiles = sourceFiles.filter(
-      (file) => classifyModule(file.path) === id,
+      (file) => moduleFor(file.path) === id,
     );
     return {
       id,
+      kind: classifyModuleIdentity(moduleFiles[0]!.path, {
+        publicEntrypoints,
+      }).kind,
       paths: moduleFiles.map((file) => file.path).sort(),
       fileCount: moduleFiles.length,
       exportedSymbolCount: moduleFiles.reduce(

@@ -23,6 +23,12 @@ export const classifyRisk = (candidate: ProposalCandidate): RiskAssessment => {
       2,
       `Touches public entrypoints: ${candidate.publicEntrypoints.join(", ")}.`,
     );
+  if (candidate.moduleSurfaceFiles.length > 0)
+    add(
+      "module-surface",
+      1,
+      `Touches entrypoint or barrel modules: ${candidate.moduleSurfaceFiles.join(", ")}.`,
+    );
   if (candidate.protectedFiles.length > 0)
     add(
       "protected-path",

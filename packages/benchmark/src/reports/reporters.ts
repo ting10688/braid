@@ -43,12 +43,8 @@ export const proposalSummary = (run: BenchmarkRun): ProposalSummary => {
     (sum, result) => sum + result.matchedIssueIds.length,
     0,
   );
-  const proposals = cases.reduce(
-    (sum, result) => sum + result.proposals.length,
-    0,
-  );
-  const ambiguous = cases.reduce(
-    (sum, result) => sum + (result.ambiguousProposalIds?.length ?? 0),
+  const acceptedActions = cases.reduce(
+    (sum, result) => sum + result.matchedIssueIds.length,
     0,
   );
   const informational = cases.reduce(
@@ -62,9 +58,15 @@ export const proposalSummary = (run: BenchmarkRun): ProposalSummary => {
     cases: cases.length,
     expectedIssueCoverage: expected === 0 ? 1 : matched / expected,
     proposalValidity:
-      proposals - ambiguous === 0
+      acceptedActions +
+        informational +
+        cases.reduce((sum, result) => sum + falsePositives(result), 0) ===
+      0
         ? 1
-        : (matched + informational) / (proposals - ambiguous),
+        : (acceptedActions + informational) /
+          (acceptedActions +
+            informational +
+            cases.reduce((sum, result) => sum + falsePositives(result), 0)),
     topKCoverage: mean(
       cases
         .filter(({ expectedIssues }) => expectedIssues > 0)
@@ -236,6 +238,7 @@ export const markdownReport = (run: BenchmarkRun): string => {
         `- Persistence idempotent: ${result.persistenceIdempotent ? "yes" : "no"}`,
         `- Source mutations: ${result.sourceMutations.length}`,
         `- Matched: ${result.matchedIssueIds.join(", ") || "none"}`,
+        `- Accepted top-level proposals: ${result.acceptedProposalIds?.join(", ") || "none"}`,
         `- Unmatched: ${result.unmatchedIssueIds.join(", ") || "none"}`,
         `- Unexpected proposals: ${result.unexpectedProposalIds.join(", ") || "none"}`,
         `- Rejected proposals / false positives: ${result.rejectedProposalIds?.join(", ") || "none"}`,

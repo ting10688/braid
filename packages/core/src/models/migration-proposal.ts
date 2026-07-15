@@ -20,6 +20,18 @@ export const reversibilityLevelSchema = z.enum([
   "difficult",
 ]);
 
+export const cycleStrategySchema = z.enum([
+  "introduce-boundary",
+  "dependency-inversion",
+  "move-shared-contract",
+]);
+
+export const selectedCycleEdgeSchema = z.object({
+  fromModule: z.string().min(1),
+  toModule: z.string().min(1),
+  files: z.array(projectRelativePathSchema).min(1),
+});
+
 export const proposalTargetSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("extract-module"),
@@ -32,16 +44,13 @@ export const proposalTargetSchema = z.discriminatedUnion("type", [
     type: z.literal("break-cycle"),
     cycleModules: z.array(z.string().min(1)).min(2),
     cycleFiles: z.array(projectRelativePathSchema).min(1),
-    selectedEdge: z.object({
-      fromModule: z.string().min(1),
-      toModule: z.string().min(1),
-      files: z.array(projectRelativePathSchema).min(1),
-    }),
-    suggestedStrategy: z.enum([
-      "introduce-boundary",
-      "dependency-inversion",
-      "move-shared-contract",
-    ]),
+    selectedEdge: selectedCycleEdgeSchema,
+    suggestedStrategy: cycleStrategySchema,
+    rootCauseSignature: z
+      .string()
+      .regex(/^CR-[a-f0-9]{12}$/u)
+      .optional(),
+    rootCauseModules: z.array(z.string().min(1)).min(2).optional(),
   }),
 ]);
 
@@ -124,6 +133,7 @@ export const riskFactorSchema = z.object({
     "long-cycle",
     "low-confidence",
     "new-public-contract",
+    "module-surface",
   ]),
   points: z.number().int().positive(),
   details: z.string().min(1),
@@ -168,6 +178,18 @@ export const proposalRankingSchema = z.object({
   deterministicTieBreaker: z.string().min(1),
 });
 
+export const proposalAlternativeSchema = z.object({
+  strategy: cycleStrategySchema,
+  selectedEdge: selectedCycleEdgeSchema,
+  affectedFiles: z.array(projectRelativePathSchema).min(1),
+  affectedModules: z.array(z.string().min(1)).min(2),
+  rationale: z.string().min(1),
+  evidence: z.array(proposalEvidenceSchema).min(1),
+  expectedImpact: expectedImpactSchema,
+  risk: riskAssessmentSchema,
+  reversibility: reversibilityAssessmentSchema,
+});
+
 export const migrationProposalSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -187,11 +209,19 @@ export const migrationProposalSchema = z
     constraints: z.array(z.string().min(1)),
     rollbackStrategy: z.string().min(1),
     ranking: proposalRankingSchema,
+    alternatives: z.array(proposalAlternativeSchema).optional(),
   })
   .refine((proposal) => proposal.type === proposal.target.type, {
     path: ["target", "type"],
     message: "must match proposal type",
-  });
+  })
+  .refine(
+    (proposal) => proposal.type === "break-cycle" || !proposal.alternatives,
+    {
+      path: ["alternatives"],
+      message: "only break-cycle proposals may contain alternatives",
+    },
+  );
 
 export type ProposalType = z.infer<typeof proposalTypeSchema>;
 export type ProposalTarget = z.infer<typeof proposalTargetSchema>;
@@ -204,4 +234,5 @@ export type ReversibilityAssessment = z.infer<
   typeof reversibilityAssessmentSchema
 >;
 export type ProposalRanking = z.infer<typeof proposalRankingSchema>;
+export type ProposalAlternative = z.infer<typeof proposalAlternativeSchema>;
 export type MigrationProposal = z.infer<typeof migrationProposalSchema>;

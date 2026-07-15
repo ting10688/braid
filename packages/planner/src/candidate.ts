@@ -24,5 +24,6 @@ export interface ProposalCandidate {
   expectedBenefit: number;
   protectedFiles: string[];
   publicEntrypoints: string[];
+  moduleSurfaceFiles: string[];
   cycleLength?: number;
 }
