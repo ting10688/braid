@@ -1,0 +1,58 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { parse } from "yaml";
+import { ZodError } from "zod";
+import { InvalidInputError } from "@topiary/shared";
+import {
+  architectureConfigSchema,
+  type ArchitectureConfig,
+} from "./architecture-config.js";
+
+const normalizedJson = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(normalizedJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${normalizedJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+};
+
+export const configHash = (config: ArchitectureConfig): string =>
+  createHash("sha256").update(normalizedJson(config)).digest("hex");
+
+export const parseArchitectureConfig = (
+  contents: string,
+): ArchitectureConfig => {
+  try {
+    return architectureConfigSchema.parse(parse(contents));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const details = error.issues
+        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
+        .join("; ");
+      throw new InvalidInputError(`Invalid Topiary configuration: ${details}`, {
+        cause: error,
+      });
+    }
+    throw new InvalidInputError(
+      `Invalid Topiary configuration YAML: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+};
+
+export const loadArchitectureConfig = async (
+  filePath: string,
+): Promise<ArchitectureConfig> => {
+  try {
+    return parseArchitectureConfig(await readFile(filePath, "utf8"));
+  } catch (error) {
+    if (error instanceof InvalidInputError) throw error;
+    throw new InvalidInputError(
+      `Cannot read Topiary configuration at ${filePath}`,
+      { cause: error },
+    );
+  }
+};
