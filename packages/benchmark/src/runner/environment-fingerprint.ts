@@ -16,6 +16,20 @@ export const gitCommit = async (root: string): Promise<string | null> => {
   return value === "unknown" || value === "" ? null : value;
 };
 
+export const gitCommitForCommand = async (
+  command: readonly string[],
+): Promise<string | null> => {
+  const executablePath =
+    command[0] === "node" && command[1]
+      ? command[1]
+      : command[0]?.includes(path.sep)
+        ? command[0]
+        : undefined;
+  return executablePath
+    ? gitCommit(path.dirname(path.resolve(executablePath)))
+    : null;
+};
+
 export const environmentFingerprint = async (
   workspaceRoot: string,
 ): Promise<EnvironmentFingerprint> => ({
@@ -34,5 +48,13 @@ export const normalizedCommand = (
   workspaceRoot: string,
 ): string =>
   command
-    .map((part) => part.replaceAll(path.resolve(workspaceRoot), "<workspace>"))
+    .map((part) => {
+      const normalized = part.replaceAll(
+        path.resolve(workspaceRoot),
+        "<workspace>",
+      );
+      return path.isAbsolute(normalized)
+        ? `<external>/${path.basename(normalized)}`
+        : normalized;
+    })
     .join(" ");

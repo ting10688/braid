@@ -1,0 +1,46 @@
+schemaVersion: 1
+policyVersion: 1.0.0
+blocking:
+  expectedIssueCoverage:
+    direction: nondecreasing
+  proposalValidity:
+    direction: nondecreasing
+  evidenceCorrectness:
+    direction: nondecreasing
+  falsePositiveCount:
+    maximum: 0
+  sourceMutations:
+    maximum: 0
+  buildSuccess:
+    requiredValue: true
+  testSuccess:
+    requiredValue: true
+  expectedExitCodeMatched:
+    requiredValue: true
+  flakyCases:
+    maximum: 0
+  proposalIdentityStable:
+    requiredValue: true
+  proposalOrderingStable:
+    requiredValue: true
+  persistenceIdempotent:
+    requiredValue: true
+warnings:
+  topKCoverage:
+    direction: nondecreasing
+  evidenceCoverage:
+    direction: nondecreasing
+  riskAgreement:
+    direction: nondecreasing
+  reversibilityAgreement:
+    direction: nondecreasing
+  medianRuntimeMs:
+    allowedRegressionPercent: 20
+  minimumRuntimeMs:
+    allowedRegressionPercent: 30
+  maximumRuntimeMs:
+    allowedRegressionPercent: 30
+  proposalCount:
+    allowedIncreasePercent: 50
+  reportSizeBytes:
+    allowedIncreasePercent: 50

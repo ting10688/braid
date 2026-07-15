@@ -26,13 +26,13 @@ describe("benchmark schemas", () => {
     expect(
       benchmarkSuiteSchema.parse({
         schemaVersion: 1,
-        expectationVersion: "v1",
+        suiteVersion: "1.0.0",
+        expectationVersion: "1.0.0",
         id: "suite",
         title: "Suite",
         description: "A suite",
         cases: [proposalCase],
-        repetitions: 2,
-        timeoutMs: 1000,
+        execution: { correctnessRepetitions: 2, timeoutMs: 1000 },
       }).cases,
     ).toHaveLength(1);
     expect(() =>

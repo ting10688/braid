@@ -66,6 +66,9 @@ const evaluate = (
     facts,
     persistenceIdempotent: true,
     sourceMutations: [],
+    flakiness: { flaky: false, differences: [] },
+    exitCodes: [0, 0],
+    expectedExitCode: 0,
   });
 
 describe("proposal evaluator", () => {

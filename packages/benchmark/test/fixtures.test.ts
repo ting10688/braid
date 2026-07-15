@@ -1,4 +1,5 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,6 +8,8 @@ import {
   initializeFixtureGit,
 } from "../src/fixtures/fixture-copier.js";
 import { benchmarkAssetPath } from "../src/fixtures/fixture-loader.js";
+import { loadProtocol, loadSuite } from "../src/fixtures/fixture-loader.js";
+import { createFixtureManifest } from "../src/fixtures/fixture-manifest.js";
 import { hashSourceTree } from "../src/fixtures/source-hasher.js";
 import { runCommand } from "../src/runner/command-runner.js";
 
@@ -15,6 +18,9 @@ const template = fileURLToPath(
     "../../../benchmarks/fixtures/templates/clean-modular-app",
     import.meta.url,
   ),
+);
+const benchmarksRoot = fileURLToPath(
+  new URL("../../../benchmarks", import.meta.url),
 );
 const temporaryDirectories: string[] = [];
 
@@ -69,5 +75,47 @@ describe("fixture isolation", () => {
         })
       ).stdout.trim(),
     ).toBe("benchmark baseline");
+  });
+
+  it("creates deterministic relative fixture hashes and changes on content", async () => {
+    const temporaryRoot = await mkdtemp(
+      path.join(tmpdir(), "braid-fixture-manifest-"),
+    );
+    temporaryDirectories.push(temporaryRoot);
+    const fixture = path.join(
+      temporaryRoot,
+      "fixtures",
+      "templates",
+      "clean-modular-app",
+    );
+    await mkdir(path.dirname(fixture), { recursive: true });
+    await cp(template, fixture, { recursive: true });
+    await mkdir(path.join(temporaryRoot, "expectations"), { recursive: true });
+    await cp(
+      path.join(benchmarksRoot, "expectations", "clean-modular-app.json"),
+      path.join(temporaryRoot, "expectations", "clean-modular-app.json"),
+    );
+    const suite = await loadSuite(benchmarksRoot, "phase-2-core");
+    const selected = { ...suite, cases: [suite.cases[0]!] };
+    const protocol = await loadProtocol(benchmarksRoot);
+    const first = await createFixtureManifest(
+      temporaryRoot,
+      selected,
+      protocol,
+    );
+    const repeat = await createFixtureManifest(
+      temporaryRoot,
+      selected,
+      protocol,
+    );
+    expect(repeat).toEqual(first);
+    expect(JSON.stringify(first.manifest)).not.toContain(temporaryRoot);
+    await writeFile(path.join(fixture, "src", "index.ts"), "changed\n");
+    const changed = await createFixtureManifest(
+      temporaryRoot,
+      selected,
+      protocol,
+    );
+    expect(changed.manifest.hash).not.toBe(first.manifest.hash);
   });
 });

@@ -3,6 +3,8 @@ import path from "node:path";
 import {
   benchmarkRunSchema,
   type BenchmarkRun,
+  type IterationComparison,
+  type MetricComparison,
   type ProposalCaseResult,
 } from "../models/benchmark.js";
 
@@ -111,6 +113,8 @@ export const consoleReport = (run: BenchmarkRun): string => {
   const proposal = proposalSummary(run);
   const lines = [
     `Braid Bench: ${run.suiteId}`,
+    `Protocol: ${run.manifest.protocolVersion}`,
+    `Suite: ${run.suiteId}@${run.suiteVersion}`,
     "",
     `Cases: ${run.cases.length}`,
   ];
@@ -124,6 +128,7 @@ export const consoleReport = (run: BenchmarkRun): string => {
       `Risk classification agreement: ${percent(proposal.riskAgreement)}`,
       `Reversibility classification agreement: ${percent(proposal.reversibilityAgreement)}`,
       `Deterministic cases: ${proposal.deterministicCases}/${proposal.cases}`,
+      `Flaky cases: ${run.cases.filter(({ flakiness }) => flakiness.flaky).length}`,
       `Source mutations: ${proposal.sourceMutations}`,
       `False positives on clean fixtures: ${proposal.cleanFalsePositives}`,
     );
@@ -155,7 +160,11 @@ export const markdownReport = (run: BenchmarkRun): string => {
     `# Braid Bench: ${run.suiteId}`,
     "",
     `Run: \`${run.runId}\`  `,
+    `Protocol version: \`${run.manifest.protocolVersion}\`  `,
+    `Suite version: \`${run.suiteVersion}\`  `,
     `Expectation version: \`${run.expectationVersion}\`  `,
+    `Fixture manifest: \`${run.manifest.fixtureManifestHash}\`  `,
+    `Configuration: \`${run.manifest.configurationHash}\`  `,
     `Braid: \`${run.braid.version}\` (${run.braid.commit ?? "uncommitted"})  `,
     `Benchmark: \`${run.benchmark.version}\` (${run.benchmark.commit ?? "uncommitted"})`,
     "",
@@ -177,6 +186,10 @@ export const markdownReport = (run: BenchmarkRun): string => {
         `- Risk agreement: ${percent(result.riskClassificationAgreement)}`,
         `- Reversibility agreement: ${percent(result.reversibilityClassificationAgreement)}`,
         `- Deterministic: ${result.deterministic ? "yes" : "no"}`,
+        `- Flaky: ${result.flakiness.flaky ? "yes" : "no"}`,
+        `- Flaky fields: ${result.flakiness.differences.map(({ field, repetitions }) => `${field} (runs ${repetitions.join(", ")})`).join("; ") || "none"}`,
+        `- Correctness repetitions: ${result.correctnessRepetitions}`,
+        `- Timing repetitions: ${result.durations.repetitions}`,
         `- Persistence idempotent: ${result.persistenceIdempotent ? "yes" : "no"}`,
         `- Source mutations: ${result.sourceMutations.length}`,
         `- Matched: ${result.matchedIssueIds.join(", ") || "none"}`,
@@ -197,6 +210,7 @@ export const markdownReport = (run: BenchmarkRun): string => {
       lines.push(
         "",
         `Behavior valid: ${result.behaviorValid ? "yes" : "no"}  `,
+        `Flaky: ${result.flakiness.flaky ? "yes" : "no"}  `,
         `Build: ${commandStatus(result.after.build?.exitCodes)}  `,
         `Tests: ${commandStatus(result.after.test?.exitCodes)}  `,
         `Build median: ${result.before.build?.timing.medianMs.toFixed(2) ?? "n/a"} ms → ${result.after.build?.timing.medianMs.toFixed(2) ?? "n/a"} ms  `,
@@ -234,6 +248,14 @@ export const writeReports = async (
   outputDirectory: string,
 ): Promise<void> => {
   await mkdir(outputDirectory, { recursive: true });
+  await writeImmutableJson(
+    path.join(outputDirectory, "manifest.json"),
+    run.manifest,
+  );
+  await writeImmutableJson(
+    path.join(outputDirectory, "fixture-manifest.json"),
+    run.fixtureManifest,
+  );
   await writeFile(
     path.join(outputDirectory, "run.json"),
     `${JSON.stringify(run, null, 2)}\n`,
@@ -248,69 +270,204 @@ export const writeReports = async (
 
 export const loadRun = async (input: string): Promise<BenchmarkRun> => {
   const file = input.endsWith(".json") ? input : path.join(input, "run.json");
-  return benchmarkRunSchema.parse(JSON.parse(await readFile(file, "utf8")));
+  const run = benchmarkRunSchema.parse(
+    JSON.parse(await readFile(file, "utf8")),
+  );
+  if (!input.endsWith(".json")) {
+    const manifest = JSON.parse(
+      await readFile(path.join(input, "manifest.json"), "utf8"),
+    );
+    const fixtures = JSON.parse(
+      await readFile(path.join(input, "fixture-manifest.json"), "utf8"),
+    );
+    if (JSON.stringify(manifest) !== JSON.stringify(run.manifest))
+      throw new Error(
+        `Run manifest does not match immutable sidecar: ${input}`,
+      );
+    if (JSON.stringify(fixtures) !== JSON.stringify(run.fixtureManifest))
+      throw new Error(
+        `Fixture manifest does not match immutable sidecar: ${input}`,
+      );
+  }
+  return run;
 };
 
-export const compareRunReport = (
-  first: BenchmarkRun,
-  second: BenchmarkRun,
-  allowIncompatible = false,
+const immutableJson = (value: unknown): string =>
+  `${JSON.stringify(value, null, 2)}\n`;
+
+const writeImmutableJson = async (
+  file: string,
+  value: unknown,
+): Promise<void> => {
+  const contents = immutableJson(value);
+  try {
+    await writeFile(file, contents, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      (error as NodeJS.ErrnoException).code !== "EEXIST"
+    )
+      throw error;
+    if ((await readFile(file, "utf8")) !== contents)
+      throw new Error(`Refusing to replace immutable manifest: ${file}`);
+  }
+};
+
+const metricLabel = (metric: string): string =>
+  metric
+    .replaceAll(/([a-z])([A-Z])/gu, "$1 $2")
+    .toLowerCase()
+    .replace(/^./u, (value) => value.toUpperCase());
+
+const metricValue = (
+  metric: MetricComparison,
+  value: number | boolean | string,
 ): string => {
+  if (typeof value === "boolean") return value ? "pass" : "fail";
+  if (typeof value !== "number") return value;
   if (
-    !allowIncompatible &&
-    (first.suiteId !== second.suiteId ||
-      first.expectationVersion !== second.expectationVersion)
+    [
+      "expectedIssueCoverage",
+      "proposalValidity",
+      "topKCoverage",
+      "evidenceCoverage",
+      "evidenceCorrectness",
+      "riskAgreement",
+      "reversibilityAgreement",
+    ].includes(metric.metric)
   )
-    throw new Error("Runs use incompatible suite IDs or expectation versions");
-  const a = proposalSummary(first);
-  const b = proposalSummary(second);
-  const metrics: Array<readonly [string, number, boolean]> = [
-    ["Issue coverage", b.expectedIssueCoverage - a.expectedIssueCoverage, true],
-    ["Proposal validity", b.proposalValidity - a.proposalValidity, true],
-    ["Top-K coverage", b.topKCoverage - a.topKCoverage, true],
-    [
-      "Evidence correctness",
-      b.evidenceCorrectness - a.evidenceCorrectness,
-      true,
-    ],
-    ["False positives", b.falsePositives - a.falsePositives, false],
-    [
-      "Deterministic failures",
-      b.cases - b.deterministicCases - (a.cases - a.deterministicCases),
-      false,
-    ],
-    ["Source mutations", b.sourceMutations - a.sourceMutations, false],
-    ["Median runtime (ms)", b.medianRuntimeMs - a.medianRuntimeMs, false],
+    return percent(value);
+  if (metric.metric.endsWith("RuntimeMs")) return `${value.toFixed(1)}ms`;
+  return Number.isInteger(value) ? String(value) : value.toFixed(3);
+};
+
+const comparisonCounts = (comparison: IterationComparison) => ({
+  regressions: comparison.comparisons.filter(
+    ({ status }) => status === "regressed",
+  ).length,
+  warnings: comparison.comparisons.filter(({ status }) => status === "warning")
+    .length,
+  improvements: comparison.comparisons.filter(
+    ({ status }) => status === "improved",
+  ).length,
+});
+
+export const comparisonConsoleReport = (
+  comparison: IterationComparison,
+): string => {
+  const { regressions, warnings, improvements } = comparisonCounts(comparison);
+  const lines = [
+    "Braid iteration comparison",
+    `Baseline: ${comparison.baseline.braidVersion} / ${comparison.baseline.braidCommit?.slice(0, 7) ?? "uncommitted"}`,
+    `Candidate: ${comparison.candidate.braidVersion} / ${comparison.candidate.braidCommit?.slice(0, 7) ?? "uncommitted"}`,
+    `Suite: ${comparison.candidate.manifest.suiteId}@${comparison.candidate.manifest.suiteVersion}`,
+    `Protocol: ${comparison.candidate.manifest.protocolVersion}`,
+    `Fixture: ${comparison.candidate.manifest.fixtureManifestHash}`,
+    `Configuration: ${comparison.candidate.manifest.configurationHash}`,
   ];
-  const improved = metrics.filter(
-    ([, delta, higherIsBetter]) =>
-      delta !== 0 && (higherIsBetter ? delta > 0 : delta < 0),
+  if (comparison.incompatibilities.length > 0)
+    lines.push(
+      "Incompatibilities:",
+      ...comparison.incompatibilities.map((item) => `  - ${item}`),
+    );
+  if (comparison.environmentWarnings.length > 0)
+    lines.push(
+      "Environment warnings:",
+      ...comparison.environmentWarnings.map((item) => `  - ${item}`),
+    );
+  for (const category of ["correctness", "stability", "cost"] as const) {
+    lines.push(category[0]!.toUpperCase() + category.slice(1));
+    for (const metric of comparison.comparisons.filter(
+      (item) => item.category === category,
+    ))
+      lines.push(
+        `${metricLabel(metric.metric)}: ${metricValue(metric, metric.baseline)} → ${metricValue(metric, metric.candidate)}  ${metric.status}`,
+        `  ${metric.rationale}`,
+      );
+  }
+  lines.push(
+    `Result: ${comparison.overallResult.toUpperCase()}`,
+    `Regressions: ${regressions}`,
+    `Warnings: ${warnings}`,
+    `Improvements: ${improvements}`,
   );
-  const regressed = metrics.filter(
-    ([, delta, higherIsBetter]) =>
-      delta !== 0 && (higherIsBetter ? delta < 0 : delta > 0),
+  return `${lines.join("\n")}\n`;
+};
+
+export const comparisonMarkdownReport = (
+  comparison: IterationComparison,
+): string => {
+  const { regressions, warnings, improvements } = comparisonCounts(comparison);
+  const lines = [
+    "# Braid iteration comparison",
+    "",
+    `- Baseline: \`${comparison.baseline.braidVersion}\` / \`${comparison.baseline.braidCommit ?? "uncommitted"}\``,
+    `- Candidate: \`${comparison.candidate.braidVersion}\` / \`${comparison.candidate.braidCommit ?? "uncommitted"}\``,
+    `- Suite: \`${comparison.candidate.manifest.suiteId}@${comparison.candidate.manifest.suiteVersion}\``,
+    `- Protocol: \`${comparison.candidate.manifest.protocolVersion}\``,
+    `- Fixture manifest: \`${comparison.candidate.manifest.fixtureManifestHash}\``,
+    `- Configuration: \`${comparison.candidate.manifest.configurationHash}\``,
+    `- Policy: \`${comparison.policyVersion}\``,
+    `- Environment: ${comparison.environmentWarnings.length === 0 ? "compatible" : "different; timing is informational"}`,
+  ];
+  if (comparison.incompatibilities.length > 0)
+    lines.push(
+      "",
+      "## Incompatibilities",
+      "",
+      ...comparison.incompatibilities.map((item) => `- ${item}`),
+    );
+  if (comparison.environmentWarnings.length > 0)
+    lines.push(
+      "",
+      "## Environment warnings",
+      "",
+      ...comparison.environmentWarnings.map((item) => `- ${item}`),
+    );
+  for (const category of ["correctness", "stability", "cost"] as const) {
+    lines.push(
+      "",
+      `## ${category[0]!.toUpperCase() + category.slice(1)}`,
+      "",
+      "| Metric | Baseline | Candidate | Status | Rationale |",
+      "| --- | ---: | ---: | --- | --- |",
+    );
+    for (const metric of comparison.comparisons.filter(
+      (item) => item.category === category,
+    ))
+      lines.push(
+        `| ${metricLabel(metric.metric)} | ${metricValue(metric, metric.baseline)} | ${metricValue(metric, metric.candidate)} | ${metric.status} | ${metric.rationale} |`,
+      );
+  }
+  lines.push(
+    "",
+    "## Result",
+    "",
+    `**${comparison.overallResult.toUpperCase()}** — ${regressions} blocking regressions, ${warnings} warnings, ${improvements} improvements.`,
+    "",
   );
-  const render = (
-    items: ReadonlyArray<readonly [string, number, boolean]>,
-  ): string[] =>
-    items.length === 0
-      ? ["- None"]
-      : items.map(
-          ([name, delta]) =>
-            `- ${name}: ${delta > 0 ? "+" : ""}${delta.toFixed(3)}`,
-        );
-  return [
-    `# Run comparison: ${first.runId} → ${second.runId}`,
-    "",
-    "Deltas are run B minus run A; no run is assumed to be newer or better.",
-    "",
-    "## Improvements",
-    "",
-    ...render(improved),
-    "",
-    "## Regressions",
-    "",
-    ...render(regressed),
-    "",
-  ].join("\n");
+  return lines.join("\n");
+};
+
+export const writeComparisonReports = async (
+  comparison: IterationComparison,
+  outputDirectory: string,
+): Promise<void> => {
+  await mkdir(outputDirectory, { recursive: true });
+  await writeFile(
+    path.join(outputDirectory, "comparison.json"),
+    immutableJson(comparison),
+    "utf8",
+  );
+  await writeFile(
+    path.join(outputDirectory, "comparison.md"),
+    comparisonMarkdownReport(comparison),
+    "utf8",
+  );
+  await writeFile(
+    path.join(outputDirectory, "comparison.txt"),
+    comparisonConsoleReport(comparison),
+    "utf8",
+  );
 };

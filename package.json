@@ -22,7 +22,10 @@
     "benchmark:smoke": "pnpm build && node packages/benchmark/dist/cli/index.js run --suite phase-2-core --smoke",
     "benchmark:run": "pnpm build && node packages/benchmark/dist/cli/index.js run --suite phase-2-core",
     "benchmark:compare": "pnpm build && node packages/benchmark/dist/cli/index.js compare --suite static-comparison",
-    "benchmark:report": "node packages/benchmark/dist/cli/index.js report"
+    "benchmark:report": "node packages/benchmark/dist/cli/index.js report",
+    "benchmark:iteration": "pnpm build && node packages/benchmark/dist/cli/index.js iteration",
+    "benchmark:baseline": "pnpm build && node packages/benchmark/dist/cli/index.js baseline",
+    "benchmark:regression": "pnpm build && node packages/benchmark/dist/cli/index.js regression"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

@@ -1,10 +1,9 @@
 schemaVersion: 1
-expectationVersion: synthetic-v1
+suiteVersion: 1.0.0
+expectationVersion: 1.0.0
 id: phase-2-core
 title: Phase 2 proposal quality and determinism
 description: Independent labels for clean, extraction, cycle, ranking, and protected-path cases.
-repetitions: 2
-timeoutMs: 30000
 cases:
   - type: proposal
     id: clean-modular-app

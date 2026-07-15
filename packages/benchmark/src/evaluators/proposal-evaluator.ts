@@ -2,6 +2,7 @@ import path from "node:path";
 import type { MigrationProposal, ProposalEvidence } from "@braid/core";
 import type {
   ExpectationFile,
+  Flakiness,
   IssueExpectation,
   ProposalCaseResult,
 } from "../models/benchmark.js";
@@ -183,6 +184,9 @@ export interface ProposalEvaluationInput {
   facts: IndependentFacts;
   persistenceIdempotent: boolean;
   sourceMutations: readonly string[];
+  flakiness: Flakiness;
+  exitCodes: readonly number[];
+  expectedExitCode: number;
 }
 
 export const evaluateProposalCase = (
@@ -211,9 +215,11 @@ export const evaluateProposalCase = (
   const reversibility = matched.matches.filter(
     ({ expectation }) => expectation.expectedReversibility,
   );
-  const deterministic = input.proposalRuns
-    .map(normalizedDeterminism)
-    .every((value, _, values) => value === values[0]);
+  const deterministic =
+    !input.flakiness.flaky &&
+    input.proposalRuns
+      .map(normalizedDeterminism)
+      .every((value, _, values) => value === values[0]);
 
   return {
     type: "proposal",
@@ -255,9 +261,20 @@ export const evaluateProposalCase = (
       reversibility.length,
     ),
     deterministic,
+    flakiness: input.flakiness,
+    proposalIdentityStable: !input.flakiness.differences.some(
+      ({ field }) => field === "proposalIds",
+    ),
+    proposalOrderingStable: !input.flakiness.differences.some(
+      ({ field }) => field === "proposalOrder",
+    ),
+    exitCodes: [...input.exitCodes],
+    expectedExitCodeMatched: input.exitCodes.every(
+      (exitCode) => exitCode === input.expectedExitCode,
+    ),
     persistenceIdempotent: input.persistenceIdempotent,
     sourceMutations: [...input.sourceMutations],
     durations: timingSummary(input.durations),
-    repetitions: input.proposalRuns.length,
+    correctnessRepetitions: input.proposalRuns.length,
   };
 };

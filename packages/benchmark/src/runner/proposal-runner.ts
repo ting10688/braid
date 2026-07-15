@@ -7,6 +7,10 @@ import {
 } from "@braid/core";
 import { z } from "zod";
 import { analyzeFixture } from "../evaluators/static-analysis.js";
+import {
+  detectProposalFlakiness,
+  type CorrectnessObservation,
+} from "../evaluators/flakiness-evaluator.js";
 import { evaluateProposalCase } from "../evaluators/proposal-evaluator.js";
 import {
   copyFixture,
@@ -19,6 +23,7 @@ import {
 } from "../fixtures/fixture-loader.js";
 import { changedFiles, hashSourceTree } from "../fixtures/source-hasher.js";
 import type {
+  BenchmarkProtocol,
   ProposalBenchmarkCase,
   ProposalCaseResult,
 } from "../models/benchmark.js";
@@ -32,7 +37,11 @@ const proposalOutputSchema = z.object({
 export interface ProposalRunnerOptions {
   benchmarksRoot: string;
   braidCommand: readonly string[];
-  repetitions: number;
+  correctnessRepetitions: number;
+  timingRepetitions: number;
+  warmupRuns: number;
+  normalizationRules: BenchmarkProtocol["normalizationRules"];
+  expectationVersion: string;
   timeoutMs: number;
   keepWorkdirs: boolean;
   verbose?: boolean;
@@ -64,7 +73,7 @@ export const runProposalCase = async (
   benchmarkCase: ProposalBenchmarkCase,
   options: ProposalRunnerOptions,
 ): Promise<ProposalCaseResult> => {
-  if (options.repetitions < 2)
+  if (options.correctnessRepetitions < 2)
     throw new Error(
       "Proposal benchmark suites require at least two repetitions",
     );
@@ -95,39 +104,64 @@ export const runProposalCase = async (
     await writeFile(configPath, configuredArchitecture, "utf8");
 
     const proposalRuns: MigrationProposal[][] = [];
+    const observations: CorrectnessObservation[] = [];
     const durations: number[] = [];
     for (
       let repetition = 0;
-      repetition < options.repetitions;
+      repetition < options.correctnessRepetitions;
       repetition += 1
     ) {
+      const repetitionBefore = await hashSourceTree(workdir);
       const analyzed = await runCommand(
         invokeBraid(options.braidCommand, benchmarkCase.braidCommands.analyze),
         { cwd: workdir, timeoutMs: options.timeoutMs, redactions },
       );
-      if (analyzed.exitCode !== 0)
-        throw new Error(
-          `Braid analyze failed for ${benchmarkCase.id}: ${analyzed.stderr}`,
+      if (analyzed.exitCode === 0)
+        architectureSnapshotSchema.parse(JSON.parse(analyzed.stdout));
+      const proposed =
+        analyzed.exitCode === 0
+          ? await runCommand(
+              invokeBraid(
+                options.braidCommand,
+                benchmarkCase.braidCommands.propose,
+              ),
+              { cwd: workdir, timeoutMs: options.timeoutMs, redactions },
+            )
+          : analyzed;
+      const proposals =
+        analyzed.exitCode === 0 && proposed.exitCode === 0
+          ? proposalOutputSchema.parse(JSON.parse(proposed.stdout)).proposals
+          : [];
+      proposalRuns.push(proposals);
+      observations.push({
+        proposals,
+        exitCode: proposed.exitCode,
+        sourceMutations: changedFiles(
+          repetitionBefore,
+          await hashSourceTree(workdir),
+        ),
+      });
+      if (options.verbose)
+        process.stderr.write(
+          `${benchmarkCase.id}: correctness ${repetition + 1}/${options.correctnessRepetitions}\n`,
         );
-      architectureSnapshotSchema.parse(JSON.parse(analyzed.stdout));
+    }
 
+    for (
+      let repetition = 0;
+      repetition < options.warmupRuns + options.timingRepetitions;
+      repetition += 1
+    ) {
       const proposed = await runCommand(
         invokeBraid(options.braidCommand, benchmarkCase.braidCommands.propose),
         { cwd: workdir, timeoutMs: options.timeoutMs, redactions },
       );
-      durations.push(proposed.durationMs);
-      if (proposed.exitCode !== benchmarkCase.expectedExitCode)
-        throw new Error(
-          `Braid propose returned ${proposed.exitCode} for ${benchmarkCase.id}; expected ${benchmarkCase.expectedExitCode}: ${proposed.stderr}`,
-        );
-      proposalRuns.push(
-        proposed.exitCode === 0
-          ? proposalOutputSchema.parse(JSON.parse(proposed.stdout)).proposals
-          : [],
-      );
+      if (proposed.exitCode === 0)
+        proposalOutputSchema.parse(JSON.parse(proposed.stdout));
+      if (repetition >= options.warmupRuns) durations.push(proposed.durationMs);
       if (options.verbose)
         process.stderr.write(
-          `${benchmarkCase.id}: repetition ${repetition + 1}/${options.repetitions}\n`,
+          `${benchmarkCase.id}: ${repetition < options.warmupRuns ? "warmup" : "timing"} ${repetition + 1}/${options.warmupRuns + options.timingRepetitions}\n`,
         );
     }
 
@@ -141,7 +175,16 @@ export const runProposalCase = async (
       options.benchmarksRoot,
       benchmarkCase.expectationFile,
     );
+    if (expectation.version !== options.expectationVersion)
+      throw new Error(
+        `Expectation ${benchmarkCase.expectationFile} is version ${expectation.version}; suite requires ${options.expectationVersion}`,
+      );
     const proposals = proposalRuns[0] ?? [];
+    const flakiness = detectProposalFlakiness(
+      observations,
+      options.normalizationRules,
+      { temporaryDirectories: [workdir] },
+    );
     return evaluateProposalCase({
       caseId: benchmarkCase.id,
       expectation,
@@ -153,6 +196,9 @@ export const runProposalCase = async (
         proposals,
       ),
       sourceMutations: changedFiles(sourceBefore, sourceAfter),
+      flakiness,
+      exitCodes: observations.map(({ exitCode }) => exitCode),
+      expectedExitCode: benchmarkCase.expectedExitCode,
     });
   } finally {
     if (!options.keepWorkdirs) await removeFixture(workdir);
