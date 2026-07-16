@@ -1,6 +1,6 @@
 {
   "name": "braid",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "license": "MIT",
@@ -16,6 +16,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
+    "brand:render": "node scripts/render-brand-assets.mjs",
+    "brand:verify": "node scripts/verify-brand-assets.mjs",
+    "distribution:build": "pnpm build && node scripts/build-distribution.mjs",
+    "distribution:verify": "node scripts/verify-distribution.mjs",
+    "demo": "pnpm distribution:build && node .artifacts/braid-v0.4.1-demo-node22/demo/run-demo.mjs",
+    "demo:bundle": "node .artifacts/braid-v0.4.1-demo-node22/demo/run-demo.mjs",
     "braid": "node apps/cli/dist/index.js",
     "analyze:example": "pnpm build && node apps/cli/dist/index.js analyze examples/bloated-saas --no-save",
     "propose:example": "pnpm build && node apps/cli/dist/index.js propose examples/bloated-saas --no-save",
@@ -41,8 +47,10 @@
   "devDependencies": {
     "@eslint/js": "^9.31.0",
     "@types/node": "^22.15.0",
+    "esbuild": "0.28.1",
     "eslint": "^9.31.0",
     "prettier": "^3.6.0",
+    "sharp": "0.35.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.36.0",
     "vitest": "^3.2.4"
