@@ -1,8 +1,10 @@
 # Safe migration execution
 
-Phase 3.1 turns one execution-ready, explicitly approved `extract-module` proposal into a local,
-reviewable candidate. It
-does not merge, push, open a pull request, execute rollback, or execute `break-cycle` proposals.
+Phase 3.2 can explain a bounded repair for one `extract-module` proposal that is not execution-ready;
+the existing migration path turns only an execution-ready, separately approved proposal into a local,
+reviewable candidate. A suggestion is advisory. Braid does not modify, persist, approve, or execute a
+suggested revision, and it does not merge, push, open a pull request, execute rollback, or execute
+`break-cycle` proposals.
 
 ## Safety gate
 
@@ -55,6 +57,43 @@ The readiness result uses schema version 1 and records proposal ID, snapshot/con
 primary and companion symbols, retained/external/unresolved dependencies, predicted import/cycle
 evidence, warnings, blockers, and deterministic hashes. New plans embed it without changing execution
 plan or execution record schema version; old persisted v1 plans remain readable.
+
+## Advisory repair suggestions
+
+Readiness answers whether the proposal as currently stored and approved is executable. A repair
+suggestion answers a different question: whether current repository evidence proves a small,
+deterministic addition to `approvedCompanionSymbols` that could make a separately revised proposal
+ready. `migrate suggest` reports primary symbols, current approvals, exact proposed additions, symbols
+that remain in place, safely imported and unresolved dependencies, predicted import and cycle evidence,
+remaining blockers, warnings, and a deterministic reason for every suggested symbol.
+The suggestion is derived in memory and is not written to the proposal store or treated as approval.
+
+The repair algorithm begins with the required companion-symbol closure, orders candidates canonically,
+and re-evaluates an in-memory clone with the existing readiness algorithm. For an otherwise ready
+candidate set, it removes each unnecessary symbol in stable order and retains a symbol only when its
+removal would fail readiness or an explicit invariant. Suggestion IDs and symbol order derive from
+canonical semantic content rather than timestamps, random values, filesystem traversal order, locale,
+or absolute paths. The original proposal object and stored proposal remain unchanged throughout.
+
+Every valid suggestion has exactly one state:
+
+- `actionable`: the minimal bounded additions were re-evaluated in memory and predict `ready` or
+  `ready-with-warnings`;
+- `partial`: useful evidence changes are known, but one or more blockers would remain; this state is
+  never sufficient for execution;
+- `unavailable`: Braid cannot safely determine a bounded additive repair from the available evidence.
+
+Phase 3.2's repair boundary is strictly additive. A suggestion may add symbols only to
+`approvedCompanionSymbols`; it may not remove primary symbols, change proposal type or destination,
+move protected or public-entrypoint declarations, synthesize a shared module, redesign dependencies,
+change risk or reversibility, or weaken scope, readiness, validation, or architecture gates. A repair
+that requires any such action is `partial` or `unavailable` rather than an unsafe `actionable` result.
+
+Generating an actionable suggestion does not change the original `not-ready` proposal. Running
+`migrate run` with that original proposal ID continues to stop with readiness exit code 13 before any
+executor or execution resource exists. Execution requires a separately stored revised proposal that
+contains the approved companion symbols, passes readiness again, and is explicitly approved using that
+revised proposal's own ID. A suggestion ID is never an approval token.
 
 ## Deterministic plan and isolated worktree
 
@@ -184,6 +223,7 @@ between Git deletion and record persistence.
 
 ```bash
 braid migrate plan <proposal-id> [--json] [--path <project>]
+braid migrate suggest <proposal-id> [--json] [--path <project>]
 braid migrate run <proposal-id> --approve <proposal-id> \
   [--executor codex] [--model <model>] [--reasoning-effort <value>] \
   [--timeout <milliseconds>] [--json] [--no-commit] [--path <project>]
@@ -192,6 +232,30 @@ braid migrate status <execution-id> [--json] [--path <project>]
 braid migrate inspect <execution-id> [--path <project>]
 braid migrate diff <execution-id> [--path <project>]
 braid migrate discard <execution-id> --confirm <execution-id> [--json] [--path <project>]
+```
+
+For a `not-ready` proposal, `migrate plan` includes a concise suggestion summary when one is available.
+`migrate suggest` provides stable human-readable and JSON representations of the complete advisory
+result. `actionable`, `partial`, and valid `unavailable` analyses exit successfully; invalid input and a
+missing proposal retain the normal CLI errors. Suggestion analysis creates no staging repository,
+worktree, branch, executor process, execution record, or candidate commit.
+
+```text
+$ braid migrate suggest P-EM-...
+
+Suggestion: actionable
+Current readiness: not-ready
+Predicted readiness: ready
+
+Add approved companion symbols:
+- SentNotification
+
+Reason:
+- required local type used by NotificationService
+- leaving it behind would create a reverse dependency
+
+No proposal was modified.
+Create or approve a revised proposal before execution.
 ```
 
 Stable exit codes are 0 success/information, 2 invalid CLI use, 3 approval failure, 4 stale state, 5
@@ -237,3 +301,16 @@ migration:
 
 Validation is unavailable when the command list is empty. Braid does not auto-detect or execute
 arbitrary package scripts.
+
+## Conservative and unsupported cases
+
+`unavailable` is a valid safety result, not an internal failure. It includes unresolved declarations,
+ambiguous symbol ownership, nondeterministic or incomplete legacy evidence, protected/public surfaces,
+file or symbol budget violations, cycles that companion additions cannot resolve, and repairs that
+require primary-symbol removal or architectural redesign. `partial` may expose useful additions while
+making the remaining blockers explicit.
+
+Because suggestions require positive static evidence, some safe revisions may remain `unavailable` when
+legacy snapshots or current analyzer facts cannot prove ownership, importability, minimality, or a
+cycle-free result. Rerunning analysis can refresh stale or legacy evidence, but Phase 3.2 does not guess,
+broaden scope, or substitute an architectural redesign when proof is incomplete.

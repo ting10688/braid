@@ -25,6 +25,13 @@ installations or `.braid/state` writes.
 - `phase-3-1-execution-readiness`: ten independent symbol-closure cases covering companion precision,
   retained dependencies, unresolved/reverse/cycle/budget/protected blockers, deterministic output, a
   zero-launch rejection, and one complete orchestrated extraction.
+- `phase-3-2-proposal-repair-suggestions@1.0.0`: fourteen independent cases covering actionable,
+  partial, and unavailable suggestions; minimal additive companion sets; retained/imported symbols;
+  unresolved, protected/public, cycle, budget, and legacy blockers; in-memory readiness verification;
+  zero-launch rejection of the original proposal; and a separately revised proposal reaching readiness.
+  It reports state accuracy, actionable precision/recall, minimality, false-actionable/false-unavailable,
+  deterministic IDs/order, prevented launches, revised readiness, main-checkout integrity, and scope
+  safety without changing earlier baselines.
 
 Run them from the repository root:
 
@@ -42,6 +49,7 @@ pnpm benchmark:migration:smoke
 pnpm benchmark:migration:run
 pnpm benchmark:migration:regression
 pnpm benchmark:readiness
+pnpm benchmark:repair-suggestions
 node packages/benchmark/dist/cli/index.js repositories inspect consola
 node packages/benchmark/dist/cli/index.js repositories refresh consola
 node packages/benchmark/dist/cli/index.js run --suite phase-2-core --json
