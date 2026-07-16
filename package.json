@@ -1,6 +1,6 @@
 {
   "name": "braid",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "license": "MIT",
@@ -34,7 +34,8 @@
     "benchmark:migration:smoke": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode smoke",
     "benchmark:migration:run": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode run",
     "benchmark:migration:regression": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode regression",
-    "benchmark:readiness": "pnpm build && node packages/benchmark/dist/cli/index.js readiness"
+    "benchmark:readiness": "pnpm build && node packages/benchmark/dist/cli/index.js readiness",
+    "benchmark:repair-suggestions": "pnpm build && node packages/benchmark/dist/cli/index.js repair-suggestions"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

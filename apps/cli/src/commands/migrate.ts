@@ -5,6 +5,7 @@ import {
   type ArchitectureConfig,
   type ArchitectureSnapshot,
   type MigrationProposal,
+  type ProposalRepairSuggestion,
 } from "@braid/core";
 import {
   CodexExecutor,
@@ -16,6 +17,7 @@ import {
   defaultExecutionRoot,
   prepareMigrationPlan,
   runMigration,
+  suggestProposalRepair,
   type MigrationExecutor,
 } from "@braid/migrator";
 import {
@@ -37,6 +39,8 @@ interface ProjectOptions {
 }
 
 export type MigratePlanOptions = ProjectOptions;
+
+export type MigrateSuggestOptions = ProjectOptions;
 
 export interface MigrateRunOptions extends ProjectOptions {
   approve?: string;
@@ -106,6 +110,25 @@ const writeJson = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 };
 
+const createRepairSuggestion = async (root: string, proposalId: string) => {
+  const context = await loadContext(root, proposalId);
+  const plan = await prepareMigrationPlan({
+    repositoryRoot: root,
+    ...context,
+    executor: { kind: "codex" },
+  });
+  return suggestProposalRepair({
+    ...context,
+    configHash: plan.repository.configHash,
+    sourceFingerprint: plan.repository.sourceFingerprint,
+  });
+};
+
+const suggestedAdditions = (suggestion: ProposalRepairSuggestion): string =>
+  suggestion.suggestedCompanionSymbolAdditions
+    .map(({ symbol }) => `${symbol.file}#${symbol.name}`)
+    .join(", ") || "none";
+
 export const migratePlanCommand = async (
   proposalId: string,
   options: MigratePlanOptions,
@@ -120,6 +143,14 @@ export const migratePlanCommand = async (
   if (options.json) writeJson(plan);
   else {
     const readiness = plan.readiness;
+    const suggestion =
+      readiness?.state === "not-ready"
+        ? suggestProposalRepair({
+            ...context,
+            configHash: plan.repository.configHash,
+            sourceFingerprint: plan.repository.sourceFingerprint,
+          })
+        : undefined;
     process.stdout.write(
       [
         `Plan: ${plan.planId}`,
@@ -136,10 +167,70 @@ export const migratePlanCommand = async (
         `Warnings: ${readiness?.warnings.map(({ code, message }) => `${code}: ${message}`).join(" | ") || "none"}`,
         `Destination: ${plan.expectedChange.destinationDirectory}`,
         `Changed-file limit: ${plan.scope.maximumChangedFiles}`,
+        ...(suggestion
+          ? [
+              `Repair suggestion: ${suggestion.state}`,
+              `Suggested companion additions: ${suggestedAdditions(suggestion)}`,
+              `Predicted readiness: ${suggestion.predictedReadinessState ?? "unavailable"}`,
+              "No proposal was modified or approved; a revised proposal is required before execution.",
+            ]
+          : []),
         "No worktree was created.",
       ].join("\n") + "\n",
     );
   }
+};
+
+export const migrateSuggestCommand = async (
+  proposalId: string,
+  options: MigrateSuggestOptions,
+): Promise<void> => {
+  const suggestion = await createRepairSuggestion(
+    projectRoot(options),
+    proposalId,
+  );
+  if (options.json) {
+    writeJson(suggestion);
+    return;
+  }
+  process.stdout.write(
+    [
+      `Suggestion: ${suggestion.state}`,
+      `Suggestion ID: ${suggestion.suggestionId}`,
+      `Proposal: ${suggestion.baseProposalId}`,
+      `Current readiness: ${suggestion.currentReadinessState}`,
+      `Predicted readiness: ${suggestion.predictedReadinessState ?? "unavailable"}`,
+      `Current approved companion symbols: ${suggestion.currentApprovedCompanionSymbols.map(({ file, name }) => `${file}#${name}`).join(", ") || "none"}`,
+      "Add approved companion symbols:",
+      ...(suggestion.suggestedCompanionSymbolAdditions.length > 0
+        ? suggestion.suggestedCompanionSymbolAdditions.flatMap(
+            ({ symbol, rationale, omissionBlockingReasons }) => [
+              `- ${symbol.file}#${symbol.name}`,
+              `  Reason: ${rationale}`,
+              `  Omission blockers: ${omissionBlockingReasons.map(({ code, message }) => `${code}: ${message}`).join(" | ") || "none"}`,
+            ],
+          )
+        : ["- none"]),
+      `Remaining blockers: ${suggestion.remainingBlockers.map(({ code, message }) => `${code}: ${message}`).join(" | ") || "none"}`,
+      `Retained dependencies: ${suggestion.retainedDependencies.map(({ symbol }) => `${symbol.file}#${symbol.name}`).join(", ") || "none"}`,
+      `Safely imported dependencies: ${
+        suggestion.safelyImportedDependencies
+          .map(({ kind, dependency }) =>
+            kind === "internal"
+              ? `${dependency.symbol.file}#${dependency.symbol.name}`
+              : `${dependency.package}:${dependency.name}`,
+          )
+          .join(", ") || "none"
+      }`,
+      `Unresolved dependencies: ${suggestion.unresolvedDependencies.map(({ name }) => name).join(", ") || "none"}`,
+      `Predicted imports: ${suggestion.predictedImportEdges.map(({ fromModule, toModule }) => `${fromModule} -> ${toModule}`).join(", ") || "none"}`,
+      `Predicted cycles: ${suggestion.predictedCycleRisks.map(({ modules }) => modules.join(" -> ")).join(", ") || "none"}`,
+      `Warnings: ${suggestion.warnings.map(({ code, message }) => `${code}: ${message}`).join(" | ") || "none"}`,
+      `Minimal: ${suggestion.minimal ? "yes" : "no"}`,
+      "No proposal was modified or approved.",
+      "Create or approve a revised proposal before execution.",
+    ].join("\n") + "\n",
+  );
 };
 
 export const migrateRunCommand = async (

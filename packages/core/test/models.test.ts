@@ -4,6 +4,7 @@ import {
   createArchitectureSnapshot,
   migrationProposalSchema,
   migrationSchema,
+  proposalRepairSuggestionSchema,
   repositoryModelSchema,
 } from "../src/index.js";
 
@@ -190,5 +191,44 @@ describe("domain schemas", () => {
       createdAt: new Date("2026-07-15T00:00:00.123Z"),
     });
     expect(architectureSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+  });
+
+  it("rejects repair suggestions that claim actionable readiness without reevaluation", () => {
+    expect(() =>
+      proposalRepairSuggestionSchema.parse({
+        schemaVersion: "1.0.0",
+        suggestionId: `RS-${"a".repeat(16)}`,
+        baseProposalId: "P-EM-81ce1120",
+        fingerprints: {
+          baseProposal: "a".repeat(64),
+          snapshot: "b".repeat(64),
+          configuration: "c".repeat(64),
+          source: "d".repeat(64),
+        },
+        state: "actionable",
+        currentReadinessState: "not-ready",
+        predictedReadinessState: "ready",
+        primarySymbols: [],
+        currentApprovedCompanionSymbols: [],
+        suggestedCompanionSymbolAdditions: [],
+        minimization: { candidateSymbols: [], eliminatedSymbols: [] },
+        retainedDependencies: [],
+        safelyImportedDependencies: [],
+        unresolvedDependencies: [],
+        predictedImportEdges: [],
+        predictedCycleRisks: [],
+        remainingBlockers: [],
+        warnings: [],
+        reevaluation: { performed: false, resultHash: null, stable: false },
+        minimal: true,
+        advisory: true,
+        deterministicEvidence: {
+          algorithmVersion: "1.0.0",
+          semanticHash: "e".repeat(64),
+          repeatedSemanticHash: "e".repeat(64),
+          stable: true,
+        },
+      }),
+    ).toThrow();
   });
 });
