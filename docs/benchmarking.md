@@ -1,5 +1,18 @@
 # Braid Bench methodology
 
+## Growth Mode live guard
+
+`pnpm benchmark:growth-mode` runs `growth-mode-live-guard@1.0.0`: twenty
+independent disposable-Git cases covering baseline/context, safe and blocking
+changes, pre-existing issue handling, cache invalidation, worktree isolation,
+finite Stop behavior, hook fail-open behavior, and installer ownership. It
+reports classification accuracy, new-cycle recall/precision, false blocks and
+warnings, deterministic report IDs, no-change/cache correctness, mutations,
+and unrelated-hook preservation. Wall-clock time is informational; functional
+regressions are blocking. The frozen expectations live in
+`benchmarks/growth-mode-live-guard-v1.json` and do not replace or modify any
+historical Phase 2 or Phase 3 baseline.
+
 ## What it measures
 
 Braid Bench answers separate questions instead of collapsing them into one score:

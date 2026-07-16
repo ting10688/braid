@@ -8,6 +8,11 @@ installations or `.braid/state` writes.
 
 ## Included suites
 
+- `growth-mode-live-guard@1.0.0`: twenty independent disposable-Git cases for
+  session baseline/context, Git-driven change detection, cycle and oversized
+  findings, finite Stop behavior, fail-open hooks, worktree isolation, and
+  ownership-safe Codex install/uninstall. Run it with
+  `pnpm benchmark:growth-mode`; wall-clock time is informational.
 - `phase-2-core`: clean modular code, an oversized notification responsibility, two- and three-module
   cycles, and a protected-path cycle. Correctness runs three times by default; one warm-up plus seven
   measured timing runs are separate. Proposal IDs, order, typed evidence, ranking components,
