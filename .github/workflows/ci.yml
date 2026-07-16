@@ -19,7 +19,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm test
+      - run: pnpm test --maxWorkers=1 --minWorkers=1
       - run: pnpm build
       - run: pnpm benchmark:real:list
       - run: pnpm benchmark:smoke

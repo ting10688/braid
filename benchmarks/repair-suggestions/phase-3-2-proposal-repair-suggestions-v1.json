@@ -1,0 +1,35 @@
+{
+  "suiteId": "phase-3-2-proposal-repair-suggestions",
+  "suiteVersion": "1.0.0",
+  "protocolVersion": "1.0.0",
+  "requiredCases": [
+    "missing-interface-actionable",
+    "missing-type-alias-actionable",
+    "multiple-required-companions",
+    "minimal-unnecessary-companion",
+    "retained-helper",
+    "safe-imported-internal-type",
+    "unresolved-declaration",
+    "protected-public-entrypoint",
+    "persistent-cycle",
+    "symbol-budget",
+    "legacy-evidence",
+    "in-memory-revision-ready",
+    "original-proposal-gated",
+    "separately-revised-execution"
+  ],
+  "blocking": {
+    "suggestionStateAccuracyMinimum": 1,
+    "actionableSuggestionPrecisionMinimum": 1,
+    "actionableSuggestionRecallMinimum": 1,
+    "minimalSetAccuracyMinimum": 1,
+    "falseActionableMaximum": 0,
+    "falseUnavailableMaximum": 0,
+    "nondeterministicSuggestionIdsMaximum": 0,
+    "nondeterministicSymbolOrdersMaximum": 0,
+    "originalExecutorLaunchesPreventedMinimum": 1,
+    "revisedProposalsSuccessfullyReachingReadinessMinimum": 2,
+    "mainCheckoutMutationsMaximum": 0,
+    "unauthorizedScopeAcceptedMaximum": 0
+  }
+}
