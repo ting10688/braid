@@ -6,8 +6,9 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.3.1 adds deterministic execution-readiness and symbol
-closure before isolated execution of a strict low-risk proposal subset for local TypeScript projects.
+reversible architecture changes. Version 0.3.2 adds deterministic, evidence-backed repair suggestions
+for `extract-module` proposals that fail execution readiness, while preserving the explicit approval and
+isolated-execution boundaries for local TypeScript projects.
 
 ## Current scope
 
@@ -22,7 +23,9 @@ Proposal precision is measured with reproducible synthetic and pinned real-world
 An approved low-risk, easy-reversibility `extract-module` proposal can now run through a deterministic
 readiness gate and plan, an owned external Git worktree, a disposable no-remote executor staging repository, a bounded
 Codex `workspace-write` process, independent Git diff inspection, configured validation, architecture
-comparison, and one local candidate commit.
+comparison, and one local candidate commit. When readiness is `not-ready`, Braid can instead derive an
+advisory suggestion for the smallest bounded addition to `approvedCompanionSymbols`; it never applies,
+stores, approves, or executes the suggested revision.
 
 The long-term vision has two modes:
 
@@ -131,6 +134,7 @@ Plan, execute, inspect, or explicitly discard a safe extraction candidate:
 
 ```bash
 braid migrate plan P-EM-a18d42f3
+braid migrate suggest P-EM-a18d42f3
 braid migrate run P-EM-a18d42f3 --approve P-EM-a18d42f3
 braid migrate list
 braid migrate status E-00000000-0000-4000-8000-000000000001
@@ -149,7 +153,32 @@ executor, requires the exact proposal ID in `--approve`, and supports `--model`,
 `migrate plan` reports `ready`, `ready-with-warnings`, or `not-ready`, including required companions,
 retained/external/unresolved dependencies, predicted import direction, cycle risks, and stable reasons.
 `migrate run` never adds a companion on the user's behalf; `not-ready` exits before any worktree,
-staging repository, executor process, or candidate branch is created.
+staging repository, executor process, or candidate branch is created. `migrate suggest` is a separate,
+advisory analysis that reports exactly one of `actionable`, `partial`, or `unavailable` and proposes only
+additions to `approvedCompanionSymbols`. It creates no execution resources or records and does not mutate
+or persist the proposal.
+
+```text
+$ braid migrate suggest P-EM-...
+
+Suggestion: actionable
+Current readiness: not-ready
+Predicted readiness: ready
+
+Add approved companion symbols:
+- SentNotification
+
+Reason:
+- required local type used by NotificationService
+- leaving it behind would create a reverse dependency
+
+No proposal was modified.
+Create or approve a revised proposal before execution.
+```
+
+Even an actionable suggestion leaves the original proposal non-executable. To proceed, store a separate
+revised proposal containing the approved companion symbols, then explicitly approve that revised
+proposal's own ID through the normal migration flow.
 
 ## Development
 
@@ -176,6 +205,7 @@ pnpm benchmark:migration:smoke
 pnpm benchmark:migration:run
 pnpm benchmark:migration:regression
 pnpm benchmark:readiness
+pnpm benchmark:repair-suggestions
 ```
 
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
@@ -206,7 +236,7 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
 - `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
 - `packages/migrator`: deterministic plans, worktree ownership, bounded executors, scope enforcement,
-  validation, architecture comparison, and candidate commits.
+  readiness and advisory repair evaluation, validation, architecture comparison, and candidate commits.
 - `packages/store`: atomic JSON project, snapshot, proposal, and execution-record persistence.
 - `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
   iteration comparison, and reports.
@@ -234,6 +264,12 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 - Extraction impact is estimated because caller rewrites are not simulated.
 - Execution supports only approved `extract-module` proposals with low risk, easy reversibility, no
   protected paths, and no predicted public-entrypoint changes.
+- Repair suggestions support only additive `approvedCompanionSymbols` changes. Primary-symbol removal,
+  destination changes, protected/public declaration movement, shared-module synthesis, and dependency-
+  architecture redesign are not suggested or performed.
+- Suggestions are deliberately conservative. Ambiguous or unresolved ownership, incomplete legacy
+  evidence, budget limits, protected/public surfaces, and cycles that companion additions cannot resolve
+  can produce `partial` or `unavailable`, including safe revisions Braid cannot prove from current facts.
 - Validation dependencies must already be usable inside the newly created worktree; Braid never runs a
   dependency installation command during migration.
 - Candidate branches and commits are local review artifacts. There is no automatic merge or push.
@@ -246,9 +282,10 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 
 ## Status
 
-Braid v0.3.1 implements Phase 3.1 execution readiness and safe isolated extraction execution. Snapshot,
-proposal, execution-plan, and execution-record schemas remain version 1; readiness evidence is a
-versioned backward-compatible execution-plan extension.
+Braid v0.3.2 implements Phase 3.2 deterministic proposal repair suggestions, Phase 3.1 execution
+readiness, and safe isolated extraction execution. Repair suggestions use their own versioned derived
+artifact schema and do not alter stored proposals. Snapshot, proposal, execution-plan, and
+execution-record schemas remain version 1.
 
 ## License
 

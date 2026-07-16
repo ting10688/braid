@@ -17,6 +17,9 @@ Braid Bench answers separate questions instead of collapsing them into one score
 6. **Migration execution safety:** whether approval/freshness/scope/validation/architecture failures are
    rejected, worktrees are isolated, the main checkout remains unchanged, and complete candidate records
    and commits are produced only for safe cases.
+7. **Proposal repair safety:** whether a readiness rejection produces the correct deterministic,
+   minimal advisory additions without false confidence, mutating the original proposal, or launching an
+   executor.
 
 Source size may increase after a useful boundary is introduced. Runtime on a tiny fixture may move in
 either direction due to noise. Neither outcome automatically decides architecture quality, and no opaque
@@ -187,6 +190,28 @@ repositories and the scripted executor; live Codex is not a benchmark dependency
 
 ```bash
 pnpm benchmark:readiness
+```
+
+### Phase 3.2 proposal-repair suite
+
+Implemented as `phase-3-2-proposal-repair-suggestions@1.0.0` with benchmark protocol `1.0.0`. Fourteen
+independent cases cover one and multiple missing interface/type companions, deterministic minimization,
+retained helpers and safely imported shared types, unresolved and protected/public evidence, persistent
+cycle and budget blockers, conservative legacy evidence, in-memory readiness re-evaluation, zero-launch
+rejection of the original proposal, and successful readiness for a separately revised proposal.
+
+The report keeps suggestion-state accuracy, actionable precision/recall, minimal-set accuracy,
+false-actionable and false-unavailable counts, deterministic suggestion IDs and symbol ordering,
+prevented executor launches, revised proposals reaching readiness, main-checkout mutations, and accepted
+unauthorized scope as separate metrics. Each case reports independently. The suite uses the scripted
+deterministic executor where orchestration is required; live Codex is not a benchmark dependency.
+
+An `actionable` result must prove a minimal additive `approvedCompanionSymbols` revision by rerunning
+readiness in memory. `partial` and `unavailable` remain valid safety outcomes, and the original proposal
+must still be rejected. Phase 2, Phase 3, and Phase 3.1 baselines remain unchanged by this suite.
+
+```bash
+pnpm benchmark:repair-suggestions
 ```
 
 ## Independence and fixture isolation
