@@ -9,6 +9,11 @@ export {
   type EvaluateExecutionReadinessInput,
 } from "./execution-readiness.js";
 export {
+  REPAIR_SUGGESTION_ALGORITHM_VERSION,
+  suggestProposalRepair,
+  type SuggestProposalRepairInput,
+} from "./proposal-repair-suggestion.js";
+export {
   runPreflight,
   type PreflightInput,
   type PreflightResult,

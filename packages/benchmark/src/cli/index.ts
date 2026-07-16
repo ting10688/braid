@@ -47,6 +47,10 @@ import {
   readinessBenchmarkConsoleReport,
   runReadinessBenchmark,
 } from "../readiness-suite.js";
+import {
+  proposalRepairSuggestionBenchmarkConsoleReport,
+  runProposalRepairSuggestionBenchmark,
+} from "../proposal-repair-suggestion-suite.js";
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
@@ -235,6 +239,20 @@ program
       options.json
         ? `${JSON.stringify(report, null, 2)}\n`
         : readinessBenchmarkConsoleReport(report),
+    );
+    if (report.regressions.length > 0) process.exitCode = 2;
+  });
+
+program
+  .command("repair-suggestions")
+  .description("Run the deterministic Phase 3.2 proposal-repair suite")
+  .option("--json", "write one JSON report")
+  .action(async (options: { json?: boolean }) => {
+    const report = await runProposalRepairSuggestionBenchmark();
+    process.stdout.write(
+      options.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : proposalRepairSuggestionBenchmarkConsoleReport(report),
     );
     if (report.regressions.length > 0) process.exitCode = 2;
   });

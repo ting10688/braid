@@ -29,6 +29,14 @@ Resolve declaration dependencies before executor launch; classify primary, compa
 external, and unresolved symbols; predict reverse imports and cycles; enforce file, symbol, and
 protected-surface budgets; and reject incomplete approvals before any execution resource is created.
 
+### Phase 3.2: Deterministic proposal repair suggestions — complete
+
+Turn a readiness rejection into a deterministic advisory explanation of the smallest supported
+`approvedCompanionSymbols` additions. Classify suggestions as `actionable`, `partial`, or `unavailable`,
+re-evaluate proposed additions in memory, and require a separately stored and explicitly approved
+revised proposal before execution. Automatic mutation, persistence, approval, execution, and
+architectural redesign remain excluded.
+
 ## Phase 4: Direct rollback and recovery hardening — next
 
 Add direct, auditable rollback after dependent-migration modeling and extend interrupted-run recovery.
@@ -51,5 +59,6 @@ These milestones describe evaluator coverage and are distinct from product execu
 - Benchmark D: Migration rollback validation — scaffolded
 - Phase 3 deterministic migration execution — complete (`phase-3-execution@1.0.0`)
 - Phase 3.1 execution readiness — complete (`phase-3-1-readiness@1.0.0`)
+- Phase 3.2 proposal repair suggestions — complete (`phase-3-2-proposal-repair-suggestions@1.0.0`)
 - Real-world repository suite — complete (`real-world-phase-2`, Consola and tslog)
 - Real-world-guided proposal precision (module-boundary classification and duplicate cycle actions) — complete
