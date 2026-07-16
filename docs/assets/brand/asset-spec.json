@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0.0",
+  "source": {
+    "file": "braid-logo-source.jpeg",
+    "sha256": "c816d7594d2c8c95257f2ed568904e8eba1ec57630fd5cc04f41771a31623142",
+    "width": 1254,
+    "height": 1254,
+    "format": "jpeg",
+    "colourSpace": "sRGB",
+    "alpha": false
+  },
+  "outputs": {
+    "braid-logo-readme.png": {
+      "width": 720,
+      "height": 720,
+      "maxBytes": 1000000
+    },
+    "braid-mark-square.png": {
+      "width": 512,
+      "height": 512,
+      "maxBytes": 1000000
+    },
+    "braid-social-preview.png": {
+      "width": 1280,
+      "height": 640,
+      "maxBytes": 1000000
+    },
+    "braid-video-title.png": {
+      "width": 1920,
+      "height": 1080,
+      "maxBytes": 3000000
+    },
+    "braid-video-end.png": {
+      "width": 1920,
+      "height": 1080,
+      "maxBytes": 3000000
+    }
+  }
+}

@@ -21,6 +21,18 @@ jobs:
       - run: pnpm lint
       - run: pnpm test --maxWorkers=1 --minWorkers=1
       - run: pnpm build
+      - run: pnpm brand:render
+      - run: pnpm brand:verify
+      - run: pnpm distribution:build
+      - run: pnpm distribution:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: braid-v0.4.1-demo-node22
+          path: |
+            .artifacts/braid-v0.4.1-demo-node22/
+            .artifacts/braid-v0.4.1-demo-node22.tar.gz
+            .artifacts/braid-v0.4.1-demo-node22.zip
+          if-no-files-found: error
       - run: pnpm benchmark:real:list
       - run: pnpm benchmark:smoke
 
