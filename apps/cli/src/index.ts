@@ -11,13 +11,14 @@ import {
   migrateListCommand,
   migratePlanCommand,
   migrateRunCommand,
+  migrateSuggestCommand,
   migrateStatusCommand,
 } from "./commands/migrate.js";
 
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.3.1");
+  .version("0.3.2");
 
 program
   .command("init")
@@ -70,6 +71,14 @@ migrate
   .option("--json", "write execution record JSON")
   .option("--no-commit", "retain validated changes without a candidate commit")
   .action(migrateRunCommand);
+
+migrate
+  .command("suggest")
+  .description("Suggest an advisory repair for a not-ready proposal")
+  .argument("<proposal-id>")
+  .option("--path <path>", "target project", ".")
+  .option("--json", "write repair suggestion JSON")
+  .action(migrateSuggestCommand);
 
 migrate
   .command("list")

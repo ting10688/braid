@@ -1,4 +1,4 @@
-export const MIGRATOR_VERSION = "0.1.1";
+export const MIGRATOR_VERSION = "0.1.2";
 export const SCOPE_POLICY_VERSION = 1;
 
 export const FORBIDDEN_FILE_PATTERNS = [

@@ -1,6 +1,6 @@
 {
   "name": "@braid/cli",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "type": "module",

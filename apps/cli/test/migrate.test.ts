@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { migrationProposalSchema } from "@braid/core";
 import type { MigrationExecutor } from "@braid/migrator";
-import { JsonProposalStore, JsonSnapshotStore } from "@braid/store";
+import {
+  JsonExecutionStore,
+  JsonProposalStore,
+  JsonSnapshotStore,
+} from "@braid/store";
 import {
   migrateDiffCommand,
   migrateDiscardCommand,
@@ -12,6 +16,7 @@ import {
   migrateListCommand,
   migratePlanCommand,
   migrateRunCommand,
+  migrateSuggestCommand,
   migrateStatusCommand,
 } from "../src/commands/migrate.js";
 import {
@@ -224,5 +229,102 @@ describe("migrate CLI commands", () => {
     expect(
       await git(item.repositoryRoot, ["branch", "--list", "braid/exec/*"]),
     ).toBe("");
+  });
+
+  it("suggests an advisory repair without mutating stores or Git state", async () => {
+    const item = await fixture(false);
+    const proposalStore = new JsonProposalStore(item.repositoryRoot);
+    const snapshotStore = new JsonSnapshotStore(item.repositoryRoot);
+    const beforeProposal = await proposalStore.load(item.proposal.id);
+    const beforeSnapshot = await snapshotStore.load(item.snapshot.id);
+    const beforeHead = await git(item.repositoryRoot, ["rev-parse", "HEAD"]);
+    const beforeWorktrees = await git(item.repositoryRoot, [
+      "worktree",
+      "list",
+      "--porcelain",
+    ]);
+    const output = captureStdout();
+
+    await migrateSuggestCommand(item.proposal.id, {
+      path: item.repositoryRoot,
+      json: true,
+    });
+    const suggestion = JSON.parse(output());
+    expect(suggestion).toMatchObject({
+      baseProposalId: item.proposal.id,
+      state: "actionable",
+      currentReadinessState: "not-ready",
+      predictedReadinessState: "ready",
+      minimal: true,
+      advisory: true,
+    });
+    expect(suggestion.suggestedCompanionSymbolAdditions).toHaveLength(1);
+    expect(
+      suggestion.suggestedCompanionSymbolAdditions[0].symbol,
+    ).toMatchObject({
+      file: "src/orders/order-service.ts",
+      name: "SentNotification",
+    });
+
+    vi.restoreAllMocks();
+    const humanOutput = captureStdout();
+    await migrateSuggestCommand(item.proposal.id, {
+      path: item.repositoryRoot,
+    });
+    expect(humanOutput()).toContain("Suggestion: actionable");
+    expect(humanOutput()).toContain(
+      "- src/orders/order-service.ts#SentNotification",
+    );
+    expect(humanOutput()).toContain("No proposal was modified or approved.");
+    expect(humanOutput()).toContain(
+      "Create or approve a revised proposal before execution.",
+    );
+
+    await migratePlanCommand(item.proposal.id, {
+      path: item.repositoryRoot,
+    });
+    expect(humanOutput()).toContain("Repair suggestion: actionable");
+    expect(humanOutput()).toContain("Predicted readiness: ready");
+
+    expect(await proposalStore.load(item.proposal.id)).toEqual(beforeProposal);
+    expect(await snapshotStore.load(item.snapshot.id)).toEqual(beforeSnapshot);
+    expect(
+      await new JsonExecutionStore(item.repositoryRoot).listRecords(),
+    ).toEqual([]);
+    expect(await git(item.repositoryRoot, ["rev-parse", "HEAD"])).toBe(
+      beforeHead,
+    );
+    expect(
+      await git(item.repositoryRoot, ["worktree", "list", "--porcelain"]),
+    ).toBe(beforeWorktrees);
+    expect(
+      await git(item.repositoryRoot, ["branch", "--list", "braid/exec/*"]),
+    ).toBe("");
+
+    let launches = 0;
+    await expect(
+      migrateRunCommand(
+        item.proposal.id,
+        {
+          path: item.repositoryRoot,
+          approve: item.proposal.id,
+        },
+        {
+          executorFactory: () => ({
+            kind: "codex",
+            inspect: async () => ({
+              kind: "codex",
+              sandbox: "workspace-write",
+            }),
+            execute: async () => {
+              launches += 1;
+              throw new Error("suggestion made original proposal executable");
+            },
+          }),
+          executionIdFactory: () => "E-a2000000-0000-4000-8000-000000000033",
+        },
+      ),
+    ).rejects.toMatchObject({ exitCode: 13, code: "execution-not-ready" });
+    expect(launches).toBe(0);
   });
 });
