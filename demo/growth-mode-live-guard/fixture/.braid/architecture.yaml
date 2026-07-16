@@ -1,0 +1,32 @@
+project:
+  language: typescript
+  architecture_style: modular-monolith
+source:
+  include:
+    - src/**/*.ts
+  exclude:
+    - "**/*.d.ts"
+    - "**/node_modules/**"
+constraints:
+  circular_dependencies: forbidden
+  public_api_changes: approval_required
+  allow_new_dependencies: false
+  preserve_existing_import_paths: true
+thresholds:
+  oversized_file_lines: 500
+  oversized_module_files: 20
+  oversized_module_exports: 25
+  max_module_dependencies: 8
+protected_paths: []
+modules: {}
+growthMode:
+  enabled: true
+  enforcement: block
+  blockOn:
+    - new-cycle
+  warnOn:
+    - oversized-threshold-crossed
+    - oversized-module-growth
+  maxFindings: 5
+  maxFeedbackCharacters: 4000
+  stopBlocksPerFingerprint: 1

@@ -5,6 +5,7 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      "**/.artifacts/**",
       "**/node_modules/**",
       "**/.braid/**",
       "**/.braid-bench-cache/**",
@@ -12,6 +13,15 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ["demo/**/*.mjs", "scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        Buffer: "readonly",
+        process: "readonly",
+      },
+    },
+  },
   {
     files: ["**/*.ts"],
     rules: {

@@ -136,14 +136,17 @@ export const growthResetCommand = async (
     );
 };
 
-const cliEntrypoint = fileURLToPath(new URL("../index.js", import.meta.url));
+const cliEntrypoint = (): string =>
+  process.argv[1]
+    ? path.resolve(process.argv[1])
+    : fileURLToPath(new URL("../index.js", import.meta.url));
 
 export const growthInstallCodexCommand = async (
   options: InstallOptions,
 ): Promise<void> => {
   const result = await installCodexHooks({
     projectRoot: path.resolve(options.path),
-    launcher: [process.execPath, cliEntrypoint, "growth", "hook"],
+    launcher: [process.execPath, cliEntrypoint(), "growth", "hook"],
     dryRun: options.dryRun ?? false,
     confirm: options.confirm ?? false,
     ...(options.codex ? { codexExecutable: options.codex } : {}),
