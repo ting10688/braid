@@ -1,6 +1,25 @@
 import { z } from "zod";
 import { validationCommandSchema } from "../models/migration-execution.js";
 
+const unique = <T>(values: T[]): boolean =>
+  new Set(values).size === values.length;
+
+export const growthModeConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  enforcement: z.enum(["warn", "block"]).default("block"),
+  blockOn: z
+    .array(z.literal("new-cycle"))
+    .refine(unique, { message: "must not contain duplicate rules" })
+    .default(["new-cycle"]),
+  warnOn: z
+    .array(z.enum(["oversized-threshold-crossed", "oversized-module-growth"]))
+    .refine(unique, { message: "must not contain duplicate rules" })
+    .default(["oversized-threshold-crossed", "oversized-module-growth"]),
+  maxFindings: z.number().int().min(1).max(50).default(5),
+  maxFeedbackCharacters: z.number().int().min(256).max(50_000).default(4_000),
+  stopBlocksPerFingerprint: z.number().int().min(0).max(5).default(1),
+});
+
 const migrationConfigSchema = z.object({
   enabled: z.boolean().default(false),
   supportedProposalTypes: z
@@ -74,9 +93,11 @@ export const architectureConfigSchema = z.object({
     include_high_risk: true,
   }),
   migration: migrationConfigSchema.default({}),
+  growthMode: growthModeConfigSchema.default({ enabled: false }),
 });
 
 export type ArchitectureConfig = z.infer<typeof architectureConfigSchema>;
+export type GrowthModeConfig = z.infer<typeof growthModeConfigSchema>;
 
 export const DEFAULT_ARCHITECTURE_CONFIG = `project:
   language: typescript
@@ -130,4 +151,16 @@ migration:
     sandbox: workspace-write
   validation:
     commands: []
+
+growthMode:
+  enabled: false
+  enforcement: block
+  blockOn:
+    - new-cycle
+  warnOn:
+    - oversized-threshold-crossed
+    - oversized-module-growth
+  maxFindings: 5
+  maxFeedbackCharacters: 4000
+  stopBlocksPerFingerprint: 1
 `;

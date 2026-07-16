@@ -8,6 +8,8 @@ persists validated snapshots and proposals without knowing how they were calcula
 interprets snapshot facts as bounded migration proposals without filesystem access or console output.
 `@braid/migrator` consumes one approved proposal, owns execution safety policy, and coordinates only
 execution-owned external Git worktrees. It does not change analyzer or planner facts.
+`@braid/guard` compares one worktree-specific session baseline with the current analyzer facts, owns
+ephemeral Growth Mode state and Codex hook adaptation, and never calls the migration orchestrator.
 `@braid/cli` coordinates the workflow and owns all human or machine output. `@braid/shared` contains
 only the error hierarchy and stable project-local paths used across those boundaries. `@braid/benchmark`
 is outside the product planning path: proposal suites invoke the CLI as a subprocess, while the Phase 3
@@ -17,10 +19,14 @@ suite drives the public migrator interface with its deterministic scripted execu
 flowchart LR
     CLI["@braid/cli"] --> Core["@braid/core<br/>config + schemas"]
     CLI --> Analyzer["@braid/analyzer<br/>read-only analysis"]
+    CLI --> Guard["@braid/guard<br/>live baseline + feedback"]
     CLI --> Planner["@braid/planner<br/>proposal interpretations"]
     CLI --> Migrator["@braid/migrator<br/>isolated execution policy"]
     CLI --> Store["@braid/store<br/>atomic JSON"]
     Analyzer --> Core
+    Guard --> Analyzer
+    Guard --> Core
+    Guard --> Shared
     Planner --> Analyzer
     Planner --> Core
     Migrator --> Analyzer
@@ -37,6 +43,20 @@ flowchart LR
     Bench --> Core
     Fixtures["Copied benchmark fixtures"] --> Bench
 ```
+
+## Growth Mode boundary
+
+The guard initializes a baseline once per session and Git worktree, stores it below that worktree's Git
+directory, and hashes repository/worktree identity before producing portable reports. A cheap current
+source/configuration fingerprint gates the existing analyzer. Changed files, their importers, cycle
+participants, and affected module metrics are compared with the baseline; pre-existing findings are
+not reclassified as new regressions.
+
+The hook-neutral lifecycle exposes context, check, final, status, and reset operations. The Codex
+adapter validates provider JSON and maps `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`
+onto that lifecycle. The adapter may continue a first Stop attempt for one configured hard regression,
+but it cannot undo a completed tool call and is not a security boundary. Growth Mode creates no
+proposal, branch, worktree, execution record, executor process, or candidate commit.
 
 The proposal-quality evaluator still has no dependency on `@braid/planner` or `@braid/analyzer`, so
 candidate selection and ranking do not grade themselves. The migration suite intentionally exercises

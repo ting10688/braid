@@ -38,6 +38,9 @@ importers:
       '@braid/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@braid/guard':
+        specifier: workspace:*
+        version: link:../../packages/guard
       '@braid/migrator':
         specifier: workspace:*
         version: link:../../packages/migrator
@@ -73,6 +76,9 @@ importers:
       '@braid/core':
         specifier: workspace:*
         version: link:../core
+      '@braid/guard':
+        specifier: workspace:*
+        version: link:../guard
       '@braid/migrator':
         specifier: workspace:*
         version: link:../migrator
@@ -97,6 +103,21 @@ importers:
       yaml:
         specifier: ^2.8.0
         version: 2.9.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+
+  packages/guard:
+    dependencies:
+      '@braid/analyzer':
+        specifier: workspace:*
+        version: link:../analyzer
+      '@braid/core':
+        specifier: workspace:*
+        version: link:../core
+      '@braid/shared':
+        specifier: workspace:*
+        version: link:../shared
       zod:
         specifier: ^3.25.76
         version: 3.25.76
