@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@braid/core": "workspace:*",
+    "@braid/guard": "workspace:*",
     "@braid/migrator": "workspace:*",
     "@braid/store": "workspace:*",
     "commander": "^14.0.0",

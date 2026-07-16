@@ -3,6 +3,7 @@ export * from "./config/config-loader.js";
 export * from "./models/architecture-metrics.js";
 export * from "./models/architecture-snapshot.js";
 export * from "./models/execution-readiness.js";
+export * from "./models/growth-mode.js";
 export * from "./models/proposal-repair-suggestion.js";
 export * from "./models/migration.js";
 export * from "./models/migration-execution.js";
