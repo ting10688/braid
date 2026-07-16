@@ -22,9 +22,30 @@ const normalizedJson = (value: unknown): string => {
 const hashNormalized = (value: unknown): string =>
   createHash("sha256").update(normalizedJson(value)).digest("hex");
 
+const binaryCompare = (left: string, right: string): number =>
+  left < right ? -1 : left > right ? 1 : 0;
+
+const growthNormalizedJson = (value: unknown): string => {
+  if (Array.isArray(value))
+    return `[${value.map(growthNormalizedJson).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => binaryCompare(left, right))
+      .map(
+        ([key, item]) => `${JSON.stringify(key)}:${growthNormalizedJson(item)}`,
+      )
+      .join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+};
+
 export const configHash = (config: ArchitectureConfig): string => {
-  const { migration: _migration, ...analysisAndPlannerConfig } = config;
+  const {
+    migration: _migration,
+    growthMode: _growthMode,
+    ...analysisAndPlannerConfig
+  } = config;
   void _migration;
+  void _growthMode;
   return hashNormalized(analysisAndPlannerConfig);
 };
 
@@ -40,6 +61,14 @@ export const executionConfigHash = (config: ArchitectureConfig): string =>
     analysisAndPlanner: configHash(config),
     migration: migrationConfigHash(config),
   });
+
+export const growthModeConfigHash = (config: ArchitectureConfig): string => {
+  const { migration: _migration, growthMode, ...analysisAndPlanner } = config;
+  void _migration;
+  return createHash("sha256")
+    .update(growthNormalizedJson({ analysisAndPlanner, growthMode }))
+    .digest("hex");
+};
 
 export const parseArchitectureConfig = (
   contents: string,

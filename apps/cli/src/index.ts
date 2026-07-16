@@ -3,6 +3,16 @@ import { Command, CommanderError } from "commander";
 import { BraidError } from "@braid/shared";
 import { analyzeCommand } from "./commands/analyze.js";
 import { initCommand } from "./commands/init.js";
+import {
+  growthCheckCommand,
+  growthContextCommand,
+  growthFinalCommand,
+  growthHookCommand,
+  growthInstallCodexCommand,
+  growthResetCommand,
+  growthStatusCommand,
+  growthUninstallCodexCommand,
+} from "./commands/growth.js";
 import { proposeCommand } from "./commands/propose.js";
 import {
   migrateDiffCommand,
@@ -18,7 +28,7 @@ import {
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.3.2");
+  .version("0.4.0");
 
 program
   .command("init")
@@ -117,6 +127,83 @@ migrate
   .option("--confirm <execution-id>", "repeat the exact execution ID")
   .option("--json", "write discarded record JSON")
   .action(migrateDiscardCommand);
+
+const growth = program
+  .command("growth")
+  .description("Guard architecture changes during an ordinary coding session");
+
+growth
+  .command("context")
+  .description("Initialize or show concise session architecture guidance")
+  .option("--path <path>", "target project", ".")
+  .option("--session <id>", "Growth Mode session ID")
+  .option("--json", "write context JSON")
+  .action(growthContextCommand);
+
+growth
+  .command("check")
+  .description("Evaluate the current state relative to the session baseline")
+  .option("--path <path>", "target project", ".")
+  .option("--session <id>", "Growth Mode session ID")
+  .option("--json", "write report JSON")
+  .action(growthCheckCommand);
+
+growth
+  .command("final")
+  .description("Apply the finite Stop-equivalent final policy")
+  .option("--path <path>", "target project", ".")
+  .option("--session <id>", "Growth Mode session ID")
+  .option("--json", "write final result JSON")
+  .action(growthFinalCommand);
+
+growth
+  .command("status")
+  .description("Show session, installation, and Codex capability status")
+  .option("--path <path>", "target project", ".")
+  .option("--session <id>", "Growth Mode session ID")
+  .option("--codex <executable>", "Codex executable", "codex")
+  .option("--json", "write status JSON")
+  .action(growthStatusCommand);
+
+growth
+  .command("reset")
+  .description("Reset only Braid-owned ephemeral state for one session")
+  .option("--path <path>", "target project", ".")
+  .option("--session <id>", "Growth Mode session ID")
+  .option("--confirm <id>", "repeat the exact session ID")
+  .option("--json", "write reset result JSON")
+  .action(growthResetCommand);
+
+const growthInstall = growth
+  .command("install")
+  .description("Install repository-local Growth Mode integration");
+
+growthInstall
+  .command("codex")
+  .description("Merge Braid-owned handlers into repository Codex hooks")
+  .option("--path <path>", "target project", ".")
+  .option("--codex <executable>", "Codex executable", "codex")
+  .option("--dry-run", "show the intended installation without writing")
+  .option("--confirm", "confirm repository-local hook installation")
+  .option("--json", "write installation JSON")
+  .action(growthInstallCodexCommand);
+
+const growthUninstall = growth
+  .command("uninstall")
+  .description("Remove repository-local Growth Mode integration");
+
+growthUninstall
+  .command("codex")
+  .description("Remove only Braid-owned Codex hook handlers")
+  .option("--path <path>", "target project", ".")
+  .option("--dry-run", "show the intended removal without writing")
+  .option("--json", "write uninstall JSON")
+  .action(growthUninstallCodexCommand);
+
+growth
+  .command("hook", { hidden: true })
+  .description("Internal Codex command-hook entrypoint")
+  .action(growthHookCommand);
 
 program.exitOverride();
 for (const command of program.commands) command.exitOverride();

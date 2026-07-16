@@ -10,6 +10,7 @@ export default defineConfig({
       "@braid/analyzer": fromRoot("./packages/analyzer/src/index.ts"),
       "@braid/benchmark": fromRoot("./packages/benchmark/src/index.ts"),
       "@braid/core": fromRoot("./packages/core/src/index.ts"),
+      "@braid/guard": fromRoot("./packages/guard/src/index.ts"),
       "@braid/migrator/testing": fromRoot(
         "./packages/migrator/src/testing/notification-fixture.ts",
       ),

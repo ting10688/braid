@@ -6,8 +6,8 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.3.2 adds deterministic, evidence-backed repair suggestions
-for `extract-module` proposals that fail execution readiness, while preserving the explicit approval and
+reversible architecture changes. Version 0.4.0 adds a bounded Growth Mode that reports supported
+architecture regressions inside an ordinary Codex session, while preserving the explicit approval and
 isolated-execution boundaries for local TypeScript projects.
 
 ## Current scope
@@ -29,12 +29,12 @@ stores, approves, or executes the suggested revision.
 
 The long-term vision has two modes:
 
-- Growth Mode will assess a feature's architectural impact before implementation and keep prerequisite
-  migrations independently reversible.
+- Growth Mode now guards supported architecture changes relative to a live session baseline; later
+  versions can add feature-intent and prerequisite analysis.
 - Recovery Mode will propose, execute, validate, and roll back small evidence-based migrations for
   existing architectural drift.
 
-Automatic merge, push, pull-request creation, rollback execution, Growth Mode, and `break-cycle`
+Automatic merge, push, pull-request creation, rollback execution, automatic repair, and `break-cycle`
 execution are not implemented. Braid never autonomously applies a proposal to the main checkout.
 
 ## Requirements and installation
@@ -180,6 +180,25 @@ Even an actionable suggestion leaves the original proposal non-executable. To pr
 revised proposal containing the approved companion symbols, then explicitly approve that revised
 proposal's own ID through the normal migration flow.
 
+Install the repository-local Codex Growth Mode adapter after enabling `growthMode` in the project
+configuration:
+
+```bash
+braid growth install codex --dry-run
+braid growth install codex --confirm
+braid growth context
+braid growth check --session my-session
+braid growth final --session my-session
+braid growth status --session my-session
+braid growth reset --session my-session --confirm my-session
+braid growth uninstall codex
+```
+
+Codex requires the exact hook definitions to be reviewed with `/hooks`. Growth Mode compares the
+current working tree with the session baseline and never edits source or invokes migration execution.
+See the [Growth Mode guide](docs/growth-mode.md) for lifecycle, finite Stop behavior, caching,
+installation ownership, and limitations.
+
 ## Development
 
 ```bash
@@ -206,6 +225,7 @@ pnpm benchmark:migration:run
 pnpm benchmark:migration:regression
 pnpm benchmark:readiness
 pnpm benchmark:repair-suggestions
+pnpm benchmark:growth-mode
 ```
 
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
@@ -237,6 +257,8 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
 - `packages/migrator`: deterministic plans, worktree ownership, bounded executors, scope enforcement,
   readiness and advisory repair evaluation, validation, architecture comparison, and candidate commits.
+- `packages/guard`: session baselines, Git/source fingerprints, architecture comparison, bounded
+  feedback, ephemeral state, and the Codex hook adapter.
 - `packages/store`: atomic JSON project, snapshot, proposal, and execution-record persistence.
 - `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
   iteration comparison, and reports.
@@ -247,7 +269,8 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 
 See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
 [safe migration execution](docs/migrations.md), [benchmark methodology](docs/benchmarking.md),
-[metric definitions](docs/metrics.md), and the [roadmap](docs/roadmap.md).
+[Growth Mode](docs/growth-mode.md), [metric definitions](docs/metrics.md), and the
+[roadmap](docs/roadmap.md).
 
 ## Known limitations
 
@@ -279,13 +302,15 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 - Recognizable credential material in changed lines is rejected and omitted from portable patches, but
   this static detector cannot prove that arbitrary application data is non-sensitive.
 - `break-cycle` execution and rollback execution remain roadmap work.
+- Growth Mode detects only supported static regressions relative to its session baseline; it does not
+  guarantee safe or correct code and is not an adversarial security boundary.
 
 ## Status
 
-Braid v0.3.2 implements Phase 3.2 deterministic proposal repair suggestions, Phase 3.1 execution
-readiness, and safe isolated extraction execution. Repair suggestions use their own versioned derived
-artifact schema and do not alter stored proposals. Snapshot, proposal, execution-plan, and
-execution-record schemas remain version 1.
+Braid v0.4.0 implements Growth Mode v1 alongside Phase 3.2 deterministic proposal repair suggestions,
+Phase 3.1 execution readiness, and safe isolated extraction execution. Growth reports and their Codex
+adapter protocol use schema version `1.0.0`; snapshot, proposal, execution-plan, and execution-record
+schemas remain version 1.
 
 ## License
 

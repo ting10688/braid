@@ -37,11 +37,18 @@ re-evaluate proposed additions in memory, and require a separately stored and ex
 revised proposal before execution. Automatic mutation, persistence, approval, execution, and
 architectural redesign remain excluded.
 
+## Growth Mode v1: Live architecture guard for Codex — complete
+
+Capture a worktree-isolated session baseline, inject concise Codex context, detect current Git/source
+changes, compare supported architecture regressions, and apply a finite first-Stop completion guard.
+Growth Mode observes the user's working tree but never creates proposals, migration resources, code
+repairs, commits, merges, or pushes. General feature-intent analysis remains later roadmap work.
+
 ## Phase 4: Direct rollback and recovery hardening — next
 
 Add direct, auditable rollback after dependent-migration modeling and extend interrupted-run recovery.
 
-## Phase 5: Growth Mode feature impact analysis
+## Phase 5: Growth Mode feature-intent and prerequisite analysis
 
 Analyze requested features before implementation and identify prerequisite architecture migrations.
 
@@ -60,5 +67,6 @@ These milestones describe evaluator coverage and are distinct from product execu
 - Phase 3 deterministic migration execution — complete (`phase-3-execution@1.0.0`)
 - Phase 3.1 execution readiness — complete (`phase-3-1-readiness@1.0.0`)
 - Phase 3.2 proposal repair suggestions — complete (`phase-3-2-proposal-repair-suggestions@1.0.0`)
+- Growth Mode live guard — complete (`growth-mode-live-guard@1.0.0`)
 - Real-world repository suite — complete (`real-world-phase-2`, Consola and tslog)
 - Real-world-guided proposal precision (module-boundary classification and duplicate cycle actions) — complete

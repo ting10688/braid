@@ -51,6 +51,10 @@ import {
   proposalRepairSuggestionBenchmarkConsoleReport,
   runProposalRepairSuggestionBenchmark,
 } from "../proposal-repair-suggestion-suite.js";
+import {
+  formatGrowthModeBenchmark,
+  runGrowthModeBenchmark,
+} from "../growth-mode-suite.js";
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
@@ -253,6 +257,20 @@ program
       options.json
         ? `${JSON.stringify(report, null, 2)}\n`
         : proposalRepairSuggestionBenchmarkConsoleReport(report),
+    );
+    if (report.regressions.length > 0) process.exitCode = 2;
+  });
+
+program
+  .command("growth-mode")
+  .description("Run the deterministic Growth Mode live-guard suite")
+  .option("--json", "write one JSON report")
+  .action(async (options: { json?: boolean }) => {
+    const report = await runGrowthModeBenchmark();
+    process.stdout.write(
+      options.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : `${formatGrowthModeBenchmark(report)}\n`,
     );
     if (report.regressions.length > 0) process.exitCode = 2;
   });

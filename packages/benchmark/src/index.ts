@@ -9,6 +9,7 @@ export * from "./fixtures/fixture-copier.js";
 export * from "./fixtures/fixture-loader.js";
 export * from "./fixtures/fixture-manifest.js";
 export * from "./fixtures/source-hasher.js";
+export * from "./growth-mode-suite.js";
 export * from "./models/benchmark.js";
 export * from "./migration-execution-suite.js";
 export * from "./proposal-repair-suggestion-suite.js";

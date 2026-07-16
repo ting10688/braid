@@ -1,12 +1,8 @@
 {
-  "name": "@braid/cli",
-  "version": "0.4.0",
+  "name": "@braid/guard",
+  "version": "0.1.0",
   "private": true,
-  "description": "Continuous architecture evolution for growing codebases.",
   "type": "module",
-  "bin": {
-    "braid": "./dist/index.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -20,11 +16,7 @@
   "dependencies": {
     "@braid/analyzer": "workspace:*",
     "@braid/core": "workspace:*",
-    "@braid/guard": "workspace:*",
-    "@braid/migrator": "workspace:*",
-    "@braid/planner": "workspace:*",
     "@braid/shared": "workspace:*",
-    "@braid/store": "workspace:*",
-    "commander": "^14.0.0"
+    "zod": "^3.25.76"
   }
 }
