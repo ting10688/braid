@@ -1,0 +1,45 @@
+{
+  "suiteId": "growth-mode-live-guard",
+  "suiteVersion": "1.0.0",
+  "protocolVersion": "1.0.0",
+  "requiredCases": [
+    "baseline-initialization",
+    "context-injection",
+    "no-source-change",
+    "safe-source-change",
+    "new-cycle",
+    "preexisting-cycle",
+    "preexisting-cycle-removed",
+    "oversized-threshold-crossed",
+    "oversized-module-growth",
+    "same-session-repair",
+    "stop-blocks-once",
+    "stop-no-loop",
+    "shell-git-mutation",
+    "untracked-typescript",
+    "config-cache-invalidation",
+    "worktree-isolation",
+    "malformed-hook-fail-open",
+    "analysis-failure-not-pass",
+    "install-idempotent-preserves-hooks",
+    "uninstall-owned-only"
+  ],
+  "blocking": {
+    "passedCasesMinimum": 20,
+    "classificationAccuracyMinimum": 1,
+    "newCycleRecallMinimum": 1,
+    "newCyclePrecisionMinimum": 1,
+    "falseBlocksMaximum": 0,
+    "falseWarningsMaximum": 0,
+    "nondeterministicReportIdsMaximum": 0,
+    "noChangeSkipsMinimum": 1,
+    "cacheCorrectMinimum": 2,
+    "stopLoopPreventedMinimum": 1,
+    "sourceMutationsByBraidMaximum": 0,
+    "gitMutationsByBraidMaximum": 0,
+    "existingHooksPreservedMinimum": 2
+  },
+  "informational": {
+    "wallClockTargetMs": 60000
+  }
+}

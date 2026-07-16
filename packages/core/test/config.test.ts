@@ -3,6 +3,7 @@ import {
   configHash,
   DEFAULT_ARCHITECTURE_CONFIG,
   executionConfigHash,
+  growthModeConfigHash,
   migrationConfigHash,
   parseArchitectureConfig,
 } from "../src/index.js";
@@ -32,6 +33,15 @@ describe("architecture configuration", () => {
         sandbox: "workspace-write",
       },
       validation: { commands: [] },
+    });
+    expect(first.growthMode).toEqual({
+      enabled: false,
+      enforcement: "block",
+      blockOn: ["new-cycle"],
+      warnOn: ["oversized-threshold-crossed", "oversized-module-growth"],
+      maxFindings: 5,
+      maxFeedbackCharacters: 4_000,
+      stopBlocksPerFingerprint: 1,
     });
     expect(configHash(first)).toBe(configHash(second));
   });
@@ -89,6 +99,66 @@ describe("architecture configuration", () => {
     expect(migrationConfigHash(changedSymbolBudget)).not.toBe(
       migrationConfigHash(currentConfig),
     );
+  });
+
+  it("keeps Growth Mode absent by default without changing proposal or migration identities", () => {
+    const current = parseArchitectureConfig(DEFAULT_ARCHITECTURE_CONFIG);
+    const legacy = parseArchitectureConfig(
+      DEFAULT_ARCHITECTURE_CONFIG.replace(/\ngrowthMode:[\s\S]*$/u, "\n"),
+    );
+    expect(legacy.growthMode.enabled).toBe(false);
+    expect(growthModeConfigHash(legacy)).toBe(growthModeConfigHash(current));
+
+    const enabled = parseArchitectureConfig(
+      DEFAULT_ARCHITECTURE_CONFIG.replace(
+        "growthMode:\n  enabled: false",
+        "growthMode:\n  enabled: true",
+      ),
+    );
+    expect(configHash(enabled)).toBe(configHash(current));
+    expect(executionConfigHash(enabled)).toBe(executionConfigHash(current));
+    expect(growthModeConfigHash(enabled)).not.toBe(
+      growthModeConfigHash(current),
+    );
+  });
+
+  it("enables bounded Growth Mode defaults only when its section is explicit", () => {
+    const explicit = parseArchitectureConfig(
+      DEFAULT_ARCHITECTURE_CONFIG.replace(
+        /growthMode:[\s\S]*$/u,
+        "growthMode: {}\n",
+      ),
+    );
+    expect(explicit.growthMode).toMatchObject({
+      enabled: true,
+      enforcement: "block",
+      blockOn: ["new-cycle"],
+      maxFindings: 5,
+      stopBlocksPerFingerprint: 1,
+    });
+  });
+
+  it("rejects unbounded or unknown Growth Mode policy values", () => {
+    const invalid = DEFAULT_ARCHITECTURE_CONFIG.replace(
+      "  maxFeedbackCharacters: 4000",
+      "  maxFeedbackCharacters: 10",
+    );
+    expect(() => parseArchitectureConfig(invalid)).toThrow(
+      /growthMode\.maxFeedbackCharacters/u,
+    );
+  });
+
+  it("hashes Growth Mode configuration independently of Unicode key insertion order", () => {
+    const config = parseArchitectureConfig(DEFAULT_ARCHITECTURE_CONFIG);
+    const first = {
+      ...config,
+      modules: { "z-module": {}, "ä-module": {} },
+    };
+    const second = {
+      ...config,
+      modules: { "ä-module": {}, "z-module": {} },
+    };
+    expect(growthModeConfigHash(first)).toBe(growthModeConfigHash(second));
   });
 
   it("rejects shell command strings and unsafe migration executables", () => {
