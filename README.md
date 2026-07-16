@@ -1,14 +1,31 @@
-# Braid
+<p align="center">
+  <img src="docs/assets/brand/braid-logo-readme.png" width="180" alt="Braid logo: a mint and off-white woven B on charcoal">
+</p>
 
-**Continuous architecture evolution for growing codebases.**
+<h1 align="center">Braid</h1>
 
-> Braid continuously restructures growing codebases, weaving new features into healthier architecture while keeping every change verifiable and reversible.
+<p align="center">
+  <strong>Keep architecture healthy while Codex writes code.</strong><br>
+  Braid detects architecture regressions inside a live Codex session and safely executes explicitly approved migrations in isolation.
+</p>
+
+<p align="center">
+  <a href="https://github.com/ting10688/Braid/actions/workflows/ci.yml"><img src="https://github.com/ting10688/Braid/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="https://github.com/ting10688/Braid/releases"><img src="https://img.shields.io/github/v/release/ting10688/Braid?display_name=tag" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ting10688/Braid" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/Node.js-22%2B-8EE7BF" alt="Node.js 22 or newer">
+</p>
+
+<p align="center">
+  <a href="#quick-judge-demo"><strong>Run the deterministic judge demo →</strong></a>
+</p>
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.4.0 adds a bounded Growth Mode that reports supported
-architecture regressions inside an ordinary Codex session, while preserving the explicit approval and
-isolated-execution boundaries for local TypeScript projects.
+reversible architecture changes. Version 0.4.0 introduced bounded Growth Mode for supported
+architecture regressions inside ordinary Codex sessions. Version 0.4.1 adds the standalone judge demo
+and Node.js distribution while preserving the existing approval and isolated-execution boundaries for
+local TypeScript projects.
 
 ## Current scope
 
@@ -39,19 +56,49 @@ execution are not implemented. Braid never autonomously applies a proposal to th
 
 ## Requirements and installation
 
-- Node.js 22 or a compatible current LTS release
-- pnpm 11
+### Quick judge demo
+
+After the next release, download the `braid-v0.4.1-demo-node22` archive from Releases, extract it, and
+run:
+
+```bash
+./braid-demo
+```
+
+The deterministic path needs Node.js 22 and Git 2.39 or newer. It needs no OpenAI account, Codex
+login, pnpm installation, source build, or network access. On platforms without the shell launcher,
+run `node ./demo/run-demo.mjs`. See the [judge guide](demo/growth-mode-live-guard/README.md) for the
+scenario, expected output, `--keep`, and the optional live-Codex path.
+
+### Prebuilt CLI
+
+The same archive will be attached to the next release. After extracting it, run:
+
+```bash
+./bin/braid --help
+```
+
+Windows Command Prompt can use `bin\braid.cmd --help`; `node ./bin/braid.mjs --help` works anywhere
+Node.js 22 is available. The CLI bundle does not need pnpm, `node_modules`, or a repository checkout.
+
+### Development from source
+
+Use the package-manager version pinned by this repository:
 
 ```bash
 git clone <repository-url> braid
 cd braid
-pnpm install
+corepack enable
+pnpm install --frozen-lockfile
 pnpm build
-pnpm --filter @braid/cli link --global
+pnpm braid --help
 ```
 
-The global link is optional; during development, run `node apps/cli/dist/index.js` in place of
-`braid`.
+A global CLI link remains an optional developer convenience:
+
+```bash
+pnpm --filter @braid/cli link --global
+```
 
 ## CLI
 
