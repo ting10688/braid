@@ -55,6 +55,11 @@ import {
   formatGrowthModeBenchmark,
   runGrowthModeBenchmark,
 } from "../growth-mode-suite.js";
+import {
+  collectDurableMigrationRecoveryBenchmarkEvidence,
+  durableMigrationRecoveryBenchmarkConsoleReport,
+  runDurableMigrationRecoveryBenchmark,
+} from "../durable-migration-recovery-suite.js";
 
 const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const benchmarksRoot = path.join(workspaceRoot, "benchmarks");
@@ -271,6 +276,25 @@ program
       options.json
         ? `${JSON.stringify(report, null, 2)}\n`
         : `${formatGrowthModeBenchmark(report)}\n`,
+    );
+    if (report.regressions.length > 0) process.exitCode = 2;
+  });
+
+program
+  .command("recovery")
+  .description("Run the deterministic Phase 4 durable-recovery suite")
+  .option("--json", "write one JSON report")
+  .action(async (options: { json?: boolean }) => {
+    const collected =
+      await collectDurableMigrationRecoveryBenchmarkEvidence(workspaceRoot);
+    const report = await runDurableMigrationRecoveryBenchmark(
+      collected.evidence,
+      collected.provenance,
+    );
+    process.stdout.write(
+      options.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : durableMigrationRecoveryBenchmarkConsoleReport(report),
     );
     if (report.regressions.length > 0) process.exitCode = 2;
   });
