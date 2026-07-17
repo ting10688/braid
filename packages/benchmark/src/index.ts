@@ -1,4 +1,5 @@
 export * from "./baselines/golden-baseline.js";
+export * from "./durable-migration-recovery-suite.js";
 export * from "./evaluators/benchmark-summary.js";
 export * from "./evaluators/flakiness-evaluator.js";
 export * from "./evaluators/iteration-comparator.js";
