@@ -48,7 +48,8 @@ The long-term vision has two modes:
 
 - Growth Mode now guards supported architecture changes relative to a live session baseline; later
   versions can add feature-intent and prerequisite analysis.
-- Recovery Mode will propose, execute, validate, and roll back small evidence-based migrations for
+- Durable migration recovery now resumes or safely cleans up interrupted, explicitly approved isolated
+  executions from verified journal evidence. The broader Recovery Mode vision may later add rollback of
   existing architectural drift.
 
 Automatic merge, push, pull-request creation, rollback execution, automatic repair, and `break-cycle`
@@ -187,6 +188,11 @@ braid migrate list
 braid migrate status E-00000000-0000-4000-8000-000000000001
 braid migrate inspect E-00000000-0000-4000-8000-000000000001
 braid migrate diff E-00000000-0000-4000-8000-000000000001
+braid migrate recover E-00000000-0000-4000-8000-000000000001
+braid migrate resume E-00000000-0000-4000-8000-000000000001 \
+  --confirm E-00000000-0000-4000-8000-000000000001
+braid migrate cleanup E-00000000-0000-4000-8000-000000000001 \
+  --confirm E-00000000-0000-4000-8000-000000000001
 braid migrate discard E-00000000-0000-4000-8000-000000000001 \
   --confirm E-00000000-0000-4000-8000-000000000001
 ```
@@ -195,7 +201,8 @@ Migration is disabled by default. The project configuration must explicitly enab
 trusted executable-plus-argument validation commands. `run` accepts only the production `codex`
 executor, requires the exact proposal ID in `--approve`, and supports `--model`,
 `--reasoning-effort`, `--timeout`, `--json`, and `--no-commit`. It never merges or pushes. See the
-[migration safety and lifecycle guide](docs/migrations.md).
+[migration safety and lifecycle guide](docs/migrations.md) and
+[durable recovery protocol](docs/durable-migration-recovery.md).
 
 `migrate plan` reports `ready`, `ready-with-warnings`, or `not-ready`, including required companions,
 retained/external/unresolved dependencies, predicted import direction, cycle risks, and stable reasons.
@@ -273,6 +280,7 @@ pnpm benchmark:migration:regression
 pnpm benchmark:readiness
 pnpm benchmark:repair-suggestions
 pnpm benchmark:growth-mode
+pnpm benchmark:recovery
 ```
 
 Braid Bench freezes protocol, suite, expectation, fixture, configuration, repetition, and timeout
@@ -303,12 +311,14 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 - `packages/analyzer`: TypeScript scanning, import graph, cycle detection, module classification, metrics.
 - `packages/planner`: pure deterministic candidate generation, classification, identity, and ranking.
 - `packages/migrator`: deterministic plans, worktree ownership, bounded executors, scope enforcement,
-  readiness and advisory repair evaluation, validation, architecture comparison, and candidate commits.
+  readiness and advisory repair evaluation, durable recovery, validation, architecture comparison, and
+  candidate commits.
 - `packages/guard`: session baselines, Git/source fingerprints, architecture comparison, bounded
   feedback, ephemeral state, and the Codex hook adapter.
-- `packages/store`: atomic JSON project, snapshot, proposal, and execution-record persistence.
+- `packages/store`: atomic JSON project, snapshot, proposal, execution-record, and immutable recovery
+  journal persistence.
 - `packages/benchmark`: independent fixture isolation, repeated evaluation, regression policies, baselines,
-  iteration comparison, and reports.
+  iteration comparison, recovery interruption coverage, and reports.
 - `packages/shared`: errors and project-local path constants.
 - `benchmarks`: versioned synthetic and pinned real-world suites, reviewed expectations, fixture templates,
   repository metadata, and ignored run results.
@@ -316,7 +326,8 @@ threshold that marks the order service as oversized. Its 24 behavior tests all p
 
 See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md),
 [safe migration execution](docs/migrations.md), [benchmark methodology](docs/benchmarking.md),
-[Growth Mode](docs/growth-mode.md), [metric definitions](docs/metrics.md), and the
+[durable migration recovery](docs/durable-migration-recovery.md), [Growth Mode](docs/growth-mode.md),
+[metric definitions](docs/metrics.md), and the
 [roadmap](docs/roadmap.md).
 
 ## Known limitations
@@ -349,14 +360,17 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 - Recognizable credential material in changed lines is rejected and omitted from portable patches, but
   this static detector cannot prove that arbitrary application data is non-sensitive.
 - `break-cycle` execution and rollback execution remain roadmap work.
+- Durable recovery is local and single-host. It cannot recover across machines, acts only on resources
+  with verified Braid ownership, and may leave unreachable Git objects created before a process crash.
 - Growth Mode detects only supported static regressions relative to its session baseline; it does not
   guarantee safe or correct code and is not an adversarial security boundary.
 
 ## Status
 
-Braid v0.4.0 implements Growth Mode v1 alongside Phase 3.2 deterministic proposal repair suggestions,
-Phase 3.1 execution readiness, and safe isolated extraction execution. Growth reports and their Codex
-adapter protocol use schema version `1.0.0`; snapshot, proposal, execution-plan, and execution-record
+Braid v0.5.0 development implements Phase 4 durable migration recovery alongside Growth Mode v1,
+Phase 3.2 deterministic proposal repair suggestions, Phase 3.1 execution readiness, and safe isolated
+extraction execution. Recovery journals use schema version `1.0.0`; Growth reports and their Codex
+adapter protocol remain at `1.0.0`, while snapshot, proposal, execution-plan, and execution-record
 schemas remain version 1.
 
 ## License
