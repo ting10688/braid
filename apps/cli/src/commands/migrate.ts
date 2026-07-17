@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import {
   loadArchitectureConfig,
   type ArchitectureConfig,
@@ -13,9 +13,13 @@ import {
   assertMainCheckoutIntegrity,
   candidateBranchForExecution,
   captureMainCheckoutState,
+  cleanupMigrationRecovery,
   createExecutionId,
   defaultExecutionRoot,
+  inspectMigrationRecovery,
+  listMigrationRecoveries,
   prepareMigrationPlan,
+  resumeMigration,
   runMigration,
   suggestProposalRepair,
   type MigrationExecutor,
@@ -55,9 +59,19 @@ export interface MigrateDiscardOptions extends ProjectOptions {
   confirm?: string;
 }
 
+export type MigrateRecoverOptions = ProjectOptions;
+
+export interface MigrateRecoveryMutationOptions extends ProjectOptions {
+  confirm?: string;
+}
+
 export interface MigrateRunDependencies {
   executorFactory?: (config: ArchitectureConfig) => MigrationExecutor;
   executionIdFactory?: () => string;
+}
+
+export interface MigrateRecoveryDependencies {
+  executorFactory?: (config: ArchitectureConfig) => MigrationExecutor;
 }
 
 const projectRoot = (options: ProjectOptions): string =>
@@ -109,6 +123,39 @@ const timeoutValue = (
 const writeJson = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 };
+
+const recoveryJournalExists = async (
+  root: string,
+  executionId: string,
+): Promise<boolean> => {
+  try {
+    await access(
+      path.join(root, EXECUTIONS_DIRECTORY, executionId, "recovery"),
+    );
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+};
+
+const optionalRecovery = async (root: string, executionId: string) =>
+  (await recoveryJournalExists(root, executionId))
+    ? inspectMigrationRecovery({ repositoryRoot: root, executionId })
+    : undefined;
+
+const humanRecovery = (
+  report: Awaited<ReturnType<typeof inspectMigrationRecovery>>,
+): string[] => [
+  `Execution: ${report.executionId}`,
+  `Classification: ${report.classification}`,
+  `Latest checkpoint: ${report.latestCheckpoint ?? "none"}`,
+  `Integrity: ${report.integrity.valid ? "valid" : `invalid (${report.integrity.code ?? "unknown"})`}`,
+  `Next safe action: ${report.nextSafeAction}`,
+  `Executor launch permitted: ${report.executorLaunchPermitted ? "yes" : "no"}`,
+  `Candidate creation permitted: ${report.candidateCreationPermitted ? "yes" : "no"}`,
+  `Cleanup eligible: ${report.cleanupEligible ? "yes" : "no"}`,
+];
 
 const createRepairSuggestion = async (root: string, proposalId: string) => {
   const context = await loadContext(root, proposalId);
@@ -285,6 +332,100 @@ export const migrateRunCommand = async (
     );
 };
 
+export const migrateRecoverCommand = async (
+  executionId: string | undefined,
+  options: MigrateRecoverOptions,
+): Promise<void> => {
+  const root = projectRoot(options);
+  if (executionId !== undefined) {
+    const report = await inspectMigrationRecovery({
+      repositoryRoot: root,
+      executionId,
+    });
+    if (options.json) writeJson(report);
+    else process.stdout.write(`${humanRecovery(report).join("\n")}\n`);
+    return;
+  }
+
+  const reports = (await listMigrationRecoveries({ repositoryRoot: root }))
+    .slice()
+    .sort((left, right) => left.executionId.localeCompare(right.executionId));
+  if (options.json) writeJson(reports);
+  else if (reports.length === 0)
+    process.stdout.write("No recoverable migration executions.\n");
+  else
+    process.stdout.write(
+      `${reports
+        .map(
+          (report) =>
+            `${report.executionId}\t${report.classification}\t${report.latestCheckpoint ?? "none"}\t${report.integrity.valid ? "valid" : "invalid"}\t${report.nextSafeAction}`,
+        )
+        .join("\n")}\n`,
+    );
+};
+
+export const migrateResumeCommand = async (
+  executionId: string,
+  options: MigrateRecoveryMutationOptions,
+  dependencies: MigrateRecoveryDependencies = {},
+): Promise<void> => {
+  if (options.confirm !== executionId)
+    throw new MigrationSafetyError(
+      `Resume confirmation must exactly equal ${executionId}`,
+      12,
+      "recovery-confirmation-mismatch",
+    );
+  const root = projectRoot(options);
+  const plan = await new JsonExecutionStore(root).loadPlan(executionId);
+  const context = await loadContext(root, plan.proposalId);
+  const migrationExecutor =
+    dependencies.executorFactory?.(context.config) ??
+    new CodexExecutor({
+      executable: context.config.migration.codex.executable,
+    });
+  if (migrationExecutor.kind !== "codex")
+    throw new InvalidInputError(
+      "The production resume command cannot use the scripted-test executor",
+    );
+  const result = await resumeMigration({
+    repositoryRoot: root,
+    executionId,
+    ...context,
+    migrationExecutor,
+  });
+  if (options.json) writeJson(result.record);
+  else
+    process.stdout.write(
+      [
+        `Execution: ${result.executionId}`,
+        `Status: ${result.record.status}`,
+        `Plan: ${result.plan.planId}`,
+        `Candidate branch: ${result.record.candidateBranch ?? "not created"}`,
+        `Candidate commit: ${result.record.candidateCommit ?? "not created"}`,
+        "Merge: disabled",
+        "Push: disabled",
+      ].join("\n") + "\n",
+    );
+};
+
+export const migrateCleanupCommand = async (
+  executionId: string,
+  options: MigrateRecoveryMutationOptions,
+): Promise<void> => {
+  if (options.confirm !== executionId)
+    throw new MigrationSafetyError(
+      `Cleanup confirmation must exactly equal ${executionId}`,
+      12,
+      "recovery-confirmation-mismatch",
+    );
+  const report = await cleanupMigrationRecovery({
+    repositoryRoot: projectRoot(options),
+    executionId,
+  });
+  if (options.json) writeJson(report);
+  else process.stdout.write(`${humanRecovery(report).join("\n")}\n`);
+};
+
 export const migrateListCommand = async (
   options: ProjectOptions,
 ): Promise<void> => {
@@ -309,10 +450,11 @@ export const migrateStatusCommand = async (
   executionId: string,
   options: ProjectOptions,
 ): Promise<void> => {
-  const record = await new JsonExecutionStore(projectRoot(options)).loadRecord(
-    executionId,
-  );
-  if (options.json) writeJson(record);
+  const root = projectRoot(options);
+  const record = await new JsonExecutionStore(root).loadRecord(executionId);
+  const recovery = await optionalRecovery(root, executionId);
+  if (options.json)
+    writeJson(recovery === undefined ? record : { ...record, recovery });
   else
     process.stdout.write(
       [
@@ -324,6 +466,13 @@ export const migrateStatusCommand = async (
         ...(record.failure
           ? [`Failure: ${record.failure.code}: ${record.failure.message}`]
           : []),
+        ...(recovery === undefined
+          ? []
+          : [
+              `Recovery: ${recovery.classification}`,
+              `Recovery checkpoint: ${recovery.latestCheckpoint ?? "none"}`,
+              `Recovery integrity: ${recovery.integrity.valid ? "valid" : "invalid"}`,
+            ]),
       ].join("\n") + "\n",
     );
 };
@@ -332,12 +481,16 @@ export const migrateInspectCommand = async (
   executionId: string,
   options: ProjectOptions,
 ): Promise<void> => {
-  const store = new JsonExecutionStore(projectRoot(options));
-  const [plan, record] = await Promise.all([
+  const root = projectRoot(options);
+  const store = new JsonExecutionStore(root);
+  const [plan, record, recovery] = await Promise.all([
     store.loadPlan(executionId),
     store.loadRecord(executionId),
+    optionalRecovery(root, executionId),
   ]);
-  writeJson({ plan, record });
+  writeJson(
+    recovery === undefined ? { plan, record } : { plan, record, recovery },
+  );
 };
 
 export const migrateDiffCommand = async (

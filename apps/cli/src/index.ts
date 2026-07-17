@@ -15,11 +15,14 @@ import {
 } from "./commands/growth.js";
 import { proposeCommand } from "./commands/propose.js";
 import {
+  migrateCleanupCommand,
   migrateDiffCommand,
   migrateDiscardCommand,
   migrateInspectCommand,
   migrateListCommand,
   migratePlanCommand,
+  migrateRecoverCommand,
+  migrateResumeCommand,
   migrateRunCommand,
   migrateSuggestCommand,
   migrateStatusCommand,
@@ -28,7 +31,7 @@ import {
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.4.1");
+  .version("0.5.0");
 
 program
   .command("init")
@@ -89,6 +92,32 @@ migrate
   .option("--path <path>", "target project", ".")
   .option("--json", "write repair suggestion JSON")
   .action(migrateSuggestCommand);
+
+migrate
+  .command("recover")
+  .description("Inspect durable migration recovery state without mutation")
+  .argument("[execution-id]")
+  .option("--path <path>", "target project", ".")
+  .option("--json", "write recovery report JSON")
+  .action(migrateRecoverCommand);
+
+migrate
+  .command("resume")
+  .description("Resume a verified durable migration execution")
+  .argument("<execution-id>")
+  .option("--path <path>", "target project", ".")
+  .option("--confirm <execution-id>", "repeat the exact execution ID")
+  .option("--json", "write execution record JSON")
+  .action(migrateResumeCommand);
+
+migrate
+  .command("cleanup")
+  .description("Remove only verified Braid-owned recovery resources")
+  .argument("<execution-id>")
+  .option("--path <path>", "target project", ".")
+  .option("--confirm <execution-id>", "repeat the exact execution ID")
+  .option("--json", "write recovery report JSON")
+  .action(migrateCleanupCommand);
 
 migrate
   .command("list")

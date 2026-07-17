@@ -8,4 +8,5 @@ export * from "./models/proposal-repair-suggestion.js";
 export * from "./models/migration.js";
 export * from "./models/migration-execution.js";
 export * from "./models/migration-proposal.js";
+export * from "./models/migration-recovery.js";
 export * from "./models/repository-model.js";
