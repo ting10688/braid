@@ -28,6 +28,7 @@ const artifacts = path.join(repository, ".artifacts");
 const distribution = path.join(artifacts, artifactName);
 const tarArchive = path.join(artifacts, `${artifactName}.tar.gz`);
 const zipArchive = path.join(artifacts, `${artifactName}.zip`);
+const releaseChecksums = path.join(artifacts, "SHA256SUMS");
 const sha256 = (contents) =>
   createHash("sha256").update(contents).digest("hex");
 
@@ -51,6 +52,20 @@ const walkFiles = async (directory, prefix = "") => {
 await access(distribution);
 await access(tarArchive);
 await access(zipArchive);
+await access(releaseChecksums);
+
+const expectedReleaseChecksums = (
+  await Promise.all(
+    [tarArchive, zipArchive].map(
+      async (file) => `${sha256(await readFile(file))}  ${path.basename(file)}`,
+    ),
+  )
+).join("\n");
+assert(
+  (await readFile(releaseChecksums, "utf8")).trim() ===
+    expectedReleaseChecksums,
+  "Release SHA256SUMS is incomplete or invalid",
+);
 
 const files = await walkFiles(distribution);
 for (const required of [
