@@ -11,12 +11,12 @@ Executable discovery or schema parsing alone is insufficient.
 
 ## Gate result
 
-| Platform              | Tested CLI | Contract   | Live final-stop                            | Growth classification |
-| --------------------- | ---------- | ---------- | ------------------------------------------ | --------------------- |
-| OpenAI Codex          | 0.144.5    | documented | block → additional turn → pass             | `verified`            |
-| Anthropic Claude Code | 2.1.212    | documented | not reached: CLI not authenticated         | `blocked`             |
-| Google Gemini CLI     | 0.40.0     | documented | block → additional turn → pass             | `verified`            |
-| GitHub Copilot CLI    | 1.0.71     | documented | not reached: CLI entitlement/policy denied | `blocked`             |
+| Platform              | Tested CLI | Contract   | Live final-stop                          | Growth classification |
+| --------------------- | ---------- | ---------- | ---------------------------------------- | --------------------- |
+| OpenAI Codex          | 0.144.5    | documented | block → additional turn → pass           | `verified`            |
+| Anthropic Claude Code | 2.1.212    | documented | not reached: CLI not authenticated       | `blocked`             |
+| Google Gemini CLI     | 0.40.0     | documented | block → additional turn → pass           | `verified`            |
+| GitHub Copilot CLI    | 1.0.71     | documented | not reached: policy authorization denied | `blocked`             |
 
 The Claude and Copilot priority gates are not closed. A reduced
 Codex-and-Gemini-only v0.6.0 is not authorized by this result.
@@ -26,19 +26,20 @@ Codex-and-Gemini-only v0.6.0 is not authorized by this result.
 No account names, credentials, tokens, prompt text, transcripts, session
 databases, or unredacted home paths were retained.
 
-| Field                    | Claude Code                                                                                                     | GitHub Copilot CLI                                                                                                                                                              |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Executable               | `/Users/<user>/.local/bin/claude` → native version directory                                                    | `/opt/homebrew/bin/copilot` → Homebrew Cask directory                                                                                                                           |
-| Exact version            | `2.1.212 (Claude Code)`, commit `8b2783a8f907`                                                                  | `GitHub Copilot CLI 1.0.71`                                                                                                                                                     |
-| Installation channel     | native installer, `latest` update channel                                                                       | Homebrew Cask                                                                                                                                                                   |
-| Doctor/version result    | native install healthy; `darwin-arm64`                                                                          | version command succeeded and reported current                                                                                                                                  |
-| Authentication readiness | not ready: `loggedIn:false`, `authMethod:none`; no API-key, Bedrock, Vertex, or Foundry provider was configured | not ready: the CLI reached its account check but reported no usable Copilot subscription and then denied Copilot CLI use because enterprise/organization policy was not enabled |
-| Relevant help reviewed   | `--setting-sources`, `--settings`, `--resume`, `--continue`, `--worktree`, `-p`, hook event filtering           | `COPILOT_HOME`, `--resume`, `--continue`, `-p`, `-i`, scoped allow/deny tool flags, `--no-remote`, `--no-remote-export`, `--no-auto-update`, `--log-dir`                        |
-| Unsafe options used      | none                                                                                                            | none                                                                                                                                                                            |
+| Field                    | Claude Code                                                                                                     | GitHub Copilot CLI                                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Executable               | `/Users/<user>/.local/bin/claude` → native version directory                                                    | `/opt/homebrew/bin/copilot` → Homebrew Cask directory                                                                                                       |
+| Exact version            | `2.1.212 (Claude Code)`, commit `8b2783a8f907`                                                                  | `GitHub Copilot CLI 1.0.71`                                                                                                                                 |
+| Installation channel     | native installer, `latest` update channel                                                                       | Homebrew Cask                                                                                                                                               |
+| Doctor/version result    | native install healthy; `darwin-arm64`                                                                          | version command succeeded and reported current                                                                                                              |
+| Authentication readiness | not ready: `loggedIn:false`, `authMethod:none`; no API-key, Bedrock, Vertex, or Foundry provider was configured | credential reached a model request, but runtime readiness is `unknown`: the request was denied because an enterprise or organization policy must be enabled |
+| Relevant help reviewed   | `--setting-sources`, `--settings`, `--resume`, `--continue`, `--worktree`, `-p`, hook event filtering           | `COPILOT_HOME`, `--resume`, `--continue`, `-p`, `-i`, scoped allow/deny tool flags, `--no-remote`, `--no-remote-export`, `--no-auto-update`, `--log-dir`    |
+| Unsafe options used      | none                                                                                                            | none                                                                                                                                                        |
 
-`claude doctor`, `claude --help`, `copilot --help`, and `copilot help` were
-reviewed. No login command, broad permission flag, user-level hook, cloud job,
-or authentication-setting change was used.
+`claude doctor`, `claude --help`, `copilot --help`, `copilot help`, and
+`copilot help config` were reviewed. No login command, broad permission flag,
+user-level hook, cloud job, or authentication-setting change was used by the
+research harness.
 
 ## Required four-platform matrix
 
@@ -158,7 +159,10 @@ linked worktree, and runs malformed/nonzero/timeout variants.
 
 ## GitHub Copilot CLI
 
-Official sources: [hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference),
+Official sources reviewed again on 2026-07-17:
+[Authenticating GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli),
+[Administering Copilot CLI for your enterprise](https://docs.github.com/en/copilot/how-tos/copilot-cli/administer-copilot-cli-for-your-enterprise),
+[hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference),
 [CLI configuration directory](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference),
 [CLI command reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference),
 [using hooks](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/use-hooks),
@@ -174,9 +178,17 @@ gitignored. The cloud coding agent's documented default discovery loads only
 path is `.github/copilot/settings.local.json`, and the earlier
 `.github/hooks/braid.json` proposal is rejected.
 
-Cloud-scope decision: `cli-only-scope-verified`. This means only that the
-configuration path is outside cloud default discovery; no cloud-agent
-compatibility is claimed.
+The documented settings precedence is built-in → managed policy → user
+settings → `.github/copilot/settings.json` →
+`.github/copilot/settings.local.json` → environment → CLI flags. Hook entries
+from applicable sources are combined, so Braid must not depend on a particular
+cross-source execution order. The current native inspection surface is `/env`;
+the command reference does not document a Copilot CLI `/hooks` command.
+
+Cloud-scope decision: `cli-only-scope-verified`, based on the earlier live
+`/env` source observation and the re-reviewed current official discovery
+contract. This means only that the configuration path is outside cloud default
+discovery; no cloud-agent compatibility is claimed.
 
 | Braid lifecycle | Native event          | Native stdin                                                                                          | Exit-0 stdout used by Braid                                                        |
 | --------------- | --------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -203,47 +215,64 @@ are treated as no output. Repository-level unknown settings keys are silently
 ignored; Braid must still preserve them because later native writes may remove
 unknown fields.
 
+The current configuration-directory reference explicitly supports JSONC for
+user settings. It says repository-local settings use the repository schema but
+does not separately guarantee comment/trailing-comma grammar or lossless
+rewrites for `.github/copilot/settings.local.json`. Production ownership must
+therefore use path-level comment-preserving edits if live evidence confirms
+JSONC, or refuse such input; plain `JSON.parse` plus full-file stringify is not
+a safe recommendation.
+
 Prompt-type hooks fire only for new interactive sessions, not resume or `-p`,
 and are excluded from the Braid design. Non-interactive `-p` repository hooks
 are a separate contract: they are not loaded by default unless repository
 trust and the documented prompt-mode repository-hook opt-in are present. No
 non-interactive or cloud compatibility is claimed by this gate.
 
-### Live probe result
+### Live probe result after login
 
-The probe used a separate disposable Git repository, a temporary
-`COPILOT_HOME`, four inline command hooks in
-`.github/copilot/settings.local.json`, and no broad permission flag.
+The resumed research ran the required readiness gate before creating another
+lifecycle repository. It used an isolated temporary `COPILOT_HOME`, disabled
+remote control/export, automatic update, built-in MCPs, custom instructions,
+and all tools, accepted folder trust for that session only, and submitted one
+minimal text-only request.
 
-Observed:
+The request reached the Copilot model service, then returned this redacted
+non-secret error:
 
-- The interactive native `/env` surface showed all four hooks loaded from
-  `repo settings`; this proves local inline configuration discovery and source
-  attribution on 1.0.71.
-- Trust state was confined to temporary `COPILOT_HOME`.
-- The first minimal no-tool model request reported no usable Copilot
-  subscription and then rejected Copilot CLI access because the required
-  enterprise/organization policy was not enabled.
-- The authorization failure occurred before a usable agent lifecycle, so no
-  final-stop decision or model continuation could be tested.
-- No user-level `~/.copilot/config.json` or `~/.copilot/settings.json` appeared,
-  no login or GitHub-authentication setting was changed, and no
-  `.github/hooks/*.json` file was used or modified.
+> You are not authorized to use this Copilot feature, it requires an
+> enterprise or organization policy to be enabled.
 
-Not live-proven: interactive/resumed `sessionStart`, prompt cardinality and
-output behavior, create/edit/shell `postToolUse`, `agentStop` block, an
-additional turn, repair-to-pass, repeated-block finiteness, hook exit codes,
-malformed output, timeout, `-p`, or linked-worktree behavior.
+The request ID and account identity were not retained. Because the client
+error does not identify which policy layer denied access, runtime readiness is
+classified exactly as `unknown`, not as organization- or enterprise-specific.
+Per the research protocol, lifecycle probing stopped immediately.
+
+The earlier `/env` observation that all four inline hooks were loaded from
+`repo settings` remains valid carried-forward config-source evidence, but it
+was not misrepresented as a lifecycle or final-stop probe. No new disposable
+hook repository, `.github/hooks/*.json`, user-level hook, cloud hook, or Braid
+production change was created.
+
+User-state audit: `~/.copilot/config.json` already existed after the user's
+login before this resumed probe and remained byte-for-byte and
+metadata-identical afterward. `~/.copilot/settings.json` remained absent. The
+isolated readiness session and logs, which could contain the harmless prompt,
+were deleted; only an ignored redacted readiness summary remains.
+
+Not live-proven: interactive/resumed `sessionStart`, `userPromptSubmitted`,
+create/edit/read/bash `postToolUse`, `agentStop` pass or block, an additional
+turn, repair-to-pass, repeated-block finiteness, malformed output, nonzero exit,
+timeout/orphan cleanup, normal-checkout lifecycle, `-p`, or linked-worktree
+behavior.
 
 Growth classification: `blocked`.
 
-Smallest remaining test: have the account administrator enable Copilot CLI
-entitlement/policy (without changing repository or local permission settings),
-then rerun the existing disposable interactive probe: create and edit a file
-with native tools, mutate through shell once, block one `agentStop`, observe an
-additional turn, repair and pass, repeat an unchanged block to the Braid finite
-limit, run malformed/nonzero/timeout cases, resume the session, and repeat in a
-linked worktree.
+Smallest remaining test: enable Copilot CLI in at least one organization that
+provides the user's Copilot seat, unless an enterprise policy overrides it;
+then rerun readiness. Only after it returns `ready` should the isolated
+normal-checkout and linked-worktree lifecycle, continuation, repair, finite
+blocking, failure-semantics, ownership, and redacted-fixture probes proceed.
 
 ## Carried-forward Codex and Gemini evidence
 
@@ -287,10 +316,10 @@ No Claude or Copilot contract fixture was captured. Both CLIs failed before a
 usable lifecycle event, so committing a payload copied from documentation or
 manually invoking a probe script would be fabricated evidence.
 
-| Platform            | Required live fixtures                                                                           | Captured | Reason                                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------- |
-| Claude Code 2.1.212 | `SessionStart`, `UserPromptSubmit`, Write/Bash `PostToolUse`, Stop pass/block/repeated           | 0        | authentication rejected before `SessionStart`                       |
-| Copilot CLI 1.0.71  | `sessionStart`, `userPromptSubmitted`, file/shell `postToolUse`, `agentStop` pass/block/repeated | 0        | account entitlement/policy rejected before a usable agent lifecycle |
+| Platform            | Required live fixtures                                                                           | Captured | Reason                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------ | -------- | ----------------------------------------------------------- |
+| Claude Code 2.1.212 | `SessionStart`, `UserPromptSubmit`, Write/Bash `PostToolUse`, Stop pass/block/repeated           | 0        | authentication rejected before `SessionStart`               |
+| Copilot CLI 1.0.71  | `sessionStart`, `userPromptSubmitted`, file/shell `postToolUse`, `agentStop` pass/block/repeated | 0        | policy authorization denied before a usable agent lifecycle |
 
 Private disposable probe material was not committed. A future fixture must
 carry platform, exact CLI version, capture date, official event name, and a
@@ -302,19 +331,29 @@ transcript paths while retaining genuinely observed additive fields.
 These are production design recommendations only; nothing was installed by
 this research task.
 
-| Platform    | Exact path                            | Commit status                                        | Braid entry identity                                                                                                         |
-| ----------- | ------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Claude Code | `.claude/settings.local.json`         | local-only; refuse install if tracked or not ignored | event + supported `type`, `command`, `args`, timeout, and a fixed Braid `statusMessage`; do not add unsupported owner fields |
-| Copilot CLI | `.github/copilot/settings.local.json` | local-only; refuse install if tracked or not ignored | event + `type`, `command`, `timeoutSec`, and supported `env` values `BRAID_GROWTH_HOOK_OWNER`/`BRAID_GROWTH_HOOK_EVENT`      |
+| Platform    | Exact path                            | Commit status                                        | Braid entry identity                                                                                                                 |
+| ----------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Claude Code | `.claude/settings.local.json`         | local-only; refuse install if tracked or not ignored | event + supported `type`, `command`, `args`, timeout, and a fixed Braid `statusMessage`; do not add unsupported owner fields         |
+| Copilot CLI | `.github/copilot/settings.local.json` | local-only; refuse install if tracked or not ignored | event + supported `type`, command, timeout, and `env` values `BRAID_GROWTH_HOOK_OWNER`/`BRAID_GROWTH_HOOK_ID`; no unknown `id` field |
+
+For Copilot, the official command-entry fields are `type`, one of
+`command`/`bash`/`powershell`, optional `cwd`, `env`, and
+`timeoutSec`/`timeout`; some tool events also accept `matcher`. There is no
+official `id`, `name`, or `statusMessage`. Stable Braid identity therefore
+belongs in supported `env` keys: fixed owner, per-event ID, ownership schema,
+and a SHA-256 self-fingerprint. Preserve `disableAllHooks: true` and report
+`installed-disabled`; never flip user policy. Hook configuration changes
+require a new Copilot session rather than assuming hot reload.
 
 Use the existing Codex installer pattern rather than a new configuration
 framework:
 
 1. Resolve the current Git worktree root; reject a config symlink or resolved
    path outside it. Each worktree owns its own ignored local settings file.
-2. Parse JSON and validate only the containers Braid touches. Malformed input
-   is a no-write error. Preserve unknown keys and every unrelated setting and
-   hook.
+2. Parse with a comment-preserving JSONC editor and validate only the
+   containers Braid touches. Malformed input or ambiguous duplicate touched
+   keys is a no-write error. Preserve comments, trailing commas, unknown keys,
+   ordering, and every unrelated setting and hook.
 3. Structurally merge one exact Braid command entry per required event.
    Repeated install is idempotent. Exact Braid-owned duplicates may normalize
    to one; lookalikes or conflicting owner signatures are an explicit
