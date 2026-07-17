@@ -172,7 +172,16 @@ await writeFile(
 
 const posixCli = `#!/usr/bin/env sh
 set -eu
-directory=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+launcher=$0
+while [ -L "$launcher" ]; do
+  directory=$(CDPATH= cd -- "$(dirname -- "$launcher")" && pwd)
+  target=$(readlink "$launcher")
+  case $target in
+    /*) launcher=$target ;;
+    *) launcher=$directory/$target ;;
+  esac
+done
+directory=$(CDPATH= cd -- "$(dirname -- "$launcher")" && pwd)
 exec node "$directory/braid.mjs" "$@"
 `;
 const windowsCli = `@echo off\r\nnode "%~dp0braid.mjs" %*\r\n`;
@@ -238,11 +247,34 @@ for (const file of await walkFiles(distribution)) {
     throw new Error(`Distribution contains developer checkout path: ${file}`);
 }
 
-await execFileAsync("tar", ["-czf", `${artifactName}.tar.gz`, artifactName], {
-  cwd: artifacts,
-});
+await execFileAsync(
+  "tar",
+  [
+    "--format=ustar",
+    "--no-xattrs",
+    "-czf",
+    `${artifactName}.tar.gz`,
+    artifactName,
+  ],
+  {
+    cwd: artifacts,
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  },
+);
 await execFileAsync("zip", ["-q", "-r", `${artifactName}.zip`, artifactName], {
   cwd: artifacts,
 });
+const releaseAssets = [`${artifactName}.tar.gz`, `${artifactName}.zip`];
+await writeFile(
+  path.join(artifacts, "SHA256SUMS"),
+  `${(
+    await Promise.all(
+      releaseAssets.map(
+        async (file) =>
+          `${sha256(await readFile(path.join(artifacts, file)))}  ${file}`,
+      ),
+    )
+  ).join("\n")}\n`,
+);
 
 process.stdout.write(`Built ${distribution}\n`);
