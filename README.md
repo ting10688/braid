@@ -22,10 +22,9 @@
 
 Braid is a continuous architecture evolution tool for growing codebases. It analyzes architectural
 drift, helps place new features into appropriate boundaries, and supports incremental, verifiable, and
-reversible architecture changes. Version 0.4.0 introduced bounded Growth Mode for supported
-architecture regressions inside ordinary Codex sessions. Version 0.4.1 adds the standalone judge demo
-and Node.js distribution while preserving the existing approval and isolated-execution boundaries for
-local TypeScript projects.
+reversible architecture changes. Current releases include bounded Growth Mode, the standalone judge
+demo, and a Node.js 22 distribution while preserving the existing approval and isolated-execution
+boundaries for local TypeScript projects.
 
 ## Current scope
 
@@ -57,10 +56,41 @@ execution are not implemented. Braid never autonomously applies a proposal to th
 
 ## Requirements and installation
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh
+```
+
+The installer supports macOS arm64, macOS x86_64, and Linux x86_64. It requires Node.js 22 or newer
+and Git 2.39 or newer, installs without `sudo`, and does not require pnpm, `node_modules`, a source
+checkout, or knowledge of the monorepo. By default it installs versions under
+`${XDG_DATA_HOME:-$HOME/.local/share}/braid` and links `braid` into
+`${XDG_BIN_HOME:-$HOME/.local/bin}`.
+
+To inspect the installer before running it:
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/ting10688/Braid/main/install.sh \
+  -o install-braid.sh
+
+less install-braid.sh
+sh install-braid.sh
+```
+
+After opening a new shell, or immediately when the selected bin directory is already in `PATH`:
+
+```bash
+braid --version
+braid --help
+```
+
+See the [installation guide](docs/installation.md) for version pinning, custom directories, PATH
+behavior, upgrades, explicit downgrades, uninstall, checksum verification, manual archive use, and
+source-development setup.
+
 ### Quick judge demo
 
-After the next release, download the `braid-v0.4.1-demo-node22` archive from Releases, extract it, and
-run:
+Download the `braid-v<version>-demo-node22` archive for a stable release, extract it, and run:
 
 ```bash
 ./braid-demo
@@ -73,7 +103,7 @@ scenario, expected output, `--keep`, and the optional live-Codex path.
 
 ### Prebuilt CLI
 
-The same archive will be attached to the next release. After extracting it, run:
+The same versioned archive contains the standalone CLI. After extracting it, run:
 
 ```bash
 ./bin/braid --help
@@ -367,11 +397,11 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 
 ## Status
 
-Braid v0.5.0 development implements Phase 4 durable migration recovery alongside Growth Mode v1,
-Phase 3.2 deterministic proposal repair suggestions, Phase 3.1 execution readiness, and safe isolated
-extraction execution. Recovery journals use schema version `1.0.0`; Growth reports and their Codex
-adapter protocol remain at `1.0.0`, while snapshot, proposal, execution-plan, and execution-record
-schemas remain version 1.
+Braid v0.5.1 adds verified installation and owned lifecycle management for the existing standalone
+distribution. Phase 4 durable migration recovery, Growth Mode v1, deterministic proposal repair
+suggestions, execution readiness, and safe isolated extraction behavior are unchanged. Recovery
+journals use schema version `1.0.0`; Growth reports and their Codex adapter protocol remain at `1.0.0`,
+while snapshot, proposal, execution-plan, and execution-record schemas remain version 1.
 
 ## License
 
