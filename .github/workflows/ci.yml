@@ -27,14 +27,15 @@ jobs:
       - run: pnpm distribution:verify
       - uses: actions/upload-artifact@v4
         with:
-          name: braid-v0.4.1-demo-node22
+          name: braid-v0.5.0-demo-node22
           path: |
-            .artifacts/braid-v0.4.1-demo-node22/
-            .artifacts/braid-v0.4.1-demo-node22.tar.gz
-            .artifacts/braid-v0.4.1-demo-node22.zip
+            .artifacts/braid-v0.5.0-demo-node22/
+            .artifacts/braid-v0.5.0-demo-node22.tar.gz
+            .artifacts/braid-v0.5.0-demo-node22.zip
           if-no-files-found: error
       - run: pnpm benchmark:real:list
       - run: pnpm benchmark:smoke
+      - run: pnpm benchmark:recovery
 
   benchmark-regression:
     runs-on: ubuntu-latest
