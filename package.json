@@ -1,6 +1,6 @@
 {
   "name": "braid",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "description": "Continuous architecture evolution for growing codebases.",
   "license": "MIT",
@@ -20,8 +20,8 @@
     "brand:verify": "node scripts/verify-brand-assets.mjs",
     "distribution:build": "pnpm build && node scripts/build-distribution.mjs",
     "distribution:verify": "node scripts/verify-distribution.mjs",
-    "demo": "pnpm distribution:build && node .artifacts/braid-v0.4.1-demo-node22/demo/run-demo.mjs",
-    "demo:bundle": "node .artifacts/braid-v0.4.1-demo-node22/demo/run-demo.mjs",
+    "demo": "pnpm distribution:build && node .artifacts/braid-v0.5.0-demo-node22/demo/run-demo.mjs",
+    "demo:bundle": "node .artifacts/braid-v0.5.0-demo-node22/demo/run-demo.mjs",
     "braid": "node apps/cli/dist/index.js",
     "analyze:example": "pnpm build && node apps/cli/dist/index.js analyze examples/bloated-saas --no-save",
     "propose:example": "pnpm build && node apps/cli/dist/index.js propose examples/bloated-saas --no-save",
@@ -42,7 +42,8 @@
     "benchmark:migration:regression": "pnpm build && node packages/benchmark/dist/cli/index.js migration --mode regression",
     "benchmark:readiness": "pnpm build && node packages/benchmark/dist/cli/index.js readiness",
     "benchmark:repair-suggestions": "pnpm build && node packages/benchmark/dist/cli/index.js repair-suggestions",
-    "benchmark:growth-mode": "pnpm build && node packages/benchmark/dist/cli/index.js growth-mode"
+    "benchmark:growth-mode": "pnpm build && node packages/benchmark/dist/cli/index.js growth-mode",
+    "benchmark:recovery": "pnpm build && node packages/benchmark/dist/cli/index.js recovery"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

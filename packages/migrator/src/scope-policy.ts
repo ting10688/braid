@@ -37,6 +37,12 @@ export interface ModeChange {
   after: string;
 }
 
+export interface PatchFileMode {
+  path: string;
+  before: "100644" | "100755" | "120000" | "160000" | null;
+  after: "100644" | "100755" | "120000" | "160000" | null;
+}
+
 export interface ScopeLineStats {
   path: string;
   additions: number | null;
@@ -121,6 +127,48 @@ const runGit = async (
       },
     );
   });
+
+const supportedGitMode = (
+  value: string | undefined,
+): PatchFileMode["before"] =>
+  value === "100644" ||
+  value === "100755" ||
+  value === "120000" ||
+  value === "160000"
+    ? value
+    : null;
+
+export const capturePatchFileModes = async (
+  worktreeRoot: string,
+  baseCommit: string,
+  changedFiles: readonly string[],
+): Promise<PatchFileMode[]> =>
+  Promise.all(
+    sorted(changedFiles).map(async (relativePath) => {
+      const beforeOutput = await runGit(
+        worktreeRoot,
+        ["ls-tree", baseCommit, "--", relativePath],
+        [0],
+      );
+      const before = supportedGitMode(beforeOutput.match(/^(\d{6}) /u)?.[1]);
+      const metadata = await lstat(path.join(worktreeRoot, relativePath)).catch(
+        (error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        },
+      );
+      const after = metadata
+        ? metadata.isSymbolicLink()
+          ? "120000"
+          : metadata.isDirectory()
+            ? "160000"
+            : (metadata.mode & 0o111) !== 0
+              ? "100755"
+              : "100644"
+        : null;
+      return { path: relativePath, before, after };
+    }),
+  );
 
 const parseStatus = (output: string): StatusRecord[] => {
   const tokens = output.split("\0");

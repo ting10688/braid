@@ -21,6 +21,10 @@ export {
 export { createSourceFingerprint } from "./source-fingerprint.js";
 export {
   createExecutorStagingRepository,
+  durableExecutorStagingPath,
+  loadExecutorStagingRepository,
+  type DurableExecutorStagingIdentity,
+  type DurableExecutorStagingOptions,
   type ExecutorStagingRepository,
 } from "./executor-staging.js";
 export {
@@ -30,7 +34,11 @@ export {
 } from "./safety.js";
 export {
   assertExecutorDidNotCommit,
+  createPreparedCandidateCommit,
   createCandidateCommit,
+  prepareCandidateCommit,
+  type CandidateCommitPreparation,
+  type PrepareCandidateCommitInput,
 } from "./candidate-commit.js";
 export {
   assertMainCheckoutIntegrity,
@@ -69,11 +77,13 @@ export {
   CODEX_MIGRATION_SUMMARY_JSON_SCHEMA,
 } from "./prompt-builder.js";
 export {
+  capturePatchFileModes,
   hashNormalizedPatch,
   inspectMigrationScope,
   pathMatchesPattern,
   type InspectMigrationScopeInput,
   type ModeChange,
+  type PatchFileMode,
   type RenamedFile,
   type ScopeInspection,
   type ScopeLineStats,
@@ -103,3 +113,21 @@ export {
   type PrepareMigrationPlanInput,
   type RunMigrationInput,
 } from "./migration-orchestrator.js";
+export {
+  cleanupMigrationRecovery,
+  resumeMigration,
+  type CleanupMigrationRecoveryInput,
+  type ResumeMigrationInput,
+} from "./migration-recovery.js";
+export {
+  inspectMigrationRecovery,
+  listMigrationRecoveries,
+  type InspectMigrationRecoveryInput,
+} from "./recovery-inspector.js";
+export {
+  acquireExecutionLock,
+  inspectExecutionLock,
+  type AcquiredExecutionLock,
+  type ExecutionLockInspection,
+  type ExecutionLockStatus,
+} from "./execution-lock.js";

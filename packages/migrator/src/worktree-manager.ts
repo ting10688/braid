@@ -25,6 +25,11 @@ export interface OwnedWorktree {
   proposalId?: string;
   planId?: string;
   initialReflog: string;
+  repositoryId?: string;
+  worktreePathId?: string;
+  worktreeGitDirectoryId?: string;
+  ownershipHash?: string;
+  creationCheckpoint?: "staging-created";
   candidateCommit?: string;
   discardedAt?: string;
 }
@@ -50,6 +55,70 @@ const runGit = async (
       maxBuffer: 16 * 1024 * 1024,
     })
   ).stdout.trim();
+
+const stableValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value !== null && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, stableValue(item)]),
+    );
+  return value;
+};
+
+const sha256 = (value: unknown): string =>
+  createHash("sha256")
+    .update(JSON.stringify(stableValue(value)))
+    .digest("hex");
+
+const worktreePathIdentity = (
+  executionId: string,
+  repositoryId: string,
+): string =>
+  sha256({
+    repositoryId,
+    resourceType: "candidate-worktree",
+    portableLocator: `worktrees/${executionId}`,
+  });
+
+const worktreeGitDirectoryIdentity = async (
+  worktreePath: string,
+  repositoryId: string,
+): Promise<{ id: string; locator: string }> => {
+  const [gitDirectory, commonDirectory] = await Promise.all([
+    runGit(worktreePath, ["rev-parse", "--git-dir"]).then((value) =>
+      realpath(path.resolve(worktreePath, value)),
+    ),
+    runGit(worktreePath, ["rev-parse", "--git-common-dir"]).then((value) =>
+      realpath(path.resolve(worktreePath, value)),
+    ),
+  ]);
+  const relative = path.relative(commonDirectory, gitDirectory);
+  if (relative.startsWith("..") || path.isAbsolute(relative))
+    throw new MigrationSafetyError(
+      "Worktree Git directory is outside its common directory",
+      12,
+      "invalid-worktree-ownership",
+    );
+  const locator = relative === "" ? "." : relative.split(path.sep).join("/");
+  return {
+    id: sha256({ repositoryId, gitDirectoryLocator: locator }),
+    locator,
+  };
+};
+
+const immutableOwnership = (locator: OwnedWorktree): unknown => ({
+  executionId: locator.executionId,
+  branch: locator.branch,
+  baseCommit: locator.baseCommit,
+  proposalId: locator.proposalId,
+  planId: locator.planId,
+  repositoryId: locator.repositoryId,
+  worktreePathId: locator.worktreePathId,
+  worktreeGitDirectoryId: locator.worktreeGitDirectoryId,
+  creationCheckpoint: locator.creationCheckpoint,
+});
 
 const atomicJson = async (filePath: string, value: unknown): Promise<void> => {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -160,6 +229,10 @@ export class WorktreeManager {
       );
   }
 
+  executionRootPath(): string {
+    return this.executionRoot;
+  }
+
   private locatorPath(executionId: string): string {
     return path.join(
       this.repositoryRoot,
@@ -194,7 +267,9 @@ export class WorktreeManager {
   async create(
     executionId: string,
     baseCommit: string,
-    ownership: { proposalId: string; planId: string } | undefined = undefined,
+    ownership:
+      | { proposalId: string; planId: string; repositoryId?: string }
+      | undefined = undefined,
   ): Promise<OwnedWorktree> {
     if (!/^E-[0-9a-f-]{36}$/u.test(executionId))
       throw new MigrationSafetyError(
@@ -319,14 +394,36 @@ export class WorktreeManager {
         "worktree-verification-failed",
       );
     }
-    const locator: OwnedWorktree = {
+    const gitDirectoryIdentity = ownership?.repositoryId
+      ? await worktreeGitDirectoryIdentity(
+          actualWorktree,
+          ownership.repositoryId,
+        )
+      : undefined;
+    const locatorWithoutHash: OwnedWorktree = {
       executionId,
       worktreePath,
       branch,
       baseCommit,
       initialReflog: await reflogFor(this.repositoryRoot, branch),
       ...(ownership ?? {}),
+      ...(ownership?.repositoryId
+        ? {
+            worktreePathId: worktreePathIdentity(
+              executionId,
+              ownership.repositoryId,
+            ),
+            worktreeGitDirectoryId: gitDirectoryIdentity!.id,
+            creationCheckpoint: "staging-created" as const,
+          }
+        : {}),
     };
+    const locator: OwnedWorktree = ownership?.repositoryId
+      ? {
+          ...locatorWithoutHash,
+          ownershipHash: sha256(immutableOwnership(locatorWithoutHash)),
+        }
+      : locatorWithoutHash;
     try {
       await atomicJson(this.locatorPath(executionId), locator);
     } catch (error) {
@@ -379,6 +476,57 @@ export class WorktreeManager {
         12,
         "invalid-worktree-ownership",
       );
+    if (locator.repositoryId) {
+      const actualWorktree = await realpath(locator.worktreePath).catch(
+        () => "",
+      );
+      const discarded = typeof locator.discardedAt === "string";
+      const branchCommit = discarded
+        ? await runGit(this.repositoryRoot, [
+            "rev-parse",
+            locator.branch,
+          ]).catch(() => "")
+        : "";
+      const gitDirectoryIdentity =
+        actualWorktree && !discarded
+          ? await worktreeGitDirectoryIdentity(
+              actualWorktree,
+              locator.repositoryId,
+            ).catch(() => undefined)
+          : undefined;
+      const invalidComponents = [
+        locator.discardedAt !== undefined && !discarded
+          ? "discard-state"
+          : undefined,
+        discarded && (actualWorktree || branchCommit)
+          ? "discarded-resource-present"
+          : undefined,
+        !discarded && !actualWorktree ? "worktree-missing" : undefined,
+        !/^[a-f0-9]{64}$/u.test(locator.repositoryId)
+          ? "repository-id"
+          : undefined,
+        locator.creationCheckpoint !== "staging-created"
+          ? "creation-checkpoint"
+          : undefined,
+        locator.worktreePathId !==
+        worktreePathIdentity(executionId, locator.repositoryId)
+          ? "worktree-path"
+          : undefined,
+        !discarded &&
+        locator.worktreeGitDirectoryId !== gitDirectoryIdentity?.id
+          ? "git-directory"
+          : undefined,
+        locator.ownershipHash !== sha256(immutableOwnership(locator))
+          ? "ownership-hash"
+          : undefined,
+      ].filter((value): value is string => value !== undefined);
+      if (invalidComponents.length > 0)
+        throw new MigrationSafetyError(
+          `Worktree cryptographic ownership evidence is invalid for ${executionId}: ${invalidComponents.join(", ")}${gitDirectoryIdentity ? ` (${gitDirectoryIdentity.locator})` : ""}`,
+          12,
+          "invalid-worktree-ownership",
+        );
+    }
     return locator;
   }
 
