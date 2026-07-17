@@ -162,14 +162,25 @@ describe("createCandidateCommit", () => {
       expectedPatchHash: await patchHash(fixture.root),
     });
 
-    for (const hookName of [
+    const hookNames = [
       "post-commit",
       "post-index-change",
       "reference-transaction",
-    ])
-      await expect(
-        access(path.join(fixture.root, `${hookName}-ran`)),
-      ).rejects.toThrow();
+    ];
+    const hooksRun = (
+      await Promise.all(
+        hookNames.map(async (hookName) => ({
+          hookName,
+          ran: await access(path.join(fixture.root, `${hookName}-ran`)).then(
+            () => true,
+            () => false,
+          ),
+        })),
+      )
+    )
+      .filter(({ ran }) => ran)
+      .map(({ hookName }) => hookName);
+    expect(hooksRun).toEqual([]);
   });
 
   it("refuses a candidate tree that changed after validation", async () => {
