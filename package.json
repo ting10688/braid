@@ -13,7 +13,7 @@
     "build": "tsc -b --force --pretty false",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1 --minWorkers=1",
     "test:watch": "vitest",
     "format": "prettier --write .",
     "brand:render": "node scripts/render-brand-assets.mjs",
