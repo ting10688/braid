@@ -4,6 +4,9 @@ Braid's supported end-user distribution is the standalone Node.js 22 release arc
 managed by the repository's POSIX shell scripts. It does not require a repository clone, pnpm,
 `node_modules`, workspace packages, `pnpm link`, `PNPM_HOME`, or `sudo`.
 
+Maintainer commits use the `Freddy Lin` identity with the repository's GitHub-provided noreply
+address. CI rejects the forbidden legacy identity and any non-noreply address paired with that name.
+
 ## Quick install
 
 ```bash
