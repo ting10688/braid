@@ -1,0 +1,2 @@
+description = "Run the non-mutating Braid Growth Mode comparison"
+prompt = "Run `braid growth check --session native-manual-gemini` and report the existing Braid result. Do not edit source or Git state."

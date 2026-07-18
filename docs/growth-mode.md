@@ -1,6 +1,6 @@
 # Growth Mode
 
-Growth Mode is Braid's live architecture feedback loop for ordinary Codex coding sessions. It records
+Growth Mode is Braid's live architecture feedback loop for ordinary Codex, Gemini CLI, and local GitHub Copilot CLI coding sessions. It records
 the repository architecture visible at the beginning of one session, compares later working-tree
 states with that baseline, and reports only supported regressions introduced during the session.
 
@@ -74,31 +74,54 @@ focuses findings on changed files, importers, participating cycle files, import 
 module metrics. It does not run builds, tests, linters, dependency installation, migration execution,
 or Codex after each tool call.
 
-## Codex lifecycle
+## Native lifecycle adapters
 
-The repository-local adapter uses the installed Codex command-hook protocol:
+The v0.6 native packages translate three verified command-hook protocols into
+one Braid lifecycle:
 
-| Event              | Braid behavior                                                                                        |
-| ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `SessionStart`     | Initialize once and add concise baseline context.                                                     |
-| `UserPromptSubmit` | Lazily initialize when needed and add current guidance without blocking the prompt.                   |
-| `PostToolUse`      | Check the Git/file fingerprint, analyze only a changed state, and add bounded same-session context.   |
-| `Stop`             | Reuse or compute the latest result; allow pass/warn, or continue once for a unique block fingerprint. |
+| Braid lifecycle | Codex              | Gemini CLI     | Copilot CLI           | Braid behavior                                                                            |
+| --------------- | ------------------ | -------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| session start   | `SessionStart`     | `SessionStart` | `sessionStart`        | Initialize once and add concise baseline context.                                         |
+| prompt submit   | `UserPromptSubmit` | `BeforeAgent`  | `userPromptSubmitted` | Lazily initialize when needed; Copilot prompt stdout stays empty.                         |
+| post mutation   | `PostToolUse`      | `AfterTool`    | `postToolUse`         | Fingerprint current Git/files and add bounded feedback only after a relevant change.      |
+| final stop      | `Stop`             | `AfterAgent`   | `agentStop`           | Run the authoritative final scan; allow pass/warn or block once for a unique fingerprint. |
 
-For a configured block, the first Stop attempt returns the exact finding and corrective guidance as a
-Codex continuation reason. Each unique diff-and-finding fingerprint is continued no more than
+For a configured block, the first final-stop attempt returns the exact finding and corrective guidance as a
+native continuation reason. Each unique diff-and-finding fingerprint is continued no more than
 `stopBlocksPerFingerprint` times. A repeated unchanged Stop is allowed with a visible unresolved
 warning, and the ephemeral state records that outcome. A source change creates a new evaluation and
 retry identity. This prevents an infinite Stop loop.
 
-Codex requires repository-local command hooks to be reviewed and trusted. Installation cannot grant
-that trust; inspect and approve the exact definitions with `/hooks`. `PostToolUse` is not a complete
-interception boundary for every possible tool path. Braid therefore reads Git and current files again
-at later supported lifecycle events, including `Stop`.
+Codex and Gemini require their normal hook/folder trust review. Installation
+cannot grant that trust. Tool-event coverage is not a complete interception
+boundary for every shell path, so Braid reads Git and current files again at
+the final event. Copilot support is local CLI only; no cloud coding-agent
+compatibility is claimed.
 
 ## CLI and installation
 
-The normal workflow is:
+The preferred v0.6 workflow is to install Braid once, install the selected
+host's native package, invoke its `setup` or `status` command, initialize the
+project, explicitly enable Growth Mode, and then use the host normally. Native
+package installation does not run `braid init`, enable Growth Mode, grant
+trust, or download Braid. See [native agent plugins](native-agent-plugins.md)
+for the verified local commands and post-push remote status.
+
+The native command names are `$braid:setup`, `$braid:status`, `$braid:check`,
+and `$braid:help` in Codex, and `/braid:setup`, `/braid:status`,
+`/braid:check`, and `/braid:help` in Gemini and Copilot. Their underlying CLI
+inspection commands are:
+
+```console
+$ braid growth setup --host codex
+$ braid growth status --host codex
+$ braid growth setup --host gemini
+$ braid growth status --host gemini
+$ braid growth setup --host copilot
+$ braid growth status --host copilot
+```
+
+The manual Codex adapter remains a compatibility fallback:
 
 ```console
 $ braid growth install codex --dry-run
@@ -106,11 +129,13 @@ $ braid growth install codex --confirm
 $ codex
 ```
 
-The installer first probes the active Codex binary, then merges four Braid-owned repository-local
-handlers into `.codex/hooks.json`. A real install requires `--confirm`. Existing unrelated keys,
-matcher groups, and handlers are preserved; changing an existing file creates a content-addressed
-backup. Repeating the same install is a no-op. Installation does not write user-global Codex
-configuration or overwrite `AGENTS.md`.
+It probes the active Codex binary and structurally merges four Braid-owned
+repository-local handlers into `.codex/hooks.json`. A real install requires
+`--confirm`; unrelated keys, matcher groups, and handlers are preserved.
+Changing an existing file creates a content-addressed backup and repeating the
+same install is a no-op. If both native and manual Codex adapters are present,
+the native invocation fails open and reports
+`braid growth uninstall codex`.
 
 Remove only Braid-owned handlers with:
 
@@ -170,10 +195,13 @@ suggestions per finding.
 
 ## Fail-open behavior and trust boundary
 
-The hook command accepts one validated JSON payload on stdin, writes exactly one JSON response on
-stdout, and sends diagnostics to stderr. It does not evaluate hook fields as shell commands or use the
-network. A malformed payload, missing repository, or analyzer failure fails open so the Codex session
-can continue, but returns a visible warning and never fabricates an architectural `pass` report.
+The adapter accepts one bounded validated JSON payload on stdin, writes exactly
+one host JSON response on stdout, and sends diagnostics to stderr. It invokes
+one foreground Braid CLI process without a shell, network, detached process,
+or background work. A malformed payload, missing/incompatible CLI, missing
+repository, timeout, nonzero exit, malformed output, or analyzer failure fails
+open under the verified host contract and never fabricates an architectural
+`pass` report.
 
 The repository owner, Braid configuration, Codex executable, Git, Node.js, operating system, and
 filesystem are trusted. Growth Mode is architecture feedback and a completion guard, not an OS or
@@ -185,7 +213,11 @@ adversarial-repository security boundary.
 - A full deterministic scan runs after a relevant change; Growth Mode v1 is not an incremental compiler.
 - A staged blob that differs from its working-tree file invalidates the cache, but v1 analyzes the
   current working-tree file rather than constructing a separate index-only source tree.
-- `PostToolUse` coverage follows the installed Codex hook implementation and is not universal.
+- Tool-event coverage follows each installed host implementation and is not universal; the final scan is authoritative.
+- Copilot is local CLI only and 1.0.71 has no working plugin enable/disable command.
+- Codex 0.144.5 has no plugin enable/disable CLI subcommand; use its native inspection UI or uninstall.
+- Gemini extension changes require a new CLI session.
+- Claude Code is unavailable until its authenticated Stop-hook gate closes.
 - Warnings and blockers are limited to configured v1 rules; no general boundary policy is inferred.
 - Unresolved or ambiguous static evidence warns instead of proving a hard violation.
 - Wall-clock measurements are informational and are not CI blockers.

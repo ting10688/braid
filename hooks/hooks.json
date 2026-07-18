@@ -1,0 +1,56 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${extensionPath}${/}adapters${/}native-agent${/}runtime.mjs\" gemini SessionStart",
+            "name": "braid-session-start",
+            "timeout": 35000,
+            "description": "Initialize Braid Growth Mode session context."
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${extensionPath}${/}adapters${/}native-agent${/}runtime.mjs\" gemini BeforeAgent",
+            "name": "braid-before-agent",
+            "timeout": 35000,
+            "description": "Ensure Braid Growth Mode session context exists."
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${extensionPath}${/}adapters${/}native-agent${/}runtime.mjs\" gemini AfterTool",
+            "name": "braid-after-tool",
+            "timeout": 35000,
+            "description": "Check architecture after tool use."
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${extensionPath}${/}adapters${/}native-agent${/}runtime.mjs\" gemini AfterAgent",
+            "name": "braid-after-agent",
+            "timeout": 35000,
+            "description": "Run Braid's authoritative final architecture scan."
+          }
+        ]
+      }
+    ]
+  }
+}

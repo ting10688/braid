@@ -94,7 +94,7 @@ const parsedTestCount = (
 ): number | null => {
   for (const label of labels) {
     const match = output.match(
-      new RegExp(`(?:^|\\n)\\s*#?\\s*${label}\\s+(\\d+)`, "iu"),
+      new RegExp(`(?:^|\\n)\\s*(?:#|ℹ)?\\s*${label}\\s+(\\d+)`, "iu"),
     );
     if (match?.[1]) return Number(match[1]);
   }

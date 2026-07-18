@@ -1,0 +1,65 @@
+{
+  "platform": "codex",
+  "cliVersion": "0.144.5",
+  "captureDate": "2026-07-18",
+  "evidence": "official-contract-test-shape",
+  "redactionNote": "Synthetic deterministic fixture based on the installed official contract; not represented as a live capture. Prompts, IDs, transcript paths, and absolute paths are placeholders.",
+  "events": [
+    {
+      "officialEventName": "SessionStart",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": null,
+        "cwd": "<repo-root>",
+        "model": "<model>",
+        "permission_mode": "default",
+        "hook_event_name": "SessionStart",
+        "source": "startup",
+        "unknown_additive_field": true
+      }
+    },
+    {
+      "officialEventName": "UserPromptSubmit",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": null,
+        "cwd": "<repo-root>",
+        "model": "<model>",
+        "permission_mode": "default",
+        "turn_id": "<turn-id>",
+        "hook_event_name": "UserPromptSubmit",
+        "prompt": "<redacted>"
+      }
+    },
+    {
+      "officialEventName": "PostToolUse",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": null,
+        "cwd": "<repo-root>",
+        "model": "<model>",
+        "permission_mode": "default",
+        "turn_id": "<turn-id>",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Write",
+        "tool_use_id": "<tool-id>",
+        "tool_input": { "redacted": true },
+        "tool_response": { "redacted": true }
+      }
+    },
+    {
+      "officialEventName": "Stop",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": null,
+        "cwd": "<repo-root>",
+        "model": "<model>",
+        "permission_mode": "default",
+        "turn_id": "<turn-id>",
+        "hook_event_name": "Stop",
+        "stop_hook_active": false,
+        "last_assistant_message": null
+      }
+    }
+  ]
+}

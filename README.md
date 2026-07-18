@@ -56,6 +56,25 @@ execution are not implemented. Braid never autonomously applies a proposal to th
 
 ## Requirements and installation
 
+The v0.6 native-agent workflow is:
+
+1. Install the Braid CLI once.
+2. Choose Codex, Gemini CLI, or local GitHub Copilot CLI and install its native
+   Braid plugin or extension.
+3. Run `$braid:setup` in Codex or `/braid:setup` in Gemini/Copilot.
+4. Run `braid init` in the TypeScript project if it is not initialized.
+5. Review `.braid/architecture.yaml` and explicitly enable Growth Mode.
+6. Use the coding agent normally; native lifecycle hooks run Braid
+   automatically.
+
+Native adapters do not download Braid, initialize a project, enable Growth
+Mode, or grant host trust. The local Codex, Gemini, and Copilot package smokes
+have passed, but remote marketplace/extension commands remain unreleased and
+pending a post-push smoke. See the
+[native agent plugin guide](docs/native-agent-plugins.md) for exact verified
+local commands, host limitations, uninstall, and troubleshooting. Claude Code
+is unavailable until its authenticated `Stop`-hook gate closes.
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh
 ```
@@ -87,6 +106,16 @@ braid --help
 See the [installation guide](docs/installation.md) for version pinning, custom directories, PATH
 behavior, upgrades, explicit downgrades, uninstall, checksum verification, manual archive use, and
 source-development setup.
+
+The existing manual Codex adapter remains available as a compatibility
+fallback:
+
+```bash
+braid growth install codex --confirm
+```
+
+Do not install both the manual adapter and native Codex plugin. If both are
+detected, run `braid growth uninstall codex` to keep only the native plugin.
 
 ### Quick judge demo
 

@@ -1,0 +1,20 @@
+{
+  "name": "braid",
+  "interface": {
+    "displayName": "Braid"
+  },
+  "plugins": [
+    {
+      "name": "braid",
+      "source": {
+        "source": "local",
+        "path": "./plugins/braid"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

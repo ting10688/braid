@@ -1,0 +1,52 @@
+{
+  "platform": "copilot",
+  "cliVersion": "1.0.71",
+  "captureDate": "2026-07-17",
+  "evidence": "sanitized-live-capture",
+  "redactionNote": "Combined from the completed live research fixtures. Prompts, IDs, transcript paths, source text, and absolute paths are placeholders; additive payload fields are retained.",
+  "events": [
+    {
+      "officialEventName": "sessionStart",
+      "payload": {
+        "sessionId": "<session-id>",
+        "timestamp": 0,
+        "cwd": "<repo-root>",
+        "source": "new",
+        "initialPrompt": "<redacted>"
+      }
+    },
+    {
+      "officialEventName": "userPromptSubmitted",
+      "payload": {
+        "sessionId": "<session-id>",
+        "timestamp": 0,
+        "cwd": "<repo-root>",
+        "prompt": "<redacted>"
+      }
+    },
+    {
+      "officialEventName": "postToolUse",
+      "payload": {
+        "sessionId": "<session-id>",
+        "timestamp": 0,
+        "cwd": "<repo-root>",
+        "toolName": "bash",
+        "toolArgs": { "redacted": true },
+        "toolResult": {
+          "resultType": "success",
+          "textResultForLlm": "<redacted>"
+        }
+      }
+    },
+    {
+      "officialEventName": "agentStop",
+      "payload": {
+        "sessionId": "<session-id>",
+        "timestamp": 0,
+        "cwd": "<repo-root>",
+        "transcriptPath": "<transcript-path>",
+        "stopReason": "end_turn"
+      }
+    }
+  ]
+}

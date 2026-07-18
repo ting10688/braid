@@ -1,16 +1,15 @@
-import { execFile } from "node:child_process";
-import { realpath, stat } from "node:fs/promises";
-import path from "node:path";
 import type { Readable, Writable } from "node:stream";
-import { promisify } from "node:util";
 
 import { z } from "zod";
 
 import type { GrowthGuardFactory } from "../contracts.js";
-import { createGrowthGuard } from "../growth-guard.js";
+import {
+  GROWTH_HOOK_FAIL_OPEN_MESSAGE,
+  handleGrowthLifecycle,
+  resolveGrowthProjectRoot,
+  type GrowthLifecycleEvent,
+} from "../native/lifecycle.js";
 import { CODEX_HOOK_ADAPTER_COMPATIBILITY } from "./capabilities.js";
-
-const execFileAsync = promisify(execFile);
 
 const commonInputFields = {
   session_id: z.string().min(1),
@@ -135,57 +134,27 @@ export interface HandleCodexHookOptions {
   resolveProjectRoot?: (cwd: string) => Promise<string>;
 }
 
-const FAIL_OPEN_MESSAGE =
-  "Braid Growth Guard could not evaluate this event; continuing without a pass result. Review hook diagnostics and run `braid growth check`.";
-
 const defaultDiagnostics: CodexHookDiagnostics = (message, error) => {
   const detail = error instanceof Error ? `: ${error.message}` : "";
   process.stderr.write(`[braid-growth] ${message}${detail}\n`);
 };
 
-export const resolveCodexProjectRoot = async (cwd: string): Promise<string> => {
-  const resolvedCwd = await realpath(path.resolve(cwd));
-  const result = await execFileAsync(
-    "git",
-    ["-C", resolvedCwd, "rev-parse", "--show-toplevel"],
-    {
-      encoding: "utf8",
-      timeout: 5_000,
-      maxBuffer: 64 * 1024,
-    },
-  );
-  const reportedRoot = result.stdout.trim();
-  if (reportedRoot.length === 0) {
-    throw new Error("Codex hook cwd is not inside a Git repository.");
-  }
-  const projectRoot = await realpath(reportedRoot);
-  const relativeCwd = path.relative(projectRoot, resolvedCwd);
-  if (relativeCwd.startsWith(`..${path.sep}`) || relativeCwd === "..") {
-    throw new Error("Codex hook cwd resolved outside its Git root.");
-  }
-  const config = await stat(
-    path.join(projectRoot, ".braid", "architecture.yaml"),
-  );
-  if (!config.isFile()) {
-    throw new Error("Braid architecture configuration is not a file.");
-  }
-  return projectRoot;
-};
+export const resolveCodexProjectRoot = resolveGrowthProjectRoot;
 
 const failOpen = (): CodexHookOutput => ({
   continue: true,
-  systemMessage: FAIL_OPEN_MESSAGE,
+  systemMessage: GROWTH_HOOK_FAIL_OPEN_MESSAGE,
 });
 
-const requireContext = (text: string): string => {
-  if (text.trim().length === 0) {
-    throw new Error("Growth Guard returned empty hook context.");
-  }
-  return text;
+const lifecycleEvent: Record<
+  CodexHookInput["hook_event_name"],
+  GrowthLifecycleEvent
+> = {
+  SessionStart: "session-start",
+  UserPromptSubmit: "prompt-submit",
+  PostToolUse: "post-mutation",
+  Stop: "final-stop",
 };
-
-const visibleFeedback = (feedback: string | null): string | null =>
-  feedback !== null && feedback.trim().length > 0 ? feedback : null;
 
 export const handleCodexHook = async (
   input: unknown,
@@ -199,72 +168,39 @@ export const handleCodexHook = async (
   }
 
   try {
-    const projectRoot = await (
-      options.resolveProjectRoot ?? resolveCodexProjectRoot
-    )(parsed.data.cwd);
-    const factory = options.growthGuardFactory ?? createGrowthGuard;
-    const guard = factory({
-      projectRoot,
-      sessionId: parsed.data.session_id,
-      compatibility: CODEX_HOOK_ADAPTER_COMPATIBILITY,
-    });
+    const result = await handleGrowthLifecycle(
+      {
+        event: lifecycleEvent[parsed.data.hook_event_name],
+        cwd: parsed.data.cwd,
+        sessionId: parsed.data.session_id,
+      },
+      {
+        compatibility: CODEX_HOOK_ADAPTER_COMPATIBILITY,
+        ...(options.growthGuardFactory
+          ? { growthGuardFactory: options.growthGuardFactory }
+          : {}),
+        ...(options.resolveProjectRoot
+          ? { resolveProjectRoot: options.resolveProjectRoot }
+          : {}),
+      },
+    );
 
-    switch (parsed.data.hook_event_name) {
-      case "SessionStart": {
-        const result = await guard.context();
-        return {
-          hookSpecificOutput: {
-            hookEventName: "SessionStart",
-            additionalContext: requireContext(result.text),
-          },
-        };
-      }
-      case "UserPromptSubmit": {
-        const result = await guard.context();
-        return {
-          hookSpecificOutput: {
-            hookEventName: "UserPromptSubmit",
-            additionalContext: requireContext(result.text),
-          },
-        };
-      }
-      case "PostToolUse": {
-        const result = await guard.check();
-        const feedback = visibleFeedback(result.feedback);
-        if (feedback === null) return { continue: true };
-        return {
-          hookSpecificOutput: {
-            hookEventName: "PostToolUse",
-            additionalContext: feedback,
-          },
-        };
-      }
-      case "Stop": {
-        const result = await guard.final();
-        const feedback = visibleFeedback(result.feedback);
-        if (result.shouldBlock) {
-          return {
-            decision: "block",
-            reason:
-              feedback ??
-              "Braid Growth Guard found a blocking architecture regression.",
-          };
-        }
-        if (result.unresolvedCompletion) {
-          return {
-            continue: true,
-            systemMessage:
-              feedback === null
-                ? "Braid Growth Guard is allowing completion with an unresolved architecture regression already reported for this fingerprint."
-                : `${feedback}\n\nCompletion is allowed because this unchanged regression fingerprint was already blocked once.`,
-          };
-        }
-        if (feedback !== null) {
-          return { continue: true, systemMessage: feedback };
-        }
-        return { continue: true };
-      }
+    if (result.action === "block") {
+      return { decision: "block", reason: result.reason };
     }
+    if (result.action === "allow") {
+      return {
+        continue: true,
+        ...(result.message ? { systemMessage: result.message } : {}),
+      };
+    }
+
+    return {
+      hookSpecificOutput: {
+        hookEventName: parsed.data.hook_event_name,
+        additionalContext: result.text,
+      },
+    } as CodexHookOutput;
   } catch (error) {
     diagnostics("Codex hook analysis failed open", error);
     return failOpen();
@@ -273,8 +209,14 @@ export const handleCodexHook = async (
 
 const readInput = async (input: Readable): Promise<string> => {
   const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of input) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+    size += buffer.length;
+    if (size > 1024 * 1024) {
+      throw new Error("Codex hook stdin exceeds the 1 MiB limit.");
+    }
+    chunks.push(buffer);
   }
   return Buffer.concat(chunks).toString("utf8");
 };
