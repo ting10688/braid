@@ -76,7 +76,7 @@ or Codex after each tool call.
 
 ## Native lifecycle adapters
 
-The v0.6 native packages translate three verified command-hook protocols into
+The v0.6.0 native packages translate three verified command-hook protocols into
 one Braid lifecycle:
 
 | Braid lifecycle | Codex              | Gemini CLI     | Copilot CLI           | Braid behavior                                                                            |
@@ -100,12 +100,14 @@ compatibility is claimed.
 
 ## CLI and installation
 
-The preferred v0.6 workflow is to install Braid once, install the selected
+The preferred v0.6.0 workflow is to install Braid once, install the selected
 host's native package, invoke its `setup` or `status` command, initialize the
 project, explicitly enable Growth Mode, and then use the host normally. Native
 package installation does not run `braid init`, enable Growth Mode, grant
-trust, or download Braid. See [native agent plugins](native-agent-plugins.md)
-for the verified local commands and post-push remote status.
+trust, or download Braid. Remote owner/repository installation is valid only
+after the plugin content exists on the repository's default branch. See
+[native agent plugins](native-agent-plugins.md) for the verified local commands
+and required post-merge remote smoke.
 
 The native command names are `$braid:setup`, `$braid:status`, `$braid:check`,
 and `$braid:help` in Codex, and `/braid:setup`, `/braid:status`,
@@ -217,7 +219,7 @@ adversarial-repository security boundary.
 - Copilot is local CLI only and 1.0.71 has no working plugin enable/disable command.
 - Codex 0.144.5 has no plugin enable/disable CLI subcommand; use its native inspection UI or uninstall.
 - Gemini extension changes require a new CLI session.
-- Claude Code production support is deferred from the current v0.6 release;
+- Claude Code production support is deferred from the current v0.6.0 release;
   compatibility research remains documented for a future implementation cycle.
 - Warnings and blockers are limited to configured v1 rules; no general boundary policy is inferred.
 - Unresolved or ambiguous static evidence warns instead of proving a hard violation.

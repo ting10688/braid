@@ -1,4 +1,4 @@
-# Native agent plugins for Braid v0.6
+# Native agent plugins for Braid v0.6.0
 
 Research and implementation date: 2026-07-18 (Asia/Taipei)
 Host: Darwin 27, arm64
@@ -6,7 +6,7 @@ Host: Darwin 27, arm64
 This is the production contract gate and implementation note for the first
 native Braid Growth Mode adapters. It covers Codex, Gemini CLI, and local
 GitHub Copilot CLI only. Claude Code production support is deferred from the
-current v0.6 release scope; its compatibility research remains preserved in
+current v0.6.0 release scope; its compatibility research remains preserved in
 [the compatibility report](agent-compatibility.md) for a future implementation
 cycle.
 
@@ -89,7 +89,9 @@ codex plugin marketplace add ting10688/Braid
 codex plugin add braid@braid
 ```
 
-The GitHub form is **post-push** and must not be advertised as released.
+The owner/repository form is valid only after this content exists on the
+repository's default branch and must pass the post-merge smoke before it is
+reported as verified.
 
 ### Live lifecycle contract carried forward
 
@@ -104,7 +106,7 @@ The existing manual repository adapter remains supported:
 braid growth install codex --confirm
 ```
 
-The native plugin is preferred in v0.6. A native invocation must detect an
+The native plugin is preferred in v0.6.0. A native invocation must detect an
 installed manual adapter, fail open for the duplicate invocation, and print
 the exact remediation `braid growth uninstall codex` to stderr.
 
@@ -166,7 +168,8 @@ copilot plugin install braid@braid
 ```
 
 The installed package contains the four namespaced command definitions. The
-GitHub form is **post-push**.
+owner/repository form is valid only after this content exists on the default
+branch and remains pending a post-merge smoke.
 
 ### Live lifecycle contract carried forward
 
@@ -233,7 +236,9 @@ The intended remote command is:
 gemini extensions install https://github.com/ting10688/Braid
 ```
 
-It is **post-push**. Local validation and installation must pass first.
+The remote form is valid only after this content exists on the default branch.
+Local validation and installation must pass first, followed by a post-merge
+remote smoke.
 
 ### Live lifecycle contract carried forward
 
