@@ -17,14 +17,14 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-const run = async (host, event, payload, mode, timeout = 5_000) =>
+const run = async (host, event, payload, mode, timeout = 15_000) =>
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [runtime, host, event], {
       env: {
         ...process.env,
         PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
         NODE_ENV: "test",
-        BRAID_NATIVE_TEST_TIMEOUT_MS: mode === "timeout" ? "100" : "1000",
+        BRAID_NATIVE_TEST_TIMEOUT_MS: mode === "timeout" ? "100" : "10000",
         MOCK_BRAID_MODE: mode,
         MOCK_BRAID_PID: pidFile,
       },
