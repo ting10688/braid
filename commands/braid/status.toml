@@ -1,0 +1,2 @@
+description = "Show redacted Braid Growth Mode and native Gemini CLI extension status"
+prompt = "Run `braid growth status --host gemini --session native-manual-gemini` and report the result. Do not expose account identifiers, tokens, request IDs, session secrets, transcripts, or absolute home paths. Make no changes."

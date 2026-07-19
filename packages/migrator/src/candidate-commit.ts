@@ -1,5 +1,5 @@
 import path from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -313,8 +313,9 @@ export const createPreparedCandidateCommit = async (input: {
       8,
       "candidate-branch-mismatch",
     );
-  const hooksDirectory = await mkdtemp(
-    path.join(tmpdir(), "braid-candidate-hooks-disabled-"),
+  const hooksDirectory = path.join(
+    tmpdir(),
+    `braid-candidate-hooks-disabled-${randomUUID()}`,
   );
   const hookless = ["-c", `core.hooksPath=${hooksDirectory}`];
   try {

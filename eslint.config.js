@@ -14,11 +14,18 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["demo/**/*.mjs", "scripts/**/*.mjs"],
+    files: [
+      "adapters/**/*.mjs",
+      "demo/**/*.mjs",
+      "plugins/**/*.mjs",
+      "scripts/**/*.mjs",
+    ],
     languageOptions: {
       globals: {
         Buffer: "readonly",
+        clearTimeout: "readonly",
         process: "readonly",
+        setTimeout: "readonly",
       },
     },
   },

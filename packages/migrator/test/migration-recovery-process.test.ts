@@ -255,6 +255,7 @@ const createFixture = async (): Promise<{
   item: MigrationFixture;
   environment: NodeJS.ProcessEnv;
   counterPath: string;
+  processTemporaryDirectory: string;
 }> => {
   const container = await mkdtemp(
     path.join(tmpdir(), "braid-recovery-process-"),
@@ -268,16 +269,24 @@ const createFixture = async (): Promise<{
   const bin = path.join(container, "bin");
   const executable = path.join(bin, "codex");
   const counterPath = path.join(container, "executor-launches");
-  await mkdir(bin, { recursive: true });
+  const processTemporaryDirectory = path.join(container, "process-tmp");
+  await Promise.all([
+    mkdir(bin, { recursive: true }),
+    mkdir(processTemporaryDirectory),
+  ]);
   await writeFile(executable, fakeCodexProgram(), { mode: 0o755 });
   await chmod(executable, 0o755);
   return {
     item,
     counterPath,
+    processTemporaryDirectory,
     environment: {
       ...process.env,
       PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
       BRAID_FAKE_CODEX_COUNTER: counterPath,
+      TMPDIR: processTemporaryDirectory,
+      TMP: processTemporaryDirectory,
+      TEMP: processTemporaryDirectory,
     },
   };
 };
@@ -563,8 +572,12 @@ describe("durable migration process recovery matrix", () => {
   it.each(crashCases)(
     "recovers a separate CLI process interrupted after $event",
     async (testCase) => {
-      const { item, environment, counterPath } = await createFixture();
-      const marker = path.join(item.container, `paused-${testCase.event}`);
+      const { item, environment, counterPath, processTemporaryDirectory } =
+        await createFixture();
+      const marker = path.join(
+        processTemporaryDirectory,
+        `paused-${testCase.event}`,
+      );
       const mainHeadBefore = await git(item.repositoryRoot, [
         "rev-parse",
         "HEAD",
@@ -645,6 +658,7 @@ describe("durable migration process recovery matrix", () => {
       }
       const killed = await crashed;
       expect(killed.signal).toBe("SIGKILL");
+      await rm(marker, { force: true });
       expect(executionId).not.toBe("");
       const launchesBefore = await executorLaunches(counterPath);
       expect(launchesBefore).toBe(testCase.launchesBefore);
@@ -863,6 +877,7 @@ describe("durable migration process recovery matrix", () => {
       expect(record.fingerprints.mainAfter).toBe(
         record.fingerprints.mainBefore,
       );
+      expect(await readdir(processTemporaryDirectory)).toEqual([]);
     },
     60_000,
   );

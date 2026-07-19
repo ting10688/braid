@@ -30,7 +30,7 @@
 
 Braid is a local architecture guard and migration planner for growing TypeScript codebases.
 
-It analyzes dependency structure without executing application source, turns architectural findings into deterministic and reviewable proposals, and helps prevent supported architecture regressions from being left behind during a Codex coding session.
+It analyzes dependency structure without executing application source, turns architectural findings into deterministic and reviewable proposals, and helps prevent supported architecture regressions from being left behind during supported coding-agent sessions.
 
 When an approved migration is executed, Braid works inside isolated, owned Git resources. It validates the resulting diff, compares the architecture, and produces a local candidate commit for review. It never automatically merges or pushes changes.
 
@@ -40,7 +40,7 @@ When an approved migration is executed, Braid works inside isolated, owned Git r
 | ----------- | --------------------------------------------------------------------- |
 | **Analyze** | Build a deterministic snapshot of the current architecture            |
 | **Propose** | Generate evidence-backed `break-cycle` and `extract-module` proposals |
-| **Guard**   | Detect supported regressions introduced during a Codex session        |
+| **Guard**   | Detect supported regressions introduced during an agent session       |
 | **Migrate** | Execute explicitly approved extraction proposals in isolation         |
 | **Recover** | Resume or safely clean up interrupted Braid-owned executions          |
 
@@ -49,6 +49,28 @@ Braid is designed around explicit approval, deterministic evidence, bounded auto
 ## Installation
 
 Install the latest stable release:
+
+The current release is v0.6.0. Its native-agent workflow is:
+
+1. Install the Braid CLI once.
+2. Choose Codex, Gemini CLI, or local GitHub Copilot CLI and install its native
+   Braid plugin or extension.
+3. Run `$braid:setup` in Codex or `/braid:setup` in Gemini/Copilot.
+4. Run `braid init` in the TypeScript project if it is not initialized.
+5. Review `.braid/architecture.yaml` and explicitly enable Growth Mode.
+6. Use the coding agent normally; native lifecycle hooks run Braid
+   automatically.
+
+Native adapters do not download Braid, initialize a project, enable Growth
+Mode, or grant host trust. The local Codex, Gemini, and Copilot package smokes
+have passed. Remote owner/repository installation works only after the plugin
+content exists on the repository's default branch; release validation tests
+those paths after merge. See the
+[native agent plugin guide](docs/native-agent-plugins.md) for exact verified
+local commands, host limitations, uninstall, and troubleshooting. Claude Code
+support is deferred and is not included in the current release. Completed
+compatibility research is preserved for a future implementation cycle in the
+[compatibility report](docs/agent-compatibility.md).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh
@@ -243,15 +265,30 @@ See the [migration guide](docs/migrations.md) for configuration, approval, valid
 
 ## Growth Mode
 
-Growth Mode brings Braid into an ordinary Codex coding session.
+Growth Mode brings Braid into ordinary Codex, Gemini CLI, and local GitHub
+Copilot CLI coding sessions.
 
-It captures a baseline when a session starts, evaluates architecture after relevant source changes, returns concise findings to the same session, and performs a bounded final check before Codex finishes.
+It captures a baseline when a session starts, evaluates architecture after relevant source changes, returns concise findings to the same session, and performs a bounded final check before the agent finishes.
 
-Enable `growthMode` in `.braid/architecture.yaml`, then inspect and install the repository-local Codex adapter:
+Install the selected native plugin or extension, initialize the project, and
+explicitly enable `growthMode` in `.braid/architecture.yaml`. See the
+[native agent plugin guide](docs/native-agent-plugins.md) for exact Codex,
+Gemini, and Copilot installation commands and host-specific trust or restart
+requirements.
+
+The existing repository-local Codex adapter remains available as a manual
+fallback:
 
 ```bash
 braid growth install codex --dry-run
 braid growth install codex --confirm
+```
+
+Do not install both Codex adapters. If both are detected, keep the native
+plugin by running:
+
+```bash
+braid growth uninstall codex
 ```
 
 Open Codex in the repository and review the exact hook definitions with:
@@ -287,7 +324,9 @@ Growth Mode:
 - does not invoke migration execution;
 - does not create commits, branches, or worktrees.
 
-The current stable release includes a repository-local **Codex CLI** adapter. Other coding agents are not claimed as supported by this release.
+The v0.6.0 production host scope is Codex, Gemini CLI, and local GitHub Copilot
+CLI. Copilot cloud-agent support is not claimed. Claude Code production support
+is deferred.
 
 See the [Growth Mode guide](docs/growth-mode.md) for lifecycle behavior, hook ownership, finite blocking, caching, configuration, and limitations.
 
@@ -673,37 +712,27 @@ See the [benchmark methodology](docs/benchmarking.md).
 
 ## Repository guide
 
-| Path                    | Responsibility                                                                |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `apps/cli`              | CLI commands and human/JSON presentation                                      |
-| `packages/core`         | Domain schemas and validated architecture configuration                       |
-| `packages/analyzer`     | TypeScript scanning, dependency graphs, classification, and metrics           |
-| `packages/planner`      | Deterministic candidate generation, identity, classification, and ranking     |
-| `packages/migrator`     | Readiness, isolated execution, validation, candidate commits, and recovery    |
-| `packages/guard`        | Session baselines, architecture comparison, bounded feedback, and Codex hooks |
-| `packages/store`        | Atomic snapshots, proposals, execution records, and recovery journals         |
-| `packages/benchmark`    | Isolated fixtures, comparisons, baselines, and regression reports             |
-| `packages/shared`       | Shared errors and project-local path constants                                |
-| `benchmarks`            | Versioned synthetic and pinned real-world benchmark suites                    |
-| `examples/bloated-saas` | Deterministic integration fixture and example application                     |
+| Path                    | Responsibility                                                                   |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `apps/cli`              | CLI commands and human/JSON presentation                                         |
+| `packages/core`         | Domain schemas and validated architecture configuration                          |
+| `packages/analyzer`     | TypeScript scanning, dependency graphs, classification, and metrics              |
+| `packages/planner`      | Deterministic candidate generation, identity, classification, and ranking        |
+| `packages/migrator`     | Readiness, isolated execution, validation, candidate commits, and recovery       |
+| `packages/guard`        | Session baselines, architecture comparison, bounded feedback, and agent adapters |
+| `packages/store`        | Atomic snapshots, proposals, execution records, and recovery journals            |
+| `packages/benchmark`    | Isolated fixtures, comparisons, baselines, and regression reports                |
+| `packages/shared`       | Shared errors and project-local path constants                                   |
+| `benchmarks`            | Versioned synthetic and pinned real-world benchmark suites                       |
+| `examples/bloated-saas` | Deterministic integration fixture and example application                        |
 
 ## Status
 
-The current stable release is Braid v0.5.1.
-
-It includes:
-
-- verified standalone installation and lifecycle management;
-- deterministic TypeScript architecture analysis;
-- evidence-backed architecture proposals;
-- execution-readiness analysis;
-- advisory proposal-repair suggestions;
-- safe isolated extraction execution;
-- bounded Codex Growth Mode;
-- durable migration recovery;
-- a deterministic standalone demo.
-
-Snapshot, proposal, execution-plan, and execution-record schemas remain version 1. Recovery journals and Growth Mode reports use schema version `1.0.0`.
+Braid v0.6.0 adds native Growth Mode integrations for Codex, Gemini CLI, and local GitHub Copilot CLI
+while preserving the manual Codex fallback and verified standalone distribution. Claude Code
+production support is deferred. Authenticated package-level live-agent smoke has not been performed.
+Recovery journals use schema version `1.0.0`; Growth reports and their adapter protocol remain at
+`1.0.0`, while snapshot, proposal, execution-plan, and execution-record schemas remain version 1.
 
 ## License
 

@@ -22,6 +22,7 @@ const gitRaw = async (
   const { stdout } = await execFileAsync("git", ["-C", projectRoot, ...args], {
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
+    timeout: 10_000,
   });
   return stdout;
 };
