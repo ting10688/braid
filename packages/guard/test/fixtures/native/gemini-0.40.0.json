@@ -1,0 +1,58 @@
+{
+  "platform": "gemini",
+  "cliVersion": "0.40.0",
+  "captureDate": "2026-07-18",
+  "evidence": "official-contract-test-shape",
+  "redactionNote": "Synthetic deterministic fixture based on the installed official contract; not represented as a live capture. Prompts, IDs, transcript paths, model output, and absolute paths are placeholders.",
+  "events": [
+    {
+      "officialEventName": "SessionStart",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": "<transcript-path>",
+        "cwd": "<repo-root>",
+        "timestamp": "2026-07-18T00:00:00.000Z",
+        "hook_event_name": "SessionStart",
+        "source": "startup",
+        "unknown_additive_field": true
+      }
+    },
+    {
+      "officialEventName": "BeforeAgent",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": "<transcript-path>",
+        "cwd": "<repo-root>",
+        "timestamp": "2026-07-18T00:00:00.000Z",
+        "hook_event_name": "BeforeAgent",
+        "prompt": "<redacted>"
+      }
+    },
+    {
+      "officialEventName": "AfterTool",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": "<transcript-path>",
+        "cwd": "<repo-root>",
+        "timestamp": "2026-07-18T00:00:00.000Z",
+        "hook_event_name": "AfterTool",
+        "tool_name": "write_file",
+        "tool_input": { "redacted": true },
+        "tool_response": { "redacted": true }
+      }
+    },
+    {
+      "officialEventName": "AfterAgent",
+      "payload": {
+        "session_id": "<session-id>",
+        "transcript_path": "<transcript-path>",
+        "cwd": "<repo-root>",
+        "timestamp": "2026-07-18T00:00:00.000Z",
+        "hook_event_name": "AfterAgent",
+        "prompt": "<redacted>",
+        "prompt_response": "<redacted>",
+        "stop_hook_active": false
+      }
+    }
+  ]
+}

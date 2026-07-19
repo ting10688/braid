@@ -56,6 +56,28 @@ execution are not implemented. Braid never autonomously applies a proposal to th
 
 ## Requirements and installation
 
+The current release is v0.6.0. Its native-agent workflow is:
+
+1. Install the Braid CLI once.
+2. Choose Codex, Gemini CLI, or local GitHub Copilot CLI and install its native
+   Braid plugin or extension.
+3. Run `$braid:setup` in Codex or `/braid:setup` in Gemini/Copilot.
+4. Run `braid init` in the TypeScript project if it is not initialized.
+5. Review `.braid/architecture.yaml` and explicitly enable Growth Mode.
+6. Use the coding agent normally; native lifecycle hooks run Braid
+   automatically.
+
+Native adapters do not download Braid, initialize a project, enable Growth
+Mode, or grant host trust. The local Codex, Gemini, and Copilot package smokes
+have passed. Remote owner/repository installation is valid only after the
+plugin content exists on the repository's default branch and still requires a
+post-merge smoke. See the
+[native agent plugin guide](docs/native-agent-plugins.md) for exact verified
+local commands, host limitations, uninstall, and troubleshooting. Claude Code
+support is deferred and is not included in the current release. Completed
+compatibility research is preserved for a future implementation cycle in the
+[compatibility report](docs/agent-compatibility.md).
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh
 ```
@@ -87,6 +109,16 @@ braid --help
 See the [installation guide](docs/installation.md) for version pinning, custom directories, PATH
 behavior, upgrades, explicit downgrades, uninstall, checksum verification, manual archive use, and
 source-development setup.
+
+The existing manual Codex adapter remains available as a compatibility
+fallback:
+
+```bash
+braid growth install codex --confirm
+```
+
+Do not install both the manual adapter and native Codex plugin. If both are
+detected, run `braid growth uninstall codex` to keep only the native plugin.
 
 ### Quick judge demo
 
@@ -397,11 +429,11 @@ See [architecture](docs/architecture.md), [proposal behavior](docs/proposals.md)
 
 ## Status
 
-Braid v0.5.1 adds verified installation and owned lifecycle management for the existing standalone
-distribution. Phase 4 durable migration recovery, Growth Mode v1, deterministic proposal repair
-suggestions, execution readiness, and safe isolated extraction behavior are unchanged. Recovery
-journals use schema version `1.0.0`; Growth reports and their Codex adapter protocol remain at `1.0.0`,
-while snapshot, proposal, execution-plan, and execution-record schemas remain version 1.
+Braid v0.6.0 adds native Growth Mode integrations for Codex, Gemini CLI, and local GitHub Copilot CLI
+while preserving the manual Codex fallback and verified standalone distribution. Claude Code
+production support is deferred. Authenticated package-level live-agent smoke has not been performed.
+Recovery journals use schema version `1.0.0`; Growth reports and their adapter protocol remain at
+`1.0.0`, while snapshot, proposal, execution-plan, and execution-record schemas remain version 1.
 
 ## License
 

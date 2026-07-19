@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/runtime.mjs\" copilot sessionStart",
+        "powershell": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" copilot sessionStart",
+        "timeoutSec": 35
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/runtime.mjs\" copilot userPromptSubmitted",
+        "powershell": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" copilot userPromptSubmitted",
+        "timeoutSec": 35
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/runtime.mjs\" copilot postToolUse",
+        "powershell": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" copilot postToolUse",
+        "timeoutSec": 35
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "node \"${PLUGIN_ROOT}/runtime.mjs\" copilot agentStop",
+        "powershell": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" copilot agentStop",
+        "timeoutSec": 35
+      }
+    ]
+  }
+}

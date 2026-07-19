@@ -1,16 +1,26 @@
+import { access } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadArchitectureConfig } from "@braid/core";
 import {
   CODEX_HOOK_EVENTS,
   createGrowthGuard,
   formatGrowthModeReport,
   inspectCodexHookInstallation,
   installCodexHooks,
+  NATIVE_AGENT_HOSTS,
+  NATIVE_HOOK_EVENTS,
+  probeNativeAgent,
   probeCodexHookCapabilities,
   runCodexHookStdio,
+  runNativeHookStdio,
   uninstallCodexHooks,
+  type NativeAgentHost,
+  type NativeHookEvent,
 } from "@braid/guard";
-import { InvalidInputError } from "@braid/shared";
+import { CONFIG_FILE, InvalidInputError } from "@braid/shared";
+import { BRAID_CLI_VERSION } from "../version.js";
 
 interface SessionOptions {
   path: string;
@@ -36,6 +46,17 @@ interface ResetOptions extends SessionOptions {
   confirm?: string;
 }
 
+interface NativeSetupOptions {
+  path: string;
+  host: string;
+  json?: boolean;
+}
+
+interface NativeStatusOptions extends SessionOptions {
+  codex?: string;
+  host?: string;
+}
+
 const sessionIdFor = (session: string | undefined): string =>
   session ?? process.env.CODEX_THREAD_ID ?? "manual";
 
@@ -47,6 +68,164 @@ const guardFor = (options: SessionOptions) =>
 
 const writeJson = (value: unknown): void => {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+};
+
+const nativeHost = (value: string): NativeAgentHost => {
+  if (!NATIVE_AGENT_HOSTS.includes(value as NativeAgentHost)) {
+    throw new InvalidInputError(`Unsupported native agent host ${value}.`);
+  }
+  return value as NativeAgentHost;
+};
+
+const exists = async (filePath: string): Promise<boolean> => {
+  try {
+    await access(filePath);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+};
+
+const redactedPath = (value: string): string => {
+  const absolute = path.resolve(value);
+  const home = homedir();
+  return absolute === home
+    ? "<home>"
+    : absolute.startsWith(`${home}${path.sep}`)
+      ? `<home>${path.sep}${path.relative(home, absolute)}`
+      : absolute;
+};
+
+const nativeInstallCommand: Record<NativeAgentHost, string> = {
+  codex: "codex plugin add braid@braid",
+  gemini: "gemini extensions install <released-braid-extension-source>",
+  copilot: "copilot plugin install braid@braid",
+};
+
+const inspectNativeStatus = async (
+  options: NativeSetupOptions & { session?: string; codex?: string },
+) => {
+  const host = nativeHost(options.host);
+  const projectRoot = path.resolve(options.path);
+  const configPath = path.join(projectRoot, CONFIG_FILE);
+  const initialized = await exists(configPath);
+  let growthEnabled = false;
+  let configurationValid = true;
+  if (initialized) {
+    try {
+      growthEnabled = (await loadArchitectureConfig(configPath)).growthMode
+        .enabled;
+    } catch {
+      configurationValid = false;
+    }
+  }
+
+  const probe = await probeNativeAgent(host, {
+    workspacePath: projectRoot,
+    ...(host === "codex" && options.codex ? { executable: options.codex } : {}),
+  });
+  let manualCodexAdapter = false;
+  if (host === "codex") {
+    try {
+      manualCodexAdapter = (await inspectCodexHookInstallation(projectRoot))
+        .installed;
+    } catch {
+      // A malformed legacy config is reported by its legacy status command.
+    }
+  }
+  const duplicateAdapter = probe.adapterDiscovered && manualCodexAdapter;
+
+  let lifecycle = null;
+  if (initialized && configurationValid) {
+    try {
+      const state = await guardFor({
+        path: projectRoot,
+        session: options.session ?? `native-manual-${host}`,
+      }).status();
+      lifecycle = {
+        baselineExists: state.baselineExists,
+        latestStatus: state.latestReport?.status ?? null,
+        unresolvedCompletion: state.unresolvedCompletion,
+      };
+    } catch {
+      // Setup remains safe and useful outside a Git repository.
+    }
+  }
+
+  const nextCommand = !probe.supported
+    ? `${host} --version`
+    : !probe.adapterDiscovered
+      ? nativeInstallCommand[host]
+      : !initialized
+        ? "braid init"
+        : !configurationValid
+          ? `braid growth setup --host ${host}`
+          : !growthEnabled
+            ? `braid growth setup --host ${host}`
+            : duplicateAdapter
+              ? "braid growth uninstall codex"
+              : `braid growth status --host ${host}`;
+
+  return {
+    host: { name: host, version: probe.version, supported: probe.supported },
+    braid: {
+      executable: redactedPath(process.argv[1] ?? "braid"),
+      version: BRAID_CLI_VERSION,
+      supported: BRAID_CLI_VERSION.startsWith("0.6."),
+    },
+    project: {
+      root: ".",
+      initialized,
+      configurationValid,
+      growthEnabled,
+    },
+    adapter: {
+      kind: "native-plugin",
+      discovered: probe.adapterDiscovered,
+      duplicateManualCodexAdapter: duplicateAdapter,
+    },
+    session: lifecycle,
+    compatibility: probe.classification,
+    limitations: probe.limitations,
+    reason: probe.reason,
+    nextCommand,
+  };
+};
+
+export const growthSetupCommand = async (
+  options: NativeSetupOptions,
+): Promise<void> => {
+  const status = await inspectNativeStatus(options);
+  if (options.json) {
+    writeJson(status);
+    return;
+  }
+  process.stdout.write(
+    [
+      "Braid native adapter setup",
+      "",
+      `Host: ${status.host.name} ${status.host.version ?? "not found"}`,
+      `Host contract supported: ${status.host.supported ? "yes" : "no"}`,
+      `Braid CLI: ${status.braid.executable} (${status.braid.version})`,
+      `Project initialized: ${status.project.initialized ? "yes" : "no"}`,
+      `Configuration valid: ${status.project.configurationValid ? "yes" : "no"}`,
+      `Growth Mode enabled: ${status.project.growthEnabled ? "yes" : "no"}`,
+      `Native adapter discovered: ${status.adapter.discovered ? "yes" : "no"}`,
+      `Compatibility: ${status.compatibility}`,
+      ...(status.reason ? [`Note: ${status.reason}`] : []),
+      "",
+      status.project.initialized &&
+      status.project.configurationValid &&
+      !status.project.growthEnabled
+        ? "Next: review .braid/architecture.yaml, explicitly set growthMode.enabled to true, then run:"
+        : "Next command:",
+      status.nextCommand,
+      "",
+    ].join("\n"),
+  );
 };
 
 export const growthContextCommand = async (
@@ -80,8 +259,44 @@ export const growthFinalCommand = async (
 };
 
 export const growthStatusCommand = async (
-  options: SessionOptions & { codex?: string },
+  options: NativeStatusOptions,
 ): Promise<void> => {
+  if (options.host) {
+    const status = await inspectNativeStatus({
+      ...options,
+      host: options.host,
+    });
+    if (options.json) {
+      writeJson(status);
+      return;
+    }
+    process.stdout.write(
+      [
+        "Braid Growth Mode",
+        "",
+        `Host: ${status.host.name} ${status.host.version ?? "not found"}`,
+        `Braid CLI: ${status.braid.executable} (${status.braid.version})`,
+        `Project: ${status.project.initialized ? "initialized" : "not initialized"}`,
+        `Growth Mode: ${status.project.growthEnabled ? "enabled" : "disabled"}`,
+        `Hook discovery: ${status.adapter.discovered ? "native adapter active" : "native adapter not discovered"}`,
+        `Session baseline: ${status.session?.baselineExists ? "active" : "not available"}`,
+        `Latest result: ${status.session?.latestStatus ?? "none"}`,
+        `Unresolved completion: ${status.session?.unresolvedCompletion ? "yes" : "no"}`,
+        `Compatibility: ${status.compatibility}`,
+        ...(status.adapter.duplicateManualCodexAdapter
+          ? [
+              "Duplicate adapter: native plugin and manual Codex adapter are both present.",
+              "Remediation: braid growth uninstall codex",
+            ]
+          : []),
+        "Known limitations:",
+        ...status.limitations.map((limitation) => `- ${limitation}`),
+        ...(status.reason ? [`Note: ${status.reason}`] : []),
+        "",
+      ].join("\n"),
+    );
+    return;
+  }
   const projectRoot = path.resolve(options.path);
   const [lifecycle, installation, capabilities] = await Promise.all([
     guardFor(options).status(),
@@ -192,6 +407,27 @@ export const growthUninstallCodexCommand = async (
   );
 };
 
-export const growthHookCommand = async (): Promise<void> => {
-  await runCodexHookStdio();
+export const growthHookCommand = async (options: {
+  host?: string;
+  event?: string;
+}): Promise<void> => {
+  if (!options.host) {
+    await runCodexHookStdio();
+    return;
+  }
+  if (!NATIVE_AGENT_HOSTS.includes(options.host as NativeAgentHost)) {
+    throw new InvalidInputError(
+      `Unsupported native agent host ${options.host}.`,
+    );
+  }
+  const host = options.host as NativeAgentHost;
+  if (
+    !options.event ||
+    !(NATIVE_HOOK_EVENTS[host] as readonly string[]).includes(options.event)
+  ) {
+    throw new InvalidInputError(
+      `Unsupported ${host} hook event ${options.event ?? "<missing>"}.`,
+    );
+  }
+  await runNativeHookStdio(host, options.event as NativeHookEvent);
 };

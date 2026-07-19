@@ -5,7 +5,7 @@ import {
   type SpawnOptions,
 } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import {
@@ -418,7 +418,7 @@ export class CodexExecutor implements MigrationExecutor {
       throw new Error("CodexExecutor requires a codex execution plan");
     const inspection = await this.#inspect();
     const schemaDirectory = await mkdtemp(
-      path.join(tmpdir(), "braid-codex-summary-"),
+      path.join(path.dirname(context.worktreePath), "braid-codex-summary-"),
     );
     const schemaPath = path.join(schemaDirectory, "schema.json");
     try {

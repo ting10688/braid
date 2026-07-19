@@ -10,6 +10,7 @@ import {
   growthHookCommand,
   growthInstallCodexCommand,
   growthResetCommand,
+  growthSetupCommand,
   growthStatusCommand,
   growthUninstallCodexCommand,
 } from "./commands/growth.js";
@@ -27,11 +28,12 @@ import {
   migrateSuggestCommand,
   migrateStatusCommand,
 } from "./commands/migrate.js";
+import { BRAID_CLI_VERSION } from "./version.js";
 
 const program = new Command()
   .name("braid")
   .description("Continuous architecture evolution for growing codebases")
-  .version("0.5.1");
+  .version(BRAID_CLI_VERSION);
 
 program
   .command("init")
@@ -162,6 +164,16 @@ const growth = program
   .description("Guard architecture changes during an ordinary coding session");
 
 growth
+  .command("setup")
+  .description(
+    "Inspect native adapter and print the next explicit project step",
+  )
+  .option("--path <path>", "target project", ".")
+  .requiredOption("--host <host>", "codex, gemini, or copilot")
+  .option("--json", "write setup status JSON")
+  .action(growthSetupCommand);
+
+growth
   .command("context")
   .description("Initialize or show concise session architecture guidance")
   .option("--path <path>", "target project", ".")
@@ -187,9 +199,10 @@ growth
 
 growth
   .command("status")
-  .description("Show session, installation, and Codex capability status")
+  .description("Show session, installation, and native adapter status")
   .option("--path <path>", "target project", ".")
   .option("--session <id>", "Growth Mode session ID")
+  .option("--host <host>", "codex, gemini, or copilot")
   .option("--codex <executable>", "Codex executable", "codex")
   .option("--json", "write status JSON")
   .action(growthStatusCommand);
@@ -231,7 +244,9 @@ growthUninstall
 
 growth
   .command("hook", { hidden: true })
-  .description("Internal Codex command-hook entrypoint")
+  .description("Internal native-agent command-hook entrypoint")
+  .option("--host <host>", "native host; omitted for the legacy Codex adapter")
+  .option("--event <event>", "native lifecycle event")
   .action(growthHookCommand);
 
 program.exitOverride();

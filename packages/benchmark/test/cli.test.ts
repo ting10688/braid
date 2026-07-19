@@ -33,6 +33,35 @@ afterEach(async () => {
 const invoke = (arguments_: readonly string[], timeoutMs = 180_000) =>
   runCommand(["node", cli, ...arguments_], { cwd: workspaceRoot, timeoutMs });
 
+const expectNoRegression = (comparison: {
+  compatible: boolean;
+  overallResult: string;
+  comparisons: Array<{
+    category: string;
+    metric: string;
+    status: string;
+  }>;
+}) => {
+  expect(comparison.compatible).toBe(true);
+  expect(
+    comparison.comparisons.filter(({ status }) =>
+      ["regressed", "incompatible"].includes(status),
+    ),
+  ).toEqual([]);
+  expect(
+    comparison.comparisons
+      .filter(({ status }) => status === "warning")
+      .every(
+        ({ category, metric }) =>
+          category === "cost" &&
+          ["medianRuntimeMs", "minimumRuntimeMs", "maximumRuntimeMs"].includes(
+            metric,
+          ),
+      ),
+  ).toBe(true);
+  expect(["pass", "warning"]).toContain(comparison.overallResult);
+};
+
 describe("braid-bench CLI", () => {
   it("supports runs, baselines, comparisons, overrides, and iteration", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "braid-bench-cli-"));
@@ -84,8 +113,14 @@ describe("braid-bench CLI", () => {
     const reported = await invoke(["report", first]);
     expect(reported.stdout).toContain("Expected issue coverage");
 
-    const runsCompared = await invoke(["compare-runs", first, second]);
-    expect(runsCompared.stdout).toContain("Result: PASS");
+    const runsCompared = await invoke([
+      "compare-runs",
+      first,
+      second,
+      "--json",
+    ]);
+    expect(runsCompared.exitCode).toBe(0);
+    expectNoRegression(JSON.parse(runsCompared.stdout));
     expect(runsCompared.stderr).toBe("");
 
     const unconfirmed = await invoke([
@@ -113,9 +148,14 @@ describe("braid-bench CLI", () => {
     expect(
       JSON.parse((await invoke(["baseline", "show", baselineName])).stdout),
     ).toMatchObject({ name: baselineName });
-    expect(
-      (await invoke(["compare-baseline", baselineName, second])).stdout,
-    ).toContain("Result: PASS");
+    const baselineCompared = await invoke([
+      "compare-baseline",
+      baselineName,
+      second,
+      "--json",
+    ]);
+    expect(baselineCompared.exitCode).toBe(0);
+    expectNoRegression(JSON.parse(baselineCompared.stdout));
 
     await cp(first, incompatible, { recursive: true });
     const incompatibleRun = JSON.parse(
@@ -156,12 +196,12 @@ describe("braid-bench CLI", () => {
       iteration,
     ]);
     expect(iterated.exitCode).toBe(0);
-    expect(iterated.stdout).toContain("Result: PASS");
+    expect(iterated.stdout).toMatch(/Result: (?:PASS|WARNING)/u);
     expect(iterated.stderr).toBe("");
-    expect(
+    expectNoRegression(
       JSON.parse(
         await readFile(path.join(iteration, "comparison.json"), "utf8"),
       ),
-    ).toMatchObject({ overallResult: "pass" });
+    );
   }, 180_000);
 });

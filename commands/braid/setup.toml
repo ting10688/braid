@@ -1,0 +1,2 @@
+description = "Check Braid CLI, project, Growth Mode, and native Gemini CLI extension state"
+prompt = "Run `braid --version`. If it is missing, report `curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh` but do not run it. Otherwise run `braid growth setup --host gemini` and report its exact next command. Do not install software, initialize Braid, enable Growth Mode, edit settings, or change trust without explicit user approval."

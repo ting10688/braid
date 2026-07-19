@@ -1,0 +1,29 @@
+{
+  "name": "braid",
+  "version": "0.6.0",
+  "description": "Automatic Braid Growth Mode lifecycle integration for Codex.",
+  "author": {
+    "name": "Braid",
+    "url": "https://github.com/ting10688/Braid"
+  },
+  "homepage": "https://github.com/ting10688/Braid",
+  "repository": "https://github.com/ting10688/Braid",
+  "license": "MIT",
+  "keywords": ["architecture", "growth-mode", "typescript"],
+  "skills": "./skills/",
+  "hooks": "./hooks/codex.json",
+  "interface": {
+    "displayName": "Braid",
+    "shortDescription": "Automatic architecture growth guard",
+    "longDescription": "Run Braid Growth Mode automatically through native Codex lifecycle hooks.",
+    "developerName": "Braid",
+    "category": "Productivity",
+    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "websiteURL": "https://github.com/ting10688/Braid",
+    "defaultPrompt": [
+      "Set up Braid for this TypeScript project.",
+      "Show Braid Growth Mode status.",
+      "Run a Braid Growth Mode check."
+    ]
+  }
+}

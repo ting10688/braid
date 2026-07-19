@@ -28,6 +28,16 @@ braid --version
 braid --help
 ```
 
+## Native agent adapters
+
+The current v0.6.0 native production scope is Codex, Gemini CLI, and local
+GitHub Copilot CLI. Install their native plugin or extension separately after
+installing Braid; that host installation does not initialize a project or
+enable Growth Mode. Claude Code production support is deferred from this
+release, while its compatibility research remains documented. See the
+[native agent plugin guide](native-agent-plugins.md) and
+[compatibility report](agent-compatibility.md).
+
 ## Requirements and supported platforms
 
 The installer supports:
@@ -51,10 +61,10 @@ The installation root is `${XDG_DATA_HOME:-$HOME/.local/share}/braid`. The binar
 ```text
 ~/.local/share/braid/
 ├── versions/
-│   ├── 0.5.0/
-│   └── 0.5.1/
-├── current -> versions/0.5.1
-├── previous -> versions/0.5.0
+│   ├── 0.5.1/
+│   └── 0.6.0/
+├── current -> versions/0.6.0
+├── previous -> versions/0.5.1
 └── install-manifest.json
 
 ~/.local/bin/braid -> ~/.local/share/braid/current/bin/braid
@@ -68,8 +78,8 @@ paths and installed release metadata; it contains no credentials or download aut
 Run a downloaded script directly when passing options:
 
 ```bash
-sh install-braid.sh --version 0.5.1
-sh install-braid.sh --version v0.5.1
+sh install-braid.sh --version 0.6.0
+sh install-braid.sh --version v0.6.0
 sh install-braid.sh --install-dir "$HOME/custom/braid"
 sh install-braid.sh --bin-dir "$HOME/custom/bin"
 sh install-braid.sh --dry-run
@@ -84,7 +94,7 @@ With a pipe, pass arguments to `sh` after `-s --`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | \
-  sh -s -- --version 0.5.1 --no-path-update
+  sh -s -- --version 0.6.0 --no-path-update
 ```
 
 `BRAID_VERSION`, `BRAID_INSTALL_DIR`, `BRAID_BIN_DIR`, `BRAID_REPOSITORY`, and
@@ -93,7 +103,7 @@ curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | \
 checksum verification.
 
 Without `--version`, the installer resolves the latest stable GitHub Release, ignoring drafts and
-prereleases. `--version` accepts either `0.5.1` or `v0.5.1` and resolves exactly that immutable release.
+prereleases. `--version` accepts either `0.6.0` or `v0.6.0` and resolves exactly that immutable release.
 It never falls back to another version. Use `--dry-run` to inspect the planned operations without
 changing files.
 

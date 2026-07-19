@@ -1,0 +1,56 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/runtime.mjs\" codex SessionStart",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" codex SessionStart",
+            "timeout": 35,
+            "statusMessage": "Starting Braid Growth Mode"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/runtime.mjs\" codex UserPromptSubmit",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" codex UserPromptSubmit",
+            "timeout": 35,
+            "statusMessage": "Checking Braid session context"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/runtime.mjs\" codex PostToolUse",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" codex PostToolUse",
+            "timeout": 35,
+            "statusMessage": "Checking architecture growth"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/runtime.mjs\" codex Stop",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\runtime.mjs\" codex Stop",
+            "timeout": 35,
+            "statusMessage": "Running final Braid architecture scan"
+          }
+        ]
+      }
+    ]
+  }
+}

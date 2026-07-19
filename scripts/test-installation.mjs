@@ -250,34 +250,34 @@ await Promise.all([
   access(sourceArchive),
 ]);
 assert(
-  version === "0.5.1",
-  `Installer suite requires v0.5.1, found ${version}`,
+  version === "0.6.0",
+  `Installer suite requires v0.6.0, found ${version}`,
 );
 
 const releases = new Map();
 const builtArchive = await readFile(sourceArchive);
-releases.set("0.5.1", {
-  version: "0.5.1",
+releases.set("0.6.0", {
+  version: "0.6.0",
   archiveName: `${artifactName}.tar.gz`,
   archive: builtArchive,
   checksum: `${sha256(builtArchive)}  ${artifactName}.tar.gz\n`,
 });
 releases.set("0.5.0", await makeRelease("0.5.0"));
-const wrongVersionRelease = await makeRelease("0.5.1", {
+const wrongVersionRelease = await makeRelease("0.6.0", {
   reportedVersion: "9.9.9",
 });
-const missingLauncherRelease = await makeRelease("0.5.1", {
+const missingLauncherRelease = await makeRelease("0.6.0", {
   missing: "bin/braid",
 });
-const escapingSymlinkRelease = await makeRelease("0.5.1", {
+const escapingSymlinkRelease = await makeRelease("0.6.0", {
   escapingSymlink: true,
 });
-const postActivationFailureRelease = await makeRelease("0.5.1", {
+const postActivationFailureRelease = await makeRelease("0.6.0", {
   postActivationFailure: true,
 });
 
 const releaseState = {
-  latest: "0.5.1",
+  latest: "0.6.0",
   api: "ok",
   prerelease: false,
   draft: false,
@@ -290,7 +290,7 @@ const releaseState = {
 };
 
 const resetServer = () => {
-  releaseState.latest = "0.5.1";
+  releaseState.latest = "0.6.0";
   releaseState.api = "ok";
   releaseState.prerelease = false;
   releaseState.draft = false;
@@ -493,7 +493,7 @@ test("first install through curl pipe and standalone CLI", async () => {
     "binary is not a symlink",
   );
   assert(
-    (await reportedVersion(home)) === "0.5.1",
+    (await reportedVersion(home)) === "0.6.0",
     "installed version is wrong",
   );
   const help = await run(binary(home), ["--help"], {
@@ -503,7 +503,7 @@ test("first install through curl pipe and standalone CLI", async () => {
   assert(help.stdout.trim(), "installed help is empty");
   const data = await manifest(home);
   assert(data.schemaVersion === 1, "ownership schema is wrong");
-  assert(data.activeVersion === "0.5.1", "manifest active version is wrong");
+  assert(data.activeVersion === "0.6.0", "manifest active version is wrong");
   assert(
     data.previousVersion === null,
     "first install recorded a previous version",
@@ -539,7 +539,7 @@ test("custom roots, spaces, no PATH update, and environment precedence", async (
     home,
     [
       "--version",
-      "v0.5.1",
+      "v0.6.0",
       "--install-dir",
       root,
       "--bin-dir",
@@ -555,7 +555,7 @@ test("custom roots, spaces, no PATH update, and environment precedence", async (
     },
   );
   assert(
-    (await reportedVersion(home, path.join(bin, "braid"))) === "0.5.1",
+    (await reportedVersion(home, path.join(bin, "braid"))) === "0.6.0",
     "flag precedence failed",
   );
   assert(await exists(path.join(root, "current")), "custom root was not used");
@@ -719,7 +719,7 @@ test("Node and Git minimum versions are enforced before download", async () => {
     env: { PATH: `${tools}:${process.env.PATH}` },
   });
   assert(
-    (await reportedVersion(home)) === "0.5.1",
+    (await reportedVersion(home)) === "0.6.0",
     "minimum tool versions were rejected",
   );
 });
@@ -734,28 +734,28 @@ const integrityFailure = (name, configure) =>
 
 integrityFailure("wrong archive checksum is rejected", async () => {
   releaseState.checksumOverrides.set(
-    "0.5.1",
-    `${"0".repeat(64)}  ${releases.get("0.5.1").archiveName}\n`,
+    "0.6.0",
+    `${"0".repeat(64)}  ${releases.get("0.6.0").archiveName}\n`,
   );
 });
 integrityFailure("missing checksum entry is rejected", async () => {
   releaseState.checksumOverrides.set(
-    "0.5.1",
+    "0.6.0",
     `${"0".repeat(64)}  other.tar.gz\n`,
   );
 });
 integrityFailure("conflicting duplicate checksum is rejected", async () => {
-  const release = releases.get("0.5.1");
+  const release = releases.get("0.6.0");
   releaseState.checksumOverrides.set(
-    "0.5.1",
+    "0.6.0",
     `${release.checksum}${"0".repeat(64)}  ${release.archiveName}\n`,
   );
 });
 integrityFailure("malformed checksum is rejected", async () => {
-  releaseState.checksumOverrides.set("0.5.1", "not-a-checksum\n");
+  releaseState.checksumOverrides.set("0.6.0", "not-a-checksum\n");
 });
 integrityFailure("interrupted archive transfer is rejected", async () => {
-  releaseState.interrupted.add(releases.get("0.5.1").archiveName);
+  releaseState.interrupted.add(releases.get("0.6.0").archiveName);
 });
 integrityFailure("missing archive asset is rejected", async () => {
   releaseState.missingAssets.add("archive");
@@ -777,29 +777,29 @@ integrityFailure("draft release is rejected", async () => {
 });
 integrityFailure("archive with absolute path is rejected", async () => {
   const archive = tar([{ name: "/tmp/braid-escape", body: "unsafe" }]);
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure("archive with parent traversal is rejected", async () => {
   const archive = tar([{ name: "../braid-escape", body: "unsafe" }]);
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure("archive with escaping symlink is rejected", async () => {
-  releaseState.releaseOverrides.set("0.5.1", escapingSymlinkRelease);
+  releaseState.releaseOverrides.set("0.6.0", escapingSymlinkRelease);
 });
 integrityFailure("archive with FIFO is rejected", async () => {
   const archive = tar([{ name: `${artifactName}/pipe`, type: "6" }]);
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure("archive with hard link is rejected", async () => {
@@ -811,18 +811,18 @@ integrityFailure("archive with hard link is rejected", async () => {
       link: `${artifactName}/first`,
     },
   ]);
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure("archive with device file is rejected", async () => {
   const archive = tar([{ name: `${artifactName}/device`, type: "3" }]);
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure(
@@ -833,40 +833,40 @@ integrityFailure(
       { name: duplicate, body: "data" },
       { name: duplicate, type: "5" },
     ]);
-    releaseState.releaseOverrides.set("0.5.1", {
-      ...releases.get("0.5.1"),
+    releaseState.releaseOverrides.set("0.6.0", {
+      ...releases.get("0.6.0"),
       archive,
-      checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+      checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
     });
   },
 );
 integrityFailure("empty archive is rejected", async () => {
   const archive = gzipSync(Buffer.alloc(1024), { mtime: 0 });
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure("unexpected archive structure is rejected", async () => {
   const archive = tar([{ name: "unexpected/bin/braid", body: "#!/bin/sh\n" }]);
-  releaseState.releaseOverrides.set("0.5.1", {
-    ...releases.get("0.5.1"),
+  releaseState.releaseOverrides.set("0.6.0", {
+    ...releases.get("0.6.0"),
     archive,
-    checksum: `${sha256(archive)}  ${releases.get("0.5.1").archiveName}\n`,
+    checksum: `${sha256(archive)}  ${releases.get("0.6.0").archiveName}\n`,
   });
 });
 integrityFailure("missing launcher is rejected", async () => {
-  releaseState.releaseOverrides.set("0.5.1", missingLauncherRelease);
+  releaseState.releaseOverrides.set("0.6.0", missingLauncherRelease);
 });
 integrityFailure("wrong reported version is rejected", async () => {
-  releaseState.releaseOverrides.set("0.5.1", wrongVersionRelease);
+  releaseState.releaseOverrides.set("0.6.0", wrongVersionRelease);
 });
 
 test("same-version reinstall is idempotent and repairs its binary", async () => {
   const home = await makeHome("reinstall");
   await install(home, ["--no-path-update"]);
-  const archivePath = `/assets/v0.5.1/${releases.get("0.5.1").archiveName}`;
+  const archivePath = `/assets/v0.6.0/${releases.get("0.6.0").archiveName}`;
   const downloads = () =>
     releaseState.requests.filter((request) => request === archivePath).length;
   const before = downloads();
@@ -882,7 +882,7 @@ test("same-version reinstall is idempotent and repairs its binary", async () => 
   await install(home, ["--no-path-update"]);
   assert(downloads() === before, "binary repair redownloaded archive");
   assert(
-    (await reportedVersion(home)) === "0.5.1",
+    (await reportedVersion(home)) === "0.6.0",
     "repaired binary does not work",
   );
 });
@@ -895,7 +895,7 @@ test("upgrade, previous link, and explicit downgrade", async () => {
     "synthetic previous release failed",
   );
   await install(home, ["--no-path-update"]);
-  assert((await reportedVersion(home)) === "0.5.1", "upgrade failed");
+  assert((await reportedVersion(home)) === "0.6.0", "upgrade failed");
   assert(
     (await readlink(path.join(installRoot(home), "previous"))).endsWith(
       "versions/0.5.0",
@@ -909,7 +909,7 @@ test("upgrade, previous link, and explicit downgrade", async () => {
   );
   assert(
     (await readlink(path.join(installRoot(home), "previous"))).endsWith(
-      "versions/0.5.1",
+      "versions/0.6.0",
     ),
     "downgrade previous link is wrong",
   );
@@ -919,8 +919,8 @@ test("failed upgrade preserves active installation", async () => {
   const home = await makeHome("failed-upgrade");
   await install(home, ["--version", "0.5.0", "--no-path-update"]);
   releaseState.checksumOverrides.set(
-    "0.5.1",
-    `${"0".repeat(64)}  ${releases.get("0.5.1").archiveName}\n`,
+    "0.6.0",
+    `${"0".repeat(64)}  ${releases.get("0.6.0").archiveName}\n`,
   );
   await install(home, ["--no-path-update"], { expectedCode: "nonzero" });
   assert(
@@ -938,7 +938,7 @@ test("failed upgrade preserves active installation", async () => {
 test("post-activation failure rolls back", async () => {
   const home = await makeHome("post-activation-rollback");
   await install(home, ["--version", "0.5.0", "--no-path-update"]);
-  releaseState.releaseOverrides.set("0.5.1", postActivationFailureRelease);
+  releaseState.releaseOverrides.set("0.6.0", postActivationFailureRelease);
   const result = await install(home, ["--no-path-update"], {
     expectedCode: "nonzero",
   });
@@ -966,8 +966,8 @@ test("unknown binary conflict is refused and preserved", async () => {
 test("invalid arguments and destructive roots are refused", async () => {
   for (const arguments_ of [
     ["--version", ""],
-    ["--version", "../0.5.1"],
-    ["--version", "0.5.1\nother"],
+    ["--version", "../0.6.0"],
+    ["--version", "0.6.0\nother"],
     ["--repository", "not-a-repository"],
     ["--repository", "ting10688/Braid\nother"],
     ["--install-dir", "/"],
@@ -1059,7 +1059,7 @@ test("versions-root symlinks are refused without touching outside data", async (
 
 test("manifestless valid version is never adopted or removed", async () => {
   const home = await makeHome("manifestless-version");
-  const versionDirectory = path.join(installRoot(home), "versions", "0.5.1");
+  const versionDirectory = path.join(installRoot(home), "versions", "0.6.0");
   await mkdir(path.dirname(versionDirectory), { recursive: true });
   await cp(sourceDistribution, versionDirectory, { recursive: true });
   const payload = path.join(versionDirectory, "bin", "braid.mjs");
@@ -1101,8 +1101,8 @@ test("PATH install and uninstall preserve a missing final newline", async () => 
 
 test("SIGTERM during archive download leaves no temporary or staged state", async () => {
   const home = await makeHome("signal-cleanup");
-  const archiveName = releases.get("0.5.1").archiveName;
-  const archiveRequest = `/assets/v0.5.1/${archiveName}`;
+  const archiveName = releases.get("0.6.0").archiveName;
+  const archiveRequest = `/assets/v0.6.0/${archiveName}`;
   releaseState.slow.add(archiveName);
   const child = spawn("sh", [installScript, "--no-path-update"], {
     cwd: home,
@@ -1195,7 +1195,7 @@ test("uninstall keep flags are honored", async () => {
   await install(versionsHome, ["--no-path-update"]);
   await uninstall(versionsHome, ["--keep-versions"]);
   assert(
-    await exists(path.join(installRoot(versionsHome), "versions", "0.5.1")),
+    await exists(path.join(installRoot(versionsHome), "versions", "0.6.0")),
     "--keep-versions removed version",
   );
 
@@ -1238,7 +1238,7 @@ test("manifest ownership mismatch is refused", async () => {
   await uninstall(home, [], { expectedCode: "nonzero" });
   assert(await exists(binary(home)), "ownership mismatch removed binary");
   assert(
-    await exists(path.join(installRoot(home), "versions", "0.5.1")),
+    await exists(path.join(installRoot(home), "versions", "0.6.0")),
     "ownership mismatch removed version",
   );
 });
