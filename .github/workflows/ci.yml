@@ -27,11 +27,11 @@ jobs:
       - run: pnpm distribution:verify
       - uses: actions/upload-artifact@v4
         with:
-          name: braid-v0.5.1-demo-node22
+          name: braid-v0.6.0-demo-node22
           path: |
-            .artifacts/braid-v0.5.1-demo-node22/
-            .artifacts/braid-v0.5.1-demo-node22.tar.gz
-            .artifacts/braid-v0.5.1-demo-node22.zip
+            .artifacts/braid-v0.6.0-demo-node22/
+            .artifacts/braid-v0.6.0-demo-node22.tar.gz
+            .artifacts/braid-v0.6.0-demo-node22.zip
             .artifacts/SHA256SUMS
           if-no-files-found: error
       - run: pnpm benchmark:real:list
