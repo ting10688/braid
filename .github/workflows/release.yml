@@ -33,6 +33,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm identity:check
+      - run: pnpm exec prettier --check .
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm build
       - run: pnpm test
       - run: sh -n install.sh uninstall.sh
       - run: pnpm distribution:build
