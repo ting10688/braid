@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,16 @@ const readJson = async (relative) =>
   JSON.parse(await readFile(path.join(root, relative), "utf8"));
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
+};
+const walkFiles = async (relative) => {
+  const directory = path.join(root, relative);
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const child = path.join(relative, entry.name);
+    if (entry.isDirectory()) files.push(...(await walkFiles(child)));
+    else if (entry.isFile()) files.push(child);
+  }
+  return files;
 };
 
 const codexMarketplace = await readJson(".agents/plugins/marketplace.json");
@@ -49,6 +59,11 @@ const expectedEvents = {
   gemini: ["SessionStart", "BeforeAgent", "AfterTool", "AfterAgent"],
   copilot: ["sessionStart", "userPromptSubmitted", "postToolUse", "agentStop"],
 };
+assert(
+  JSON.stringify(Object.keys(expectedEvents)) ===
+    JSON.stringify(["codex", "gemini", "copilot"]),
+  "Production native host set must be exactly Codex, Gemini, and Copilot",
+);
 for (const [host, hooks] of Object.entries({
   codex: codexHooks,
   gemini: geminiHooks,
@@ -64,6 +79,49 @@ for (const [host, hooks] of Object.entries({
     `${host} hook manifest must not claim Claude support`,
   );
 }
+
+const productionFiles = (
+  await Promise.all(
+    [
+      ".agents/plugins",
+      ".github/plugin",
+      "adapters/native-agent",
+      "commands/braid",
+      "hooks",
+      "plugins/braid",
+    ].map(walkFiles),
+  )
+).flat();
+assert(
+  !productionFiles.some((file) => file.toLowerCase().includes("claude")),
+  "Production packaging must not contain a Claude artifact",
+);
+assert(
+  !(
+    await Promise.all(
+      productionFiles.map((relative) =>
+        readFile(path.join(root, relative), "utf8"),
+      ),
+    )
+  ).some((value) => /\bclaude\b/iu.test(value)),
+  "Production packaging must not advertise Claude support",
+);
+const productionSource = await Promise.all(
+  [
+    "adapters/native-agent/runtime.mjs",
+    "apps/cli/src/index.ts",
+    "apps/cli/src/commands/growth.ts",
+    "packages/guard/src/native/protocol.ts",
+  ].map((relative) => readFile(path.join(root, relative), "utf8")),
+);
+assert(
+  !productionSource.some((value) =>
+    /(?:growth\s+(?:install|uninstall)|--host)\s+claude|["']claude["']/iu.test(
+      value,
+    ),
+  ),
+  "Production commands and host registries must not expose Claude",
+);
 
 for (const relative of [
   "plugins/braid/runtime.mjs",

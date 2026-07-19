@@ -5,9 +5,10 @@ Host: Darwin 27, arm64
 
 This is the production contract gate and implementation note for the first
 native Braid Growth Mode adapters. It covers Codex, Gemini CLI, and local
-GitHub Copilot CLI only. Claude Code is excluded until its authenticated live
-`Stop` proof establishes blocking, an additional turn, repair, and successful
-completion.
+GitHub Copilot CLI only. Claude Code production support is deferred from the
+current v0.6 release scope; its compatibility research remains preserved in
+[the compatibility report](agent-compatibility.md) for a future implementation
+cycle.
 
 The adapters are packaging and protocol translators around the existing
 `braid growth` engine. They do not analyze architecture, create baselines,
@@ -284,7 +285,8 @@ No native package silently downloads Braid or edits project configuration.
 The native contracts express Braid's required lifecycle without global
 settings, an MCP server, prompt-hook blocking, or a second Growth policy
 engine. The implementation is limited to Codex, Gemini CLI, and local Copilot
-CLI. Claude Code remains unavailable.
+CLI. Claude Code is deferred and has no production adapter, package, or command
+in this release.
 
 Verified local package results on 2026-07-18:
 

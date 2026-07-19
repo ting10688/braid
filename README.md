@@ -73,7 +73,9 @@ have passed, but remote marketplace/extension commands remain unreleased and
 pending a post-push smoke. See the
 [native agent plugin guide](docs/native-agent-plugins.md) for exact verified
 local commands, host limitations, uninstall, and troubleshooting. Claude Code
-is unavailable until its authenticated `Stop`-hook gate closes.
+support is deferred and is not included in the current release. Completed
+compatibility research is preserved for a future implementation cycle in the
+[compatibility report](docs/agent-compatibility.md).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh

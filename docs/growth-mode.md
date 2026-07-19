@@ -217,7 +217,8 @@ adversarial-repository security boundary.
 - Copilot is local CLI only and 1.0.71 has no working plugin enable/disable command.
 - Codex 0.144.5 has no plugin enable/disable CLI subcommand; use its native inspection UI or uninstall.
 - Gemini extension changes require a new CLI session.
-- Claude Code is unavailable until its authenticated Stop-hook gate closes.
+- Claude Code production support is deferred from the current v0.6 release;
+  compatibility research remains documented for a future implementation cycle.
 - Warnings and blockers are limited to configured v1 rules; no general boundary policy is inferred.
 - Unresolved or ambiguous static evidence warns instead of proving a hard violation.
 - Wall-clock measurements are informational and are not CI blockers.

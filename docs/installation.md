@@ -28,6 +28,16 @@ braid --version
 braid --help
 ```
 
+## Native agent adapters
+
+The current v0.6 native production scope is Codex, Gemini CLI, and local
+GitHub Copilot CLI. Install their native plugin or extension separately after
+installing Braid; that host installation does not initialize a project or
+enable Growth Mode. Claude Code production support is deferred from this
+release, while its compatibility research remains documented. See the
+[native agent plugin guide](native-agent-plugins.md) and
+[compatibility report](agent-compatibility.md).
+
 ## Requirements and supported platforms
 
 The installer supports:

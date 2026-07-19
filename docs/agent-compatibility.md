@@ -8,20 +8,29 @@ adapter implementation boundary. A platform is not eligible for production
 Growth Mode until official documentation and an isolated live CLI probe both
 prove final-stop blocking, an additional agent turn, and repair-to-pass.
 Executable discovery or schema parsing alone is insufficient. The authorized
-production adapters are Codex, Gemini CLI, and local Copilot CLI; Claude Code
-is explicitly excluded.
+production adapters are Codex, Gemini CLI, and local Copilot CLI. Claude Code
+production support is deferred from the current v0.6 release scope, while its
+research record remains preserved below.
 
 ## Gate result
 
-| Platform              | Tested CLI | Contract   | Live final-stop                         | Growth classification       |
-| --------------------- | ---------- | ---------- | --------------------------------------- | --------------------------- |
-| OpenAI Codex          | 0.144.5    | documented | block → additional turn → pass          | `verified`                  |
-| Anthropic Claude Code | 2.1.212    | documented | not reached: CLI not authenticated      | `blocked`                   |
-| Google Gemini CLI     | 0.40.0     | documented | block → additional turn → pass          | `verified`                  |
-| GitHub Copilot CLI    | 1.0.71     | documented | block → additional turn → repair → pass | `verified-with-limitations` |
+| Platform              | Tested CLI | Contract   | Live final-stop                         | Research classification     | v0.6 production status |
+| --------------------- | ---------- | ---------- | --------------------------------------- | --------------------------- | ---------------------- |
+| OpenAI Codex          | 0.144.5    | documented | block → additional turn → pass          | `verified`                  | supported              |
+| Anthropic Claude Code | 2.1.212    | documented | not reached: CLI not authenticated      | `blocked`                   | **Deferred**           |
+| Google Gemini CLI     | 0.40.0     | documented | block → additional turn → pass          | `verified`                  | supported              |
+| GitHub Copilot CLI    | 1.0.71     | documented | block → additional turn → repair → pass | `verified-with-limitations` | supported              |
 
-The Copilot priority gate is closed. The Claude authenticated live gate remains
-blocked, and v0.6.0 does not create or advertise a Claude adapter.
+**Status: Deferred**
+
+Production scope: Claude Code support is not included in the current Braid
+v0.6 release scope. This is a release-prioritization decision; no Claude
+adapter is packaged or advertised.
+
+Research status: the completed official-contract and configuration research,
+including the authenticated-probe limitation recorded by this branch, is
+preserved for a future implementation cycle. The repository contains no live
+Claude evidence that would justify changing the historical research result.
 
 ## Preflight
 
@@ -69,7 +78,7 @@ recorded by this document. This task re-ran only the Claude and Copilot gates.
 | Worktree tested            | yes; native adapter deterministic lifecycle                            | config discovery only; no live event                                | yes; native adapter deterministic lifecycle    | yes; live contract and native adapter deterministic lifecycle            |
 | Ownership strategy         | documented                                                             | documented below                                                    | documented                                     | documented below                                                         |
 | Known limitations          | shell mutation interception is incomplete; final scan is authoritative | authentication, live errors, and worktree lifecycle remain untested | trust and cumulative retry output require care | timeout leaves child processes alive; continuation re-fires prompt event |
-| Final classification       | `verified`                                                             | `blocked`                                                           | `verified`                                     | `verified-with-limitations`                                              |
+| Final classification       | `verified`                                                             | `deferred` for v0.6; research result `blocked`                      | `verified`                                     | `verified-with-limitations`                                              |
 
 No minimum supported version is inferred merely from the installed version.
 
@@ -173,7 +182,7 @@ The limited offline/configuration observations were:
   no-user-level-state-mutation criterion was not met; probing stopped
   immediately.
 
-Classification: `blocked`.
+Research classification: `blocked`. v0.6 production status: **Deferred**.
 
 Smallest remaining test: make Claude Code authentication ready without placing
 credentials in repository files, isolate CLI state, then run one disposable
@@ -448,14 +457,15 @@ or unrelated native settings are owned by Braid.
 
 ## Recommended v0.6.0 matrix
 
-This is the exact evidence-backed matrix now. Copilot Growth is stable under
-the documented single-process and bounded-retry constraints; Claude remains
-blocked pending its authenticated live Stop proof.
+This is the exact evidence-backed production matrix now. Copilot Growth is
+stable under the documented single-process and bounded-retry constraints.
+Claude is unavailable because it is deferred from the current release scope;
+the historical research result above remains unchanged.
 
 | Platform    | Detection | Growth Mode                                     | Migration   |
 | ----------- | --------- | ----------------------------------------------- | ----------- |
 | Codex       | Stable    | Stable                                          | Stable      |
-| Claude Code | Stable    | Unavailable; authenticated gate blocked         | Unavailable |
+| Claude Code | Stable    | Unavailable; deferred from v0.6 scope           | Unavailable |
 | Gemini CLI  | Stable    | Stable                                          | Unavailable |
 | Copilot CLI | Stable    | Stable for local CLI; verified-with-limitations | Unavailable |
 
