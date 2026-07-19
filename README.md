@@ -737,3 +737,45 @@ Recovery journals use schema version `1.0.0`; Growth reports and their adapter p
 ## License
 
 Braid is available under the [MIT License](LICENSE).
+
+## Built with Codex during OpenAI Build Week
+
+Braid existed as an early architecture-analysis project before OpenAI Build
+Week. During the submission period, it was meaningfully extended into a
+release-ready agent integration and migration platform.
+
+### What was added during Build Week
+
+- Native Growth Mode integrations for Codex, Gemini CLI, and GitHub Copilot CLI
+- Host-neutral lifecycle adapter runtime
+- Bounded block, retry, repair, and pass behavior
+- Linked-worktree and duplicate-adapter handling
+- Durable migration recovery and interrupted-process cleanup
+- Public installer, release artifacts, checksums, and v0.6.0 distribution
+- Multi-platform CI, installer validation, and release gates
+- Complete release qualification and public plugin installation testing
+
+### How I collaborated with Codex
+
+Codex was used for implementation, repository analysis, test generation,
+failure reproduction, workflow auditing, compatibility research, and release
+qualification.
+
+I retained responsibility for:
+
+- product direction and scope;
+- architecture and safety boundaries;
+- approval of migration behavior;
+- agent compatibility decisions;
+- validation requirements;
+- release and risk decisions.
+
+Codex accelerated the repetitive and investigative work, while Braid itself
+was designed to keep agent-generated changes bounded, reviewable, and
+architecture-aware.
+
+### Evidence
+
+The repository commit history and merged pull requests document the work
+completed during the submission period. The public v0.6.0 release contains
+the tested installer, demo, checksums, and native integration assets.
