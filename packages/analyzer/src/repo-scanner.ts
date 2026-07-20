@@ -1,5 +1,6 @@
 import path from "node:path";
-import { access, glob } from "node:fs/promises";
+import { existsSync, realpathSync } from "node:fs";
+import { access, glob, realpath } from "node:fs/promises";
 import {
   DiagnosticCategory,
   Project,
@@ -16,6 +17,7 @@ import type {
   TopLevelDeclarationRecord,
 } from "@braid/core";
 import { AnalysisError, projectRelativePath } from "@braid/shared";
+import { discoverWorkspaceLayout } from "./workspace-layout.js";
 
 export interface ScannedImport {
   fromFile: string;
@@ -392,6 +394,7 @@ const resolveImport = (
   sourcePath: string,
   project: Project,
   selectedFiles: Map<string, string>,
+  workspaceSources: ReadonlyMap<string, string>,
 ): string | null => {
   const resolved = ts.resolveModuleName(
     specifier,
@@ -400,11 +403,12 @@ const resolveImport = (
     ts.sys,
   ).resolvedModule?.resolvedFileName;
   if (resolved) {
-    const selected = selectedFiles.get(path.resolve(resolved));
+    const selected = selectedFile(resolved, selectedFiles);
     if (selected) return selected;
   }
 
-  if (!specifier.startsWith(".")) return null;
+  if (!specifier.startsWith("."))
+    return workspaceSources.get(specifier) ?? null;
   const base = path.resolve(path.dirname(sourcePath), specifier);
   const candidates = [
     base,
@@ -416,10 +420,20 @@ const resolveImport = (
     path.join(base, "index.tsx"),
   ];
   for (const candidate of candidates) {
-    const selected = selectedFiles.get(path.resolve(candidate));
+    const selected = selectedFile(candidate, selectedFiles);
     if (selected) return selected;
   }
   return null;
+};
+
+const selectedFile = (
+  filePath: string,
+  selectedFiles: ReadonlyMap<string, string>,
+): string | undefined => {
+  const absolutePath = path.resolve(filePath);
+  const lexical = selectedFiles.get(absolutePath);
+  if (lexical || !existsSync(absolutePath)) return lexical;
+  return selectedFiles.get(path.resolve(realpathSync(absolutePath)));
 };
 
 export const scanRepository = async (
@@ -446,12 +460,22 @@ export const scanRepository = async (
   const absolutePaths = [...matched].sort((left, right) =>
     left.localeCompare(right),
   );
-  const selectedFiles = new Map(
-    absolutePaths.map((absolutePath) => [
-      absolutePath,
-      projectRelativePath(root, absolutePath),
-    ]),
+  const relativePaths = absolutePaths.map((absolutePath) =>
+    projectRelativePath(root, absolutePath),
   );
+  const workspaceLayout = await discoverWorkspaceLayout(root, relativePaths);
+  const selectedFiles = new Map<string, string>();
+  for (const [index, absolutePath] of absolutePaths.entries()) {
+    const relativePath = relativePaths[index]!;
+    selectedFiles.set(absolutePath, relativePath);
+    try {
+      const canonicalPath = path.resolve(await realpath(absolutePath));
+      if (!selectedFiles.has(canonicalPath))
+        selectedFiles.set(canonicalPath, relativePath);
+    } catch {
+      // The source may disappear between globbing and parsing.
+    }
+  }
   const tsconfigPath = path.join(root, "tsconfig.json");
   const project = (await exists(tsconfigPath))
     ? new Project({
@@ -502,6 +526,7 @@ export const scanRepository = async (
           absolutePath,
           project,
           selectedFiles,
+          workspaceLayout.sourceForSpecifier,
         ),
       }))
       .sort((left, right) => left.specifier.localeCompare(right.specifier));

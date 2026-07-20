@@ -92,6 +92,17 @@ and other top-level implementation files use `root:<relative-stem>`. Consequentl
 never form one artificial `root` bucket. Entrypoints and barrels remain graph facts, but are excluded
 from ordinary extraction and oversized-module interpretation.
 
+The nearest repository-owned `package.json` defines a source file's package boundary. Files owned by
+the root package retain the module IDs above; every module kind in a nested package is qualified as
+`workspace:<package-path-length>:<repository-relative-package-directory>/<module-id>`. The length
+prefix makes the package/module boundary unambiguous while retaining the normalized package path. The
+analyzer resolves selected source files through both lexical and existing real paths, then uses
+unambiguous local package names and explicit non-wildcard export subpaths as a fallback. Workspace
+imports therefore have the same graph with or without `node_modules` symlinks, while unselected
+third-party packages remain external. This does not claim support for Yarn PnP, wildcard exports,
+per-workspace TypeScript configurations, project references, or arbitrary declaration-map-to-source
+reconstruction.
+
 ## Proposal data flow
 
 The analyzer owns facts: files, declarations, references, import edges, modules, cycles, and metrics.

@@ -1,6 +1,6 @@
 import path from "node:path";
-import { readFile } from "node:fs/promises";
 import type { ModuleKind, SourceFileRecord } from "@braid/core";
+import { discoverWorkspaceLayout } from "./workspace-layout.js";
 
 export interface ModuleClassification {
   id: string;
@@ -76,66 +76,17 @@ export const findBarrelFiles = (files: readonly SourceFileRecord[]): string[] =>
     .map(({ path: filePath }) => normalized(filePath))
     .sort();
 
-const stringsIn = (value: unknown): string[] => {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(stringsIn);
-  if (value !== null && typeof value === "object")
-    return Object.values(value).flatMap(stringsIn);
-  return [];
-};
-
-const referenceStem = (value: string): string =>
-  normalized(value)
-    .replace(/^\.\//u, "")
-    .replace(/\.(?:d\.)?[cm]?[jt]sx?$/u, "");
-
-const sourceStem = (filePath: string): string =>
-  withoutSourceExtension(belowSource(filePath).join("/"));
-
 export const findPublicEntrypoints = async (
   projectRoot: string,
   files: readonly SourceFileRecord[],
-): Promise<string[]> => {
-  const entrypoints = new Set(
-    files
-      .map(({ path: filePath }) => normalized(filePath))
-      .filter((filePath) =>
-        /(?:^|\/)src\/index(?:\.[^/]+)?\.[cm]?[jt]sx?$/u.test(filePath),
-      ),
-  );
-  try {
-    const packageJson = JSON.parse(
-      await readFile(path.join(projectRoot, "package.json"), "utf8"),
-    ) as Record<string, unknown>;
-    const references = stringsIn({
-      exports: packageJson.exports,
-      main: packageJson.main,
-      module: packageJson.module,
-      browser: packageJson.browser,
-      types: packageJson.types,
-      bin: packageJson.bin,
-    }).map(referenceStem);
-    const candidates = files.map(({ path: filePath }) => ({
-      path: normalized(filePath),
-      stem: sourceStem(filePath),
-    }));
-    for (const reference of references) {
-      const match = candidates
-        .filter(
-          ({ stem }) => reference === stem || reference.endsWith(`/${stem}`),
-        )
-        .sort(
-          (left, right) =>
-            right.stem.length - left.stem.length ||
-            left.path.localeCompare(right.path),
-        )[0];
-      if (match) entrypoints.add(match.path);
-    }
-  } catch {
-    // A package manifest is optional; top-level index facts still apply.
-  }
-  return [...entrypoints].sort();
-};
+): Promise<string[]> => [
+  ...(
+    await discoverWorkspaceLayout(
+      projectRoot,
+      files.map(({ path: filePath }) => filePath),
+    )
+  ).publicEntrypoints,
+];
 
 export const classifySourceFiles = (
   files: readonly SourceFileRecord[],

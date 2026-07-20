@@ -10,11 +10,11 @@ import { findDependencyCycles } from "./cycle-detector.js";
 import {
   classifyModule,
   classifySourceFiles,
-  findPublicEntrypoints,
   type ModuleClassification,
 } from "./module-classifier.js";
 import { calculateMetrics } from "./metrics-calculator.js";
 import { scanRepository } from "./repo-scanner.js";
+import { discoverWorkspaceLayout } from "./workspace-layout.js";
 
 const buildModules = (
   files: RepositoryModel["files"],
@@ -78,8 +78,28 @@ export const analyzeRepository = async (
 ): Promise<AnalysisResult> => {
   const root = path.resolve(projectRoot);
   const scan = await scanRepository(root, config);
-  const publicEntrypoints = await findPublicEntrypoints(root, scan.files);
-  const classifications = classifySourceFiles(scan.files, publicEntrypoints);
+  const workspaceLayout = await discoverWorkspaceLayout(
+    root,
+    scan.files.map(({ path: filePath }) => filePath),
+  );
+  const publicEntrypoints = [...workspaceLayout.publicEntrypoints];
+  const classifications = new Map(
+    [...classifySourceFiles(scan.files, publicEntrypoints)].map(
+      ([filePath, classification]) => {
+        const packageDirectory =
+          workspaceLayout.packageDirectoryForFile.get(filePath);
+        return [
+          filePath,
+          packageDirectory
+            ? {
+                ...classification,
+                id: `workspace:${packageDirectory.length}:${packageDirectory}/${classification.id}`,
+              }
+            : classification,
+        ];
+      },
+    ),
+  );
   const moduleFor = (filePath: string): string =>
     classifications.get(filePath)?.id ?? classifyModule(filePath);
   const imports = buildImportGraph(scan.files, scan.imports, moduleFor);
