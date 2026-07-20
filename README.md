@@ -738,11 +738,43 @@ Recovery journals use schema version `1.0.0`; Growth reports and their adapter p
 
 Braid is available under the [MIT License](LICENSE).
 
-## Built with Codex during OpenAI Build Week
+## Built with Codex and GPT-5.6-Sol during OpenAI Build Week
 
-Braid existed as an early architecture-analysis project before OpenAI Build
-Week. During the submission period, it was meaningfully extended into a
-release-ready agent integration and migration platform.
+Braid began as an early architecture-analysis project. After building my first
+project with Codex and GPT-5.6-Sol, I realized that both the agent and I needed
+a clearer way to understand and protect a growing codebase's architecture.
+
+During OpenAI Build Week, Braid was extended into a release-ready architecture
+guard, migration system, and coding-agent integration platform.
+
+### How Codex was used
+
+Codex handled repository-level engineering work, including:
+
+- repository analysis and implementation;
+- test generation and regression coverage;
+- failure reproduction and debugging;
+- agent compatibility research;
+- workflow and release auditing;
+- installer, distribution, and release qualification.
+
+Codex was also used to test Braid on real TypeScript projects, including
+identifying and repairing a dependency cycle in a four-workspace project.
+
+### How GPT-5.6-Sol was used
+
+GPT-5.6-Sol supported the higher-level reasoning and supervision work,
+including:
+
+- defining the product direction and scope;
+- designing the architecture and safety boundaries;
+- decomposing large tasks into precise Codex instructions;
+- reviewing implementation and validation results;
+- identifying missing edge cases and test requirements;
+- planning the demo, documentation, and release strategy.
+
+Codex focused on repository execution, while GPT-5.6-Sol helped direct,
+evaluate, and refine that work.
 
 ### What was added during Build Week
 
@@ -751,31 +783,15 @@ release-ready agent integration and migration platform.
 - Bounded block, retry, repair, and pass behavior
 - Linked-worktree and duplicate-adapter handling
 - Durable migration recovery and interrupted-process cleanup
-- Public installer, release artifacts, checksums, and v0.6.0 distribution
+- Workspace-aware module identity and import resolution
+- Public installer, release artifacts, checksums, and standalone demo
 - Multi-platform CI, installer validation, and release gates
-- Complete release qualification and public plugin installation testing
 
-### How I collaborated with Codex
+### Human responsibility
 
-Codex was used for implementation, repository analysis, test generation,
-failure reproduction, workflow auditing, compatibility research, and release
-qualification.
+I retained responsibility for product decisions, architecture, safety
+boundaries, validation requirements, compatibility claims, and release
+approval.
 
-I retained responsibility for:
-
-- product direction and scope;
-- architecture and safety boundaries;
-- approval of migration behavior;
-- agent compatibility decisions;
-- validation requirements;
-- release and risk decisions.
-
-Codex accelerated the repetitive and investigative work, while Braid itself
-was designed to keep agent-generated changes bounded, reviewable, and
-architecture-aware.
-
-### Evidence
-
-The repository commit history and merged pull requests document the work
-completed during the submission period. The public v0.6.0 release contains
-the tested installer, demo, checksums, and native integration assets.
+The repository history, merged pull requests, automated tests, and public
+release artifacts document the work completed during the submission period.
