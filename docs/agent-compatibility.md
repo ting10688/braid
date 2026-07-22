@@ -8,29 +8,23 @@ adapter implementation boundary. A platform is not eligible for production
 Growth Mode until official documentation and an isolated live CLI probe both
 prove final-stop blocking, an additional agent turn, and repair-to-pass.
 Executable discovery or schema parsing alone is insufficient. The authorized
-production adapters are Codex, Gemini CLI, and local Copilot CLI. Claude Code
-production support is deferred from the current v0.6 release scope, while its
-research record remains preserved below.
+production adapters are Codex, Claude Code 2.1.215, Gemini CLI, and local
+Copilot CLI. Claude web and cloud-agent environments are not included.
 
 ## Gate result
 
 | Platform              | Tested CLI | Contract   | Live final-stop                         | Research classification     | v0.6 production status |
 | --------------------- | ---------- | ---------- | --------------------------------------- | --------------------------- | ---------------------- |
 | OpenAI Codex          | 0.144.5    | documented | block → additional turn → pass          | `verified`                  | supported              |
-| Anthropic Claude Code | 2.1.212    | documented | not reached: CLI not authenticated      | `blocked`                   | **Deferred**           |
+| Anthropic Claude Code | 2.1.215    | documented | block → additional turn → repair → pass | `verified`                  | supported              |
 | Google Gemini CLI     | 0.40.0     | documented | block → additional turn → pass          | `verified`                  | supported              |
 | GitHub Copilot CLI    | 1.0.71     | documented | block → additional turn → repair → pass | `verified-with-limitations` | supported              |
 
-**Status: Deferred**
+**Status: verified for exact local version 2.1.215 on Darwin arm64.**
 
-Production scope: Claude Code support is not included in the current Braid
-v0.6 release scope. This is a release-prioritization decision; no Claude
-adapter is packaged or advertised.
-
-Research status: the completed official-contract and configuration research,
-including the authenticated-probe limitation recorded by this branch, is
-preserved for a future implementation cycle. The repository contains no live
-Claude evidence that would justify changing the historical research result.
+Production scope does not infer support for later CLI versions, Claude web, or Claude
+cloud agents. The earlier unauthenticated 2.1.212 attempt remains historical
+context; the later authenticated gate supersedes its production conclusion.
 
 ## Preflight
 
@@ -60,25 +54,25 @@ probe environment; no token value was read or printed.
 Codex and Gemini rows carry forward the earlier isolated contract probes
 recorded by this document. This task re-ran only the Claude and Copilot gates.
 
-| Field                      | Codex                                                                  | Claude Code                                                         | Gemini CLI                                     | Copilot CLI                                                              |
-| -------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| CLI version tested         | 0.144.5                                                                | 2.1.212                                                             | 0.40.0                                         | 1.0.71                                                                   |
-| Official source            | yes                                                                    | yes                                                                 | yes                                            | yes                                                                      |
-| Executable and help probe  | yes                                                                    | yes                                                                 | yes                                            | yes                                                                      |
-| Local live hook probe      | yes                                                                    | no; auth rejected before hooks                                      | yes                                            | yes                                                                      |
-| Config path                | `.codex/hooks.json`                                                    | `.claude/settings.local.json`                                       | `.gemini/settings.json`                        | `.github/copilot/settings.local.json`                                    |
-| Local-only path            | no                                                                     | yes                                                                 | no                                             | yes                                                                      |
-| Session event              | `SessionStart`                                                         | `SessionStart`                                                      | `SessionStart`                                 | `sessionStart`                                                           |
-| Prompt event               | `UserPromptSubmit`                                                     | `UserPromptSubmit`                                                  | `BeforeAgent`                                  | `userPromptSubmitted`                                                    |
-| Mutation event             | `PostToolUse`                                                          | `PostToolUse`                                                       | `AfterTool`                                    | `postToolUse`                                                            |
-| Final-stop event           | `Stop`                                                                 | `Stop`                                                              | `AfterAgent`                                   | `agentStop`                                                              |
-| Final-stop blocking proven | yes                                                                    | no                                                                  | yes                                            | yes                                                                      |
-| Additional turn proven     | yes                                                                    | no                                                                  | yes                                            | yes                                                                      |
-| Repair-to-pass proven      | yes                                                                    | no                                                                  | yes                                            | yes                                                                      |
-| Worktree tested            | yes; native adapter deterministic lifecycle                            | config discovery only; no live event                                | yes; native adapter deterministic lifecycle    | yes; live contract and native adapter deterministic lifecycle            |
-| Ownership strategy         | documented                                                             | documented below                                                    | documented                                     | documented below                                                         |
-| Known limitations          | shell mutation interception is incomplete; final scan is authoritative | authentication, live errors, and worktree lifecycle remain untested | trust and cumulative retry output require care | timeout leaves child processes alive; continuation re-fires prompt event |
-| Final classification       | `verified`                                                             | `deferred` for v0.6; research result `blocked`                      | `verified`                                     | `verified-with-limitations`                                              |
+| Field                      | Codex                                                                  | Claude Code                                                | Gemini CLI                                     | Copilot CLI                                                              |
+| -------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| CLI version tested         | 0.144.5                                                                | 2.1.215                                                    | 0.40.0                                         | 1.0.71                                                                   |
+| Official source            | yes                                                                    | yes                                                        | yes                                            | yes                                                                      |
+| Executable and help probe  | yes                                                                    | yes                                                        | yes                                            | yes                                                                      |
+| Local live hook probe      | yes                                                                    | yes; authenticated native package                          | yes                                            | yes                                                                      |
+| Config path                | `.codex/hooks.json`                                                    | `.claude/settings.local.json`                              | `.gemini/settings.json`                        | `.github/copilot/settings.local.json`                                    |
+| Local-only path            | no                                                                     | yes                                                        | no                                             | yes                                                                      |
+| Session event              | `SessionStart`                                                         | `SessionStart`                                             | `SessionStart`                                 | `sessionStart`                                                           |
+| Prompt event               | `UserPromptSubmit`                                                     | `UserPromptSubmit`                                         | `BeforeAgent`                                  | `userPromptSubmitted`                                                    |
+| Mutation event             | `PostToolUse`                                                          | `PostToolUse`                                              | `AfterTool`                                    | `postToolUse`                                                            |
+| Final-stop event           | `Stop`                                                                 | `Stop`                                                     | `AfterAgent`                                   | `agentStop`                                                              |
+| Final-stop blocking proven | yes                                                                    | yes                                                        | yes                                            | yes                                                                      |
+| Additional turn proven     | yes                                                                    | yes                                                        | yes                                            | yes                                                                      |
+| Repair-to-pass proven      | yes                                                                    | yes                                                        | yes                                            | yes                                                                      |
+| Worktree tested            | yes; native adapter deterministic lifecycle                            | yes; live package and deterministic lifecycle              | yes; native adapter deterministic lifecycle    | yes; live contract and native adapter deterministic lifecycle            |
+| Ownership strategy         | documented                                                             | documented below                                           | documented                                     | documented below                                                         |
+| Known limitations          | shell mutation interception is incomplete; final scan is authoritative | exact local 2.1.215 Darwin arm64 scope; no web/cloud claim | trust and cumulative retry output require care | timeout leaves child processes alive; continuation re-fires prompt event |
+| Final classification       | `verified`                                                             | `verified`                                                 | `verified`                                     | `verified-with-limitations`                                              |
 
 No minimum supported version is inferred merely from the installed version.
 
@@ -88,19 +82,19 @@ The research config paths above remain the native inline/manual contracts. The
 preferred v0.6 installation does not edit those files; it uses vendor plugin
 or extension packaging:
 
-| Platform    | Marketplace or extension discovery | Adapter manifest                                | Local-only               |
-| ----------- | ---------------------------------- | ----------------------------------------------- | ------------------------ |
-| Codex       | `.agents/plugins/marketplace.json` | `plugins/braid/.codex-plugin/plugin.json`       | no                       |
-| Claude Code | unavailable                        | none                                            | n/a                      |
-| Gemini CLI  | `gemini-extension.json`            | `gemini-extension.json` plus `hooks/hooks.json` | no                       |
-| Copilot CLI | `.github/plugin/marketplace.json`  | `plugins/braid/plugin.json`                     | no; local CLI scope only |
+| Platform    | Marketplace or extension discovery | Adapter manifest                                  | Local-only               |
+| ----------- | ---------------------------------- | ------------------------------------------------- | ------------------------ |
+| Codex       | `.agents/plugins/marketplace.json` | `plugins/braid/.codex-plugin/plugin.json`         | no                       |
+| Claude Code | `.claude-plugin/marketplace.json`  | `plugins/braid-claude/.claude-plugin/plugin.json` | no                       |
+| Gemini CLI  | `gemini-extension.json`            | `gemini-extension.json` plus `hooks/hooks.json`   | no                       |
+| Copilot CLI | `.github/plugin/marketplace.json`  | `plugins/braid/plugin.json`                       | no; local CLI scope only |
 
-All three local packages passed isolated discovery, install, list, setup,
+All four local packages passed isolated discovery, install, list, setup,
 uninstall, and reinstall. Their common adapter also passed normal-checkout and
 linked-worktree baseline, block, bounded retry, repair, and pass tests against
-the real Braid Growth engine. The package-level authenticated live smoke could
-not run because isolated host homes had no login state; no real auth or user
-configuration was copied or modified.
+the real Braid Growth engine. Claude additionally passed the authenticated
+package lifecycle without changing global plugin configuration; no auth or
+user configuration was copied into an isolated home.
 
 ## Anthropic Claude Code
 
@@ -154,42 +148,27 @@ were not promoted to live evidence.
 
 ### Live probe result
 
-The disposable-repository probe used a bounded redacting command hook, no
-network access, no application-source mutation, and no unsafe permission flag.
-The result was deterministic:
+The later authenticated gate used Claude Code 2.1.215, an isolated repository,
+the native development plugin surface, and redacted lifecycle evidence. It
+proved `SessionStart -> UserPromptSubmit -> Stop(block) -> repair ->
+Stop(allow)` in the same session. The first Stop had
+`stop_hook_active: false`; the repaired Stop had `true`. Separate evidence
+proved early `PostToolUse` detection, shell-mutation fallback to the final
+scan, duplicate native/manual suppression, and linked-worktree state
+isolation.
 
-1. `claude auth status --json` returned a non-ready state.
-2. A minimal `claude -p` exited 1 with `Not logged in`.
-3. Hook invocation count stayed zero; authentication failed before
-   `SessionStart`.
+The field-shape probe found that 2.1.215 `SessionStart` omits
+`permission_mode`, while turn events include it. The production schema keeps
+these fields separate. Prompts, tool input/output, transcript paths, account
+data, authentication material, and raw session identifiers were not retained.
 
-Consequently none of the following were live-proven: new/resumed
-`SessionStart`, prompt cardinality, Write/Edit/Bash `PostToolUse`, Stop block,
-an additional turn, repair-to-pass, repeated-block finiteness, `/hooks` source
-display, malformed hook stdout, nonzero hook exits, hook timeout, or live
-worktree behavior.
+During verification the active binary advanced first to 2.1.216 and later to
+2.1.217. The retained 2.1.215 executable completed the exact-version tests;
+Braid rejected both newer versions and returned the empty Claude fail-open
+response. No adjacent-version range is inferred.
 
-The limited offline/configuration observations were:
-
-- `claude doctor` recognized valid `.claude/settings.local.json` in both a
-  normal disposable checkout and a linked disposable worktree.
-- With malformed settings, doctor named the exact disposable settings file;
-  the authenticated lifecycle was still unreachable.
-- `~/.claude/settings.json` remained byte-for-byte unchanged.
-- Starting `claude -p` caused Claude's own `~/.claude.json` application-state
-  file to change size from 524 to 976 bytes. Its contents were not inspected or
-  restored. Although this was not a hook-settings change, it means the stricter
-  no-user-level-state-mutation criterion was not met; probing stopped
-  immediately.
-
-Research classification: `blocked`. v0.6 production status: **Deferred**.
-
-Smallest remaining test: make Claude Code authentication ready without placing
-credentials in repository files, isolate CLI state, then run one disposable
-interactive sequence that exercises all four command events, blocks exactly
-one new architecture regression at Stop, observes the additional turn and
-`stop_hook_active`, repairs the regression, passes the next Stop, repeats in a
-linked worktree, and runs malformed/nonzero/timeout variants.
+Research classification: `verified` for local Claude Code 2.1.215 on Darwin
+arm64. Claude web, cloud agents, and other CLI versions remain unavailable.
 
 ## GitHub Copilot CLI
 
@@ -372,16 +351,16 @@ exact owned entries without changing folder trust.
 
 ## Contract fixtures
 
-No Claude contract fixture was captured because authentication failed before a
-usable lifecycle event. Copilot fixtures came from real command-hook stdin and
-stdout in the disposable live probe; none was invented from documentation.
+Claude and Copilot fixtures preserve sanitized live field shapes. Synthetic
+Codex and Gemini fixtures remain labeled as official-contract test shapes; none
+is represented as live evidence.
 
 | Platform            | Required live fixtures                                                                           | Captured | Result                                                             |
 | ------------------- | ------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------ |
-| Claude Code 2.1.212 | `SessionStart`, `UserPromptSubmit`, Write/Bash `PostToolUse`, Stop pass/block/repeated           | 0        | authentication rejected before `SessionStart`                      |
+| Claude Code 2.1.215 | `SessionStart`, `UserPromptSubmit`, Edit `PostToolUse`, Stop pass/block/repeated                 | 4        | sanitized authenticated field shapes plus redacted outcome log     |
 | Copilot CLI 1.0.71  | `sessionStart`, `userPromptSubmitted`, file/shell `postToolUse`, `agentStop` pass/block/repeated | 8        | required seven shapes plus a separate resumed `sessionStart` shape |
 
-The ignored Copilot fixture set records platform, exact CLI version, capture
+The sanitized Claude and Copilot fixture sets record platform, exact CLI version, capture
 date, official event name, and redaction note. Prompts, continuation reasons,
 session IDs, account identifiers, home and transcript paths, source content,
 tool arguments, and tool results were replaced while genuinely observed
@@ -457,38 +436,37 @@ or unrelated native settings are owned by Braid.
 
 ## Recommended v0.6.0 matrix
 
-This is the exact evidence-backed production matrix now. Copilot Growth is
-stable under the documented single-process and bounded-retry constraints.
-Claude is unavailable because it is deferred from the current release scope;
-the historical research result above remains unchanged.
+This is the exact evidence-backed production matrix now. Claude is deliberately
+exact-version scoped; Copilot Growth remains subject to the documented
+single-process and bounded-retry constraints.
 
 | Platform    | Detection | Growth Mode                                     | Migration   |
 | ----------- | --------- | ----------------------------------------------- | ----------- |
 | Codex       | Stable    | Stable                                          | Stable      |
-| Claude Code | Stable    | Unavailable; deferred from v0.6 scope           | Unavailable |
+| Claude Code | Stable    | Stable for local 2.1.215 on Darwin arm64        | Unavailable |
 | Gemini CLI  | Stable    | Stable                                          | Unavailable |
 | Copilot CLI | Stable    | Stable for local CLI; verified-with-limitations | Unavailable |
 
-Remote GitHub installation is not part of this matrix until the post-push
-smokes pass. No Claude plugin exists.
+Remote Claude installation from Arthur's feature branch passed. The upstream
+owner/repository path remains a post-merge smoke.
 
 ## Native adapter implementation boundary
 
 - `packages/guard` owns the host-neutral lifecycle bridge and the Codex,
-  Gemini, and Copilot stdin/stdout translations. It delegates all architecture
+  Claude, Gemini, and Copilot stdin/stdout translations. It delegates all architecture
   analysis, baseline, classification, final policy, and bounded retry state to
   the existing `GrowthGuardLifecycle`.
 - `apps/cli` owns `growth setup --host`, host-aware `growth status`, and the
-  hidden native hook entrypoint. The existing manual Codex installer and
-  migration executor remain unchanged.
+  hidden native hook entrypoint. The existing manual Codex installer and the
+  ownership-safe Claude manual fallback remain separate from migration execution.
 - `adapters/native-agent/runtime.mjs` is the standard-library-only launcher.
-  The shared Codex/Copilot package contains one synchronized physical copy;
-  Gemini uses the canonical file from its extension root.
+  The Codex/Copilot package and dedicated Claude package contain synchronized
+  physical copies; Gemini uses the canonical file from its extension root.
 - Host packages own only event names, payload/output mapping, four user
   commands, and plugin metadata. They do not install Braid, enable Growth Mode,
   edit project settings, make architecture decisions, or claim cloud-agent
   support.
 
-Required post-push work is limited to remote marketplace/extension installation
-and an authenticated package-level lifecycle smoke in safely isolated host
-homes. No commit, push, tag, release, or pull request was created by this task.
+Required post-merge work is limited to the upstream owner/repository install
+smoke and expanding the exact-version gate only after another authenticated
+lifecycle proof.

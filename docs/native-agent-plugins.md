@@ -4,11 +4,9 @@ Research and implementation date: 2026-07-18 (Asia/Taipei)
 Host: Darwin 27, arm64
 
 This is the production contract gate and implementation note for the first
-native Braid Growth Mode adapters. It covers Codex, Gemini CLI, and local
-GitHub Copilot CLI only. Claude Code production support is deferred from the
-current v0.6.0 release scope; its compatibility research remains preserved in
-[the compatibility report](agent-compatibility.md) for a future implementation
-cycle.
+native Braid Growth Mode adapters. It covers Codex, Claude Code, Gemini CLI,
+and local GitHub Copilot CLI. Claude support is exact-version scoped to the
+authenticated local 2.1.215 contract tested on Darwin arm64.
 
 The adapters are packaging and protocol translators around the existing
 `braid growth` engine. They do not analyze architecture, create baselines,
@@ -29,6 +27,7 @@ or Git state.
 | Host               | Exact version       | Installation surface                      | Growth contract             |
 | ------------------ | ------------------- | ----------------------------------------- | --------------------------- |
 | Codex              | `codex-cli 0.144.5` | native marketplace plugin                 | `verified`                  |
+| Claude Code        | `2.1.215`           | native marketplace plugin                 | `verified`                  |
 | Gemini CLI         | `0.40.0`            | native extension                          | `verified`                  |
 | GitHub Copilot CLI | `1.0.71`            | native marketplace plugin, local CLI only | `verified-with-limitations` |
 
@@ -109,6 +108,63 @@ braid growth install codex --confirm
 The native plugin is preferred in v0.6.0. A native invocation must detect an
 installed manual adapter, fail open for the duplicate invocation, and print
 the exact remediation `braid growth uninstall codex` to stderr.
+
+## Claude Code 2.1.215
+
+Claude discovers `.claude-plugin/marketplace.json`, the dedicated
+`plugins/braid-claude/.claude-plugin/plugin.json`, the standard
+`plugins/braid-claude/hooks/hooks.json`, and four Markdown commands. Because Claude
+auto-loads the standard hook path, the plugin manifest deliberately does not
+declare it again. The validator rejects that duplicate-registration shape.
+
+Install from the repository marketplace after installing the Braid CLI:
+
+```text
+/plugin marketplace add ting10688/Braid
+/plugin install braid@braid
+/braid:setup
+```
+
+The equivalent CLI supports marketplace add/remove, plugin install/uninstall,
+list/details, enable/disable, and update. Run `/reload-plugins` or start a new
+session after hook changes. The plugin invokes the shared bounded runtime with
+`${CLAUDE_PLUGIN_ROOT}` and never downloads Braid, initializes a project, or
+enables Growth Mode.
+
+The authenticated package lifecycle proved:
+
+```text
+SessionStart(context)
+UserPromptSubmit(allow)
+Stop(block, stop_hook_active=false)
+PostToolUse(Edit, allow)
+Stop(allow, stop_hook_active=true)
+```
+
+An earlier file-tool mutation also proved early `PostToolUse` detection. A
+separate shell mutation bypassed that matcher and proved the final Stop scan is
+authoritative. The repaired worktree returned clean. Normal and linked
+worktrees completed the same block/repair/pass lifecycle.
+
+The live payload contract has one important asymmetry: `SessionStart` omits
+`permission_mode`, while turn events include it. The adapter keeps separate
+schemas and strips prompts, tool input/output, transcript paths, model output,
+and raw session identifiers before dispatch. Claude 2.1.216 and 2.1.217 are
+rejected and return `{}` fail-open; no adjacent-version compatibility is
+inferred.
+
+When marketplace installation is unavailable, the explicit fallback is:
+
+```text
+braid growth install claude --dry-run
+braid growth install claude --confirm
+```
+
+It merges only Braid-owned handlers into `.claude/settings.local.json`, uses
+atomic writes and content-addressed backups, preserves unrelated settings, and
+resolves linked worktrees through the main checkout. Native is authoritative
+if both adapters exist; remove the fallback with
+`braid growth uninstall claude`.
 
 ## GitHub Copilot CLI 1.0.71
 
@@ -260,11 +316,11 @@ One canonical standard-library Node.js runtime will:
 5. emit the host's fail-open JSON if Braid is missing, incompatible, malformed,
    nonzero, or timed out.
 
-The shared Codex/Copilot plugin directory requires one physical runtime copy.
-A deterministic synchronization script owns that copy, and validation fails
-when it differs from the canonical source. Gemini invokes the canonical file
-directly from the repository-root extension. No symlink, MCP server, or new
-runtime dependency is needed.
+The shared Codex/Copilot directory and dedicated Claude directory each require
+one physical runtime copy. A deterministic synchronization script owns both,
+and validation fails when either differs from the canonical source. Gemini
+invokes the canonical file directly from the repository-root extension. No
+symlink, MCP server, or new runtime dependency is needed.
 
 `packages/guard` remains the sole Growth policy owner. A narrow host-neutral
 hook bridge maps native payloads into the existing `GrowthGuardLifecycle` and
@@ -289,17 +345,16 @@ No native package silently downloads Braid or edits project configuration.
 
 The native contracts express Braid's required lifecycle without global
 settings, an MCP server, prompt-hook blocking, or a second Growth policy
-engine. The implementation is limited to Codex, Gemini CLI, and local Copilot
-CLI. Claude Code is deferred and has no production adapter, package, or command
-in this release.
+engine. The implementation covers Codex, Claude Code, Gemini CLI, and local
+Copilot CLI.
 
-Verified local package results on 2026-07-18:
+Verified local package results on 2026-07-18 and 2026-07-19:
 
-- all three manifests were accepted by their installed host CLIs;
-- all three packages completed isolated discovery, install, list, setup,
+- all four manifests were accepted by their installed host CLIs;
+- all four packages completed isolated discovery, install, list, setup,
   uninstall, and reinstall; Gemini additionally completed disable/enable and
   Copilot completed local update;
-- all three adapters ran the real Growth engine in a normal checkout and a
+- all four adapters ran the real Growth engine in a normal checkout and a
   linked worktree through baseline, non-relevant change, relevant cycle,
   first final block, bounded unchanged retry, repair, and final pass;
 - source, HEAD, index, and worktree registration stayed unchanged by Braid;
@@ -308,10 +363,11 @@ Verified local package results on 2026-07-18:
   cleanup passed deterministic tests;
 - native Codex detects the legacy manual adapter, fails that duplicate
   invocation open, and reports `braid growth uninstall codex`.
+- native Claude and its manual fallback complete exactly one lifecycle when
+  both are present and report `braid growth uninstall claude`.
 
-The authenticated package-level live smoke did not run. Each isolated host
-home correctly lacked login state; using the real host home, copying auth, or
-running a login would violate the test boundary. The earlier authenticated
-contract probes remain the evidence for host continuation behavior, but they
-are not relabeled as packaged-plugin live evidence. Remote marketplace and
-extension installs remain `pending-post-push-remote-smoke`.
+Claude's authenticated package-level live smoke passed without changing global
+settings, authentication, installed-plugin registry, or marketplace registry.
+The other hosts retain their earlier authenticated contract evidence. Remote
+Claude installation from Arthur's feature branch passed; the final upstream
+owner/repository path remains a post-merge smoke.

@@ -1,6 +1,6 @@
 # Growth Mode
 
-Growth Mode is Braid's live architecture feedback loop for ordinary Codex, Gemini CLI, and local GitHub Copilot CLI coding sessions. It records
+Growth Mode is Braid's live architecture feedback loop for ordinary Codex, Claude Code, Gemini CLI, and local GitHub Copilot CLI coding sessions. It records
 the repository architecture visible at the beginning of one session, compares later working-tree
 states with that baseline, and reports only supported regressions introduced during the session.
 
@@ -76,15 +76,15 @@ or Codex after each tool call.
 
 ## Native lifecycle adapters
 
-The v0.6.0 native packages translate three verified command-hook protocols into
+The v0.6.0 native packages translate four verified command-hook protocols into
 one Braid lifecycle:
 
-| Braid lifecycle | Codex              | Gemini CLI     | Copilot CLI           | Braid behavior                                                                            |
-| --------------- | ------------------ | -------------- | --------------------- | ----------------------------------------------------------------------------------------- |
-| session start   | `SessionStart`     | `SessionStart` | `sessionStart`        | Initialize once and add concise baseline context.                                         |
-| prompt submit   | `UserPromptSubmit` | `BeforeAgent`  | `userPromptSubmitted` | Lazily initialize when needed; Copilot prompt stdout stays empty.                         |
-| post mutation   | `PostToolUse`      | `AfterTool`    | `postToolUse`         | Fingerprint current Git/files and add bounded feedback only after a relevant change.      |
-| final stop      | `Stop`             | `AfterAgent`   | `agentStop`           | Run the authoritative final scan; allow pass/warn or block once for a unique fingerprint. |
+| Braid lifecycle | Codex              | Claude Code        | Gemini CLI     | Copilot CLI           | Braid behavior                                                                            |
+| --------------- | ------------------ | ------------------ | -------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| session start   | `SessionStart`     | `SessionStart`     | `SessionStart` | `sessionStart`        | Initialize once and add concise baseline context.                                         |
+| prompt submit   | `UserPromptSubmit` | `UserPromptSubmit` | `BeforeAgent`  | `userPromptSubmitted` | Lazily initialize when needed; Copilot prompt stdout stays empty.                         |
+| post mutation   | `PostToolUse`      | `PostToolUse`      | `AfterTool`    | `postToolUse`         | Fingerprint current Git/files and add bounded feedback only after a relevant change.      |
+| final stop      | `Stop`             | `Stop`             | `AfterAgent`   | `agentStop`           | Run the authoritative final scan; allow pass/warn or block once for a unique fingerprint. |
 
 For a configured block, the first final-stop attempt returns the exact finding and corrective guidance as a
 native continuation reason. Each unique diff-and-finding fingerprint is continued no more than
@@ -111,12 +111,14 @@ and required post-merge remote smoke.
 
 The native command names are `$braid:setup`, `$braid:status`, `$braid:check`,
 and `$braid:help` in Codex, and `/braid:setup`, `/braid:status`,
-`/braid:check`, and `/braid:help` in Gemini and Copilot. Their underlying CLI
+`/braid:check`, and `/braid:help` in Claude, Gemini, and Copilot. Their underlying CLI
 inspection commands are:
 
 ```console
 $ braid growth setup --host codex
 $ braid growth status --host codex
+$ braid growth setup --host claude
+$ braid growth status --host claude
 $ braid growth setup --host gemini
 $ braid growth status --host gemini
 $ braid growth setup --host copilot
@@ -138,6 +140,13 @@ Changing an existing file creates a content-addressed backup and repeating the
 same install is a no-op. If both native and manual Codex adapters are present,
 the native invocation fails open and reports
 `braid growth uninstall codex`.
+
+Claude provides the same explicit fallback through
+`braid growth install claude --dry-run` and `--confirm`. It writes only
+Braid-owned handlers in `.claude/settings.local.json`, preserves unrelated
+settings, and resolves linked worktrees through the main checkout. If both
+Claude adapters are present, native is authoritative and the remediation is
+`braid growth uninstall claude`.
 
 Remove only Braid-owned handlers with:
 
@@ -219,8 +228,8 @@ adversarial-repository security boundary.
 - Copilot is local CLI only and 1.0.71 has no working plugin enable/disable command.
 - Codex 0.144.5 has no plugin enable/disable CLI subcommand; use its native inspection UI or uninstall.
 - Gemini extension changes require a new CLI session.
-- Claude Code production support is deferred from the current v0.6.0 release;
-  compatibility research remains documented for a future implementation cycle.
+- Claude Code is exact-version scoped to local 2.1.215 on Darwin arm64; web,
+  cloud-agent, and other CLI versions fail open and are not claimed.
 - Warnings and blockers are limited to configured v1 rules; no general boundary policy is inferred.
 - Unresolved or ambiguous static evidence warns instead of proving a hard violation.
 - Wall-clock measurements are informational and are not CI blockers.
