@@ -8,10 +8,12 @@ import {
   growthContextCommand,
   growthFinalCommand,
   growthHookCommand,
+  growthInstallClaudeCommand,
   growthInstallCodexCommand,
   growthResetCommand,
   growthSetupCommand,
   growthStatusCommand,
+  growthUninstallClaudeCommand,
   growthUninstallCodexCommand,
 } from "./commands/growth.js";
 import { proposeCommand } from "./commands/propose.js";
@@ -202,8 +204,9 @@ growth
   .description("Show session, installation, and native adapter status")
   .option("--path <path>", "target project", ".")
   .option("--session <id>", "Growth Mode session ID")
-  .option("--host <host>", "codex, gemini, or copilot")
+  .option("--host <host>", "codex, claude, gemini, or copilot")
   .option("--codex <executable>", "Codex executable", "codex")
+  .option("--claude <executable>", "Claude executable", "claude")
   .option("--json", "write status JSON")
   .action(growthStatusCommand);
 
@@ -221,6 +224,16 @@ const growthInstall = growth
   .description("Install repository-local Growth Mode integration");
 
 growthInstall
+  .command("claude")
+  .description("Merge Braid-owned handlers into repository Claude settings")
+  .option("--path <path>", "target project", ".")
+  .option("--claude <executable>", "Claude executable", "claude")
+  .option("--dry-run", "show the intended installation without writing")
+  .option("--confirm", "confirm repository-local hook installation")
+  .option("--json", "write installation JSON")
+  .action(growthInstallClaudeCommand);
+
+growthInstall
   .command("codex")
   .description("Merge Braid-owned handlers into repository Codex hooks")
   .option("--path <path>", "target project", ".")
@@ -235,6 +248,14 @@ const growthUninstall = growth
   .description("Remove repository-local Growth Mode integration");
 
 growthUninstall
+  .command("claude")
+  .description("Remove only Braid-owned Claude hook handlers")
+  .option("--path <path>", "target project", ".")
+  .option("--dry-run", "show the intended removal without writing")
+  .option("--json", "write uninstall JSON")
+  .action(growthUninstallClaudeCommand);
+
+growthUninstall
   .command("codex")
   .description("Remove only Braid-owned Codex hook handlers")
   .option("--path <path>", "target project", ".")
@@ -247,6 +268,7 @@ growth
   .description("Internal native-agent command-hook entrypoint")
   .option("--host <host>", "native host; omitted for the legacy Codex adapter")
   .option("--event <event>", "native lifecycle event")
+  .option("--source <source>", "native-plugin or manual Claude adapter")
   .action(growthHookCommand);
 
 program.exitOverride();

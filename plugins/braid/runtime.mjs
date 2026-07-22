@@ -17,9 +17,10 @@ const TIMEOUT_MS =
   requestedTestTimeout <= productionTimeoutMs
     ? requestedTestTimeout
     : productionTimeoutMs;
-const hosts = new Set(["codex", "gemini", "copilot"]);
+const hosts = new Set(["codex", "claude", "gemini", "copilot"]);
 const events = {
   codex: new Set(["SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"]),
+  claude: new Set(["SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"]),
   gemini: new Set(["SessionStart", "BeforeAgent", "AfterTool", "AfterAgent"]),
   copilot: new Set([
     "sessionStart",

@@ -10,6 +10,7 @@ import {
   growthCheckCommand,
   growthContextCommand,
   growthFinalCommand,
+  growthHookCommand,
   growthResetCommand,
 } from "../src/commands/growth.js";
 
@@ -62,6 +63,43 @@ afterEach(async () => {
 });
 
 describe("Growth Mode CLI commands", () => {
+  it("routes Claude native and manual hooks and fails unverified versions open", async () => {
+    const runClaudeHook = vi.fn(async () => undefined);
+    const runNativeHook = vi.fn(async () => undefined);
+    const supported = vi.fn(async () => ({ supported: true }));
+
+    await growthHookCommand({
+      host: "claude",
+      event: "SessionStart",
+      probeClaudeHook: supported,
+      runClaudeHook,
+      runNativeHook,
+    });
+    expect(runNativeHook).toHaveBeenCalledWith("claude", "SessionStart");
+
+    await growthHookCommand({
+      host: "claude",
+      source: "manual",
+      probeClaudeHook: supported,
+      runClaudeHook,
+      runNativeHook,
+    });
+    expect(runClaudeHook).toHaveBeenCalledWith({ source: "manual" });
+
+    const writeClaudeFailOpen = vi.fn(async () => undefined);
+    await growthHookCommand({
+      host: "claude",
+      event: "Stop",
+      probeClaudeHook: vi.fn(async () => ({
+        supported: false,
+        reason: "unverified version",
+      })),
+      runNativeHook,
+      writeClaudeFailOpen,
+    });
+    expect(writeClaudeFailOpen).toHaveBeenCalledWith("unverified version");
+  });
+
   it("runs one baseline, safe check, final, and confirmed reset without source or Git mutation", async () => {
     const root = await fixture();
     const sourcePath = path.join(

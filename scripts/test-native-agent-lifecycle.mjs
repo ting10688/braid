@@ -26,6 +26,7 @@ const repository = path.join(temporaryRoot, "repository");
 const linkedWorktree = path.join(temporaryRoot, "linked-worktree");
 const bin = path.join(temporaryRoot, "bin");
 const launcher = path.join(bin, "braid");
+const claudeLauncher = path.join(bin, "claude");
 const enabledConfig = DEFAULT_ARCHITECTURE_CONFIG.replace(
   "growthMode:\n  enabled: false",
   "growthMode:\n  enabled: true",
@@ -44,6 +45,12 @@ const git = async (cwd, ...arguments_) =>
 
 const eventNames = {
   codex: {
+    session: "SessionStart",
+    prompt: "UserPromptSubmit",
+    post: "PostToolUse",
+    final: "Stop",
+  },
+  claude: {
     session: "SessionStart",
     prompt: "UserPromptSubmit",
     post: "PostToolUse",
@@ -119,6 +126,24 @@ const payload = (host, event, sessionId, cwd) => {
       stop_hook_active: false,
     };
   }
+  if (host === "claude") {
+    const common = {
+      session_id: sessionId,
+      cwd,
+      hook_event_name: event,
+    };
+    if (event === "SessionStart") return { ...common, source: "startup" };
+    const turn = { ...common, permission_mode: "default" };
+    if (event === "UserPromptSubmit") return turn;
+    if (event === "PostToolUse") {
+      return {
+        ...turn,
+        tool_name: "Edit",
+        tool_use_id: "<tool-id>",
+      };
+    }
+    return { ...turn, stop_hook_active: false };
+  }
   const common = { sessionId, timestamp: 0, cwd };
   if (event === "sessionStart") {
     return { ...common, source: "new", initialPrompt: "<redacted>" };
@@ -141,7 +166,7 @@ const payload = (host, event, sessionId, cwd) => {
   };
 };
 
-const invoke = async (host, event, sessionId, cwd) =>
+const invoke = async (host, event, sessionId, cwd, overrides = {}) =>
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [runtime, host, event], {
       cwd,
@@ -171,7 +196,9 @@ const invoke = async (host, event, sessionId, cwd) =>
         }
       }
     });
-    child.stdin.end(JSON.stringify(payload(host, event, sessionId, cwd)));
+    child.stdin.end(
+      JSON.stringify({ ...payload(host, event, sessionId, cwd), ...overrides }),
+    );
   });
 
 const assertBlock = (host, output) => {
@@ -190,7 +217,13 @@ const assertAllow = (host, output) => {
   else if (host === "gemini") {
     assert(
       output.decision === "allow" || Object.keys(output).length === 0,
-      "Gemini did not allow completion",
+      `${host} did not allow completion`,
+    );
+  } else if (host === "claude") {
+    assert(
+      Object.keys(output).length === 0 ||
+        typeof output.systemMessage === "string",
+      "Claude did not allow completion with bounded unresolved feedback",
     );
   } else {
     assert(output.continue === true, "Codex did not allow completion");
@@ -211,10 +244,10 @@ const scenario = async (project, host, label) => {
     `${host} did not return baseline context`,
   );
   const prompted = await invoke(host, events.prompt, sessionId, project);
-  if (host === "copilot")
+  if (host === "copilot" || host === "claude")
     assert(
       Object.keys(prompted).length === 0,
-      "Copilot prompt stdout must stay empty",
+      `${host} prompt stdout must stay empty`,
     );
 
   const note = path.join(project, "notes.md");
@@ -229,10 +262,32 @@ const scenario = async (project, host, label) => {
     `${host} post-mutation feedback was absent`,
   );
   assertBlock(host, await invoke(host, events.final, sessionId, project));
-  assertAllow(host, await invoke(host, events.final, sessionId, project));
+  const repeated = await invoke(
+    host,
+    events.final,
+    sessionId,
+    project,
+    host === "claude" ? { stop_hook_active: true } : {},
+  );
+  assertAllow(host, repeated);
+  if (host === "claude") {
+    assert(
+      typeof repeated.systemMessage === "string",
+      "Claude continued Stop did not reach bounded unresolved feedback",
+    );
+  }
 
   await writeFile(source, originalSource);
-  assertAllow(host, await invoke(host, events.final, sessionId, project));
+  assertAllow(
+    host,
+    await invoke(
+      host,
+      events.final,
+      sessionId,
+      project,
+      host === "claude" ? { stop_hook_active: true } : {},
+    ),
+  );
   assert(
     (await readFile(source, "utf8")) === originalSource,
     `${host} changed application source`,
@@ -261,7 +316,11 @@ try {
     launcher,
     `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(braidCli)} "$@"\n`,
   );
-  await chmod(launcher, 0o755);
+  await writeFile(
+    claudeLauncher,
+    "#!/bin/sh\nprintf '2.1.215 (Claude Code)\\n'\n",
+  );
+  await Promise.all([chmod(launcher, 0o755), chmod(claudeLauncher, 0o755)]);
   await Promise.all([
     mkdir(path.join(repository, ".braid"), { recursive: true }),
     mkdir(path.join(repository, "src", "a"), { recursive: true }),

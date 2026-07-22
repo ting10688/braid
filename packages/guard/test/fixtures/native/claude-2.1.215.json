@@ -1,0 +1,48 @@
+{
+  "platform": "claude",
+  "cliVersion": "2.1.215",
+  "captureDate": "2026-07-19",
+  "evidence": "sanitized-live-capture",
+  "redactionNote": "Sanitized authenticated live field shape. Prompts, tool input and output, transcript paths, responses, account data, request identifiers, and raw session identifiers are omitted or placeholders.",
+  "events": [
+    {
+      "officialEventName": "SessionStart",
+      "payload": {
+        "session_id": "<session-id>",
+        "cwd": "<repo-root>",
+        "hook_event_name": "SessionStart",
+        "source": "startup"
+      }
+    },
+    {
+      "officialEventName": "UserPromptSubmit",
+      "payload": {
+        "session_id": "<session-id>",
+        "cwd": "<repo-root>",
+        "permission_mode": "default",
+        "hook_event_name": "UserPromptSubmit"
+      }
+    },
+    {
+      "officialEventName": "PostToolUse",
+      "payload": {
+        "session_id": "<session-id>",
+        "cwd": "<repo-root>",
+        "permission_mode": "default",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Edit",
+        "tool_use_id": "<tool-id>"
+      }
+    },
+    {
+      "officialEventName": "Stop",
+      "payload": {
+        "session_id": "<session-id>",
+        "cwd": "<repo-root>",
+        "permission_mode": "default",
+        "hook_event_name": "Stop",
+        "stop_hook_active": false
+      }
+    }
+  ]
+}

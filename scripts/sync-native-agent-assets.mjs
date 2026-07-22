@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "adapters", "native-agent", "runtime.mjs");
-const targets = [path.join(root, "plugins", "braid", "runtime.mjs")];
+const targets = [
+  path.join(root, "plugins", "braid", "runtime.mjs"),
+  path.join(root, "plugins", "braid-claude", "runtime.mjs"),
+];
 const write = process.argv.includes("--write");
 const canonical = await readFile(source);
 

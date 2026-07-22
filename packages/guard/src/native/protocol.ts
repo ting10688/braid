@@ -13,6 +13,13 @@ import {
 } from "../codex/protocol.js";
 import { inspectCodexHookInstallation } from "../codex/installer.js";
 import {
+  claudeHookInputSchema,
+  claudeHookOutputSchema,
+  handleClaudeHook,
+  type ClaudeHookOutput,
+} from "../claude/protocol.js";
+import type { ClaudeDuplicateCoordinator } from "../claude/duplicate-store.js";
+import {
   GROWTH_HOOK_FAIL_OPEN_MESSAGE,
   handleGrowthLifecycle,
   resolveGrowthProjectRoot,
@@ -20,11 +27,17 @@ import {
   type GrowthLifecycleResult,
 } from "./lifecycle.js";
 
-export const NATIVE_AGENT_HOSTS = ["codex", "gemini", "copilot"] as const;
+export const NATIVE_AGENT_HOSTS = [
+  "codex",
+  "claude",
+  "gemini",
+  "copilot",
+] as const;
 export type NativeAgentHost = (typeof NATIVE_AGENT_HOSTS)[number];
 
 export const NATIVE_HOOK_EVENTS = {
   codex: ["SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"],
+  claude: ["SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"],
   gemini: ["SessionStart", "BeforeAgent", "AfterTool", "AfterAgent"],
   copilot: ["sessionStart", "userPromptSubmitted", "postToolUse", "agentStop"],
 } as const;
@@ -184,6 +197,7 @@ export interface HandleNativeHookOptions {
   diagnostics?: NativeHookDiagnostics;
   resolveProjectRoot?: (cwd: string) => Promise<string>;
   nativePlugin?: boolean;
+  claudeDuplicateCoordinator?: ClaudeDuplicateCoordinator;
 }
 
 const defaultDiagnostics: NativeHookDiagnostics = (message, error) => {
@@ -197,6 +211,12 @@ const eventFor = (host: NativeAgentHost, event: NativeHookEvent) => {
     Record<string, GrowthLifecycleEvent>
   > = {
     codex: {
+      SessionStart: "session-start",
+      UserPromptSubmit: "prompt-submit",
+      PostToolUse: "post-mutation",
+      Stop: "final-stop",
+    },
+    claude: {
       SessionStart: "session-start",
       UserPromptSubmit: "prompt-submit",
       PostToolUse: "post-mutation",
@@ -262,7 +282,9 @@ export const handleNativeHook = async (
   event: NativeHookEvent,
   input: unknown,
   options: HandleNativeHookOptions = {},
-): Promise<CodexHookOutput | GeminiHookOutput | CopilotHookOutput> => {
+): Promise<
+  CodexHookOutput | ClaudeHookOutput | GeminiHookOutput | CopilotHookOutput
+> => {
   const diagnostics = options.diagnostics ?? defaultDiagnostics;
   try {
     if (host === "codex") {
@@ -281,6 +303,28 @@ export const handleNativeHook = async (
       }
       return await handleCodexHook(input, {
         diagnostics,
+        ...(options.growthGuardFactory
+          ? { growthGuardFactory: options.growthGuardFactory }
+          : {}),
+        ...(options.resolveProjectRoot
+          ? { resolveProjectRoot: options.resolveProjectRoot }
+          : {}),
+      });
+    }
+
+    if (host === "claude") {
+      const parsed = claudeHookInputSchema.parse(input);
+      if (parsed.hook_event_name !== event) {
+        throw new Error(
+          `Claude hook payload event ${parsed.hook_event_name} does not match ${event}.`,
+        );
+      }
+      return await handleClaudeHook(input, {
+        source: "native-plugin",
+        diagnostics: (message) => diagnostics(message),
+        ...(options.claudeDuplicateCoordinator
+          ? { duplicateCoordinator: options.claudeDuplicateCoordinator }
+          : {}),
         ...(options.growthGuardFactory
           ? { growthGuardFactory: options.growthGuardFactory }
           : {}),
@@ -390,13 +434,18 @@ export const runNativeHookStdio = async (
     ...(options.resolveProjectRoot
       ? { resolveProjectRoot: options.resolveProjectRoot }
       : {}),
+    ...(options.claudeDuplicateCoordinator
+      ? { claudeDuplicateCoordinator: options.claudeDuplicateCoordinator }
+      : {}),
   });
   const schema =
     host === "codex"
       ? codexHookOutputSchema
-      : host === "gemini"
-        ? geminiHookOutputSchema
-        : copilotHookOutputSchema;
+      : host === "claude"
+        ? claudeHookOutputSchema
+        : host === "gemini"
+          ? geminiHookOutputSchema
+          : copilotHookOutputSchema;
   await writeOutput(
     options.stdout ?? process.stdout,
     `${JSON.stringify(schema.parse(result))}\n`,

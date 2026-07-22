@@ -1,0 +1,15 @@
+{
+  "name": "braid",
+  "displayName": "Braid Growth Mode",
+  "version": "0.6.0",
+  "description": "Guard architecture changes during Claude Code sessions using the installed Braid CLI.",
+  "author": {
+    "name": "Braid",
+    "url": "https://github.com/ting10688/Braid"
+  },
+  "homepage": "https://github.com/ting10688/Braid",
+  "repository": "https://github.com/ting10688/Braid",
+  "license": "MIT",
+  "keywords": ["architecture", "growth-mode", "claude-code"],
+  "commands": "./commands/"
+}
