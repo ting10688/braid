@@ -33,13 +33,26 @@ braid --help
 
 ## Native agent adapters
 
-The current v0.6.0 native production scope is Codex, Gemini CLI, and local
-GitHub Copilot CLI. Install their native plugin or extension separately after
+The current v0.6.0 native production scope is Codex, Claude Code 2.1.215,
+Gemini CLI, and local GitHub Copilot CLI. Install the native plugin or extension separately after
 installing Braid; that host installation does not initialize a project or
-enable Growth Mode. Claude Code production support is deferred from this
-release, while its compatibility research remains documented. See the
+enable Growth Mode. Claude support is exact-version scoped to the authenticated
+local Darwin arm64 contract. See the
 [native agent plugin guide](native-agent-plugins.md) and
 [compatibility report](agent-compatibility.md).
+
+Claude's preferred installation is:
+
+```text
+/plugin marketplace add ting10688/Braid
+/plugin install braid@braid
+/braid:setup
+```
+
+Use `braid growth install claude --dry-run`, then `--confirm`, only when the
+marketplace is unavailable. Remove that fallback with
+`braid growth uninstall claude`; native and manual adapters must not remain
+installed together.
 
 ## Requirements and supported platforms
 

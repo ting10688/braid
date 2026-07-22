@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const scoped = [
   ".agents/plugins",
+  ".claude-plugin",
   ".github/plugin",
   "adapters/native-agent",
   "commands/braid",
   "hooks",
   "plugins/braid",
+  "plugins/braid-claude",
   "packages/guard/test/fixtures/native",
   "docs/native-agent-plugins.md",
 ];

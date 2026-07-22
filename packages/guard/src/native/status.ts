@@ -28,6 +28,7 @@ export interface ProbeNativeAgentOptions {
 
 const executables: Record<NativeAgentHost, string> = {
   codex: "codex",
+  claude: "claude",
   gemini: "gemini",
   copilot: "copilot",
 };
@@ -38,7 +39,9 @@ const versionFor = (host: NativeAgentHost, output: string): string | null => {
       ? /GitHub Copilot CLI\s+(\d+\.\d+\.\d+)/u
       : host === "codex"
         ? /(?:codex-cli\s+)?(\d+\.\d+\.\d+)/u
-        : /^(\d+\.\d+\.\d+)$/mu;
+        : host === "claude"
+          ? /(\d+\.\d+\.\d+)(?:\s+\(Claude Code\))?/u
+          : /^(\d+\.\d+\.\d+)$/mu;
   return pattern.exec(output)?.[1] ?? null;
 };
 
@@ -62,6 +65,9 @@ const supportedVersion = (host: NativeAgentHost, version: string): boolean => {
   if (host === "gemini") {
     return compareVersion(version, "0.40.0") === 0;
   }
+  if (host === "claude") {
+    return compareVersion(version, "2.1.215") === 0;
+  }
   return compareVersion(version, "1.0.71") === 0;
 };
 
@@ -73,7 +79,9 @@ const containsBraidPlugin = (output: string): boolean => {
       if (value && typeof value === "object") {
         const object = value as Record<string, unknown>;
         if (
-          (object.name === "braid" || object.pluginId === "braid@braid") &&
+          (object.name === "braid" ||
+            object.pluginId === "braid@braid" ||
+            object.id === "braid@braid") &&
           object.enabled !== false
         ) {
           return true;
@@ -164,6 +172,14 @@ const limitationsFor = (host: NativeAgentHost): string[] => {
       "The final scan is authoritative for shell mutations.",
     ];
   }
+  if (host === "claude") {
+    return [
+      "Support is exact-version scoped to local Claude Code 2.1.215 on Darwin arm64.",
+      "Plugin changes require /reload-plugins or a new Claude Code session.",
+      "Shell mutation interception is incomplete; the final scan is authoritative.",
+      "Claude web and cloud-agent compatibility are not claimed.",
+    ];
+  }
   return [
     "Local Copilot CLI scope only; no cloud-agent compatibility is claimed.",
     "userPromptSubmitted stdout is not used for correctness.",
@@ -247,7 +263,9 @@ export const probeNativeAgent = async (
     const arguments_ =
       host === "gemini"
         ? ["extensions", "list", "--output-format", "json"]
-        : ["plugin", "list"];
+        : host === "claude"
+          ? ["plugin", "list", "--json"]
+          : ["plugin", "list"];
     adapterDiscovered = containsBraidPlugin(
       (await execute(executable, arguments_)).stdout,
     );

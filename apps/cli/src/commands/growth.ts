@@ -4,17 +4,23 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadArchitectureConfig } from "@braid/core";
 import {
+  CLAUDE_HOOK_EVENTS,
   CODEX_HOOK_EVENTS,
   createGrowthGuard,
   formatGrowthModeReport,
+  inspectClaudeHookInstallation,
   inspectCodexHookInstallation,
+  installClaudeHooks,
   installCodexHooks,
   NATIVE_AGENT_HOSTS,
   NATIVE_HOOK_EVENTS,
+  probeClaudeHookCapabilities,
   probeNativeAgent,
   probeCodexHookCapabilities,
+  runClaudeHookStdio,
   runCodexHookStdio,
   runNativeHookStdio,
+  uninstallClaudeHooks,
   uninstallCodexHooks,
   type NativeAgentHost,
   type NativeHookEvent,
@@ -33,6 +39,7 @@ interface InstallOptions {
   dryRun?: boolean;
   confirm?: boolean;
   codex?: string;
+  claude?: string;
   json?: boolean;
 }
 
@@ -54,6 +61,7 @@ interface NativeSetupOptions {
 
 interface NativeStatusOptions extends SessionOptions {
   codex?: string;
+  claude?: string;
   host?: string;
 }
 
@@ -101,12 +109,17 @@ const redactedPath = (value: string): string => {
 
 const nativeInstallCommand: Record<NativeAgentHost, string> = {
   codex: "codex plugin add braid@braid",
+  claude: "claude plugin install braid@braid",
   gemini: "gemini extensions install <released-braid-extension-source>",
   copilot: "copilot plugin install braid@braid",
 };
 
 const inspectNativeStatus = async (
-  options: NativeSetupOptions & { session?: string; codex?: string },
+  options: NativeSetupOptions & {
+    session?: string;
+    codex?: string;
+    claude?: string;
+  },
 ) => {
   const host = nativeHost(options.host);
   const projectRoot = path.resolve(options.path);
@@ -126,17 +139,28 @@ const inspectNativeStatus = async (
   const probe = await probeNativeAgent(host, {
     workspacePath: projectRoot,
     ...(host === "codex" && options.codex ? { executable: options.codex } : {}),
+    ...(host === "claude" && options.claude
+      ? { executable: options.claude }
+      : {}),
   });
-  let manualCodexAdapter = false;
+  let manualAdapter = false;
   if (host === "codex") {
     try {
-      manualCodexAdapter = (await inspectCodexHookInstallation(projectRoot))
+      manualAdapter = (await inspectCodexHookInstallation(projectRoot))
         .installed;
     } catch {
       // A malformed legacy config is reported by its legacy status command.
     }
   }
-  const duplicateAdapter = probe.adapterDiscovered && manualCodexAdapter;
+  if (host === "claude") {
+    try {
+      manualAdapter = (await inspectClaudeHookInstallation(projectRoot))
+        .installed;
+    } catch {
+      // A malformed manual config is reported by the manual status command.
+    }
+  }
+  const duplicateAdapter = probe.adapterDiscovered && manualAdapter;
 
   let lifecycle = null;
   if (initialized && configurationValid) {
@@ -166,7 +190,7 @@ const inspectNativeStatus = async (
           : !growthEnabled
             ? `braid growth setup --host ${host}`
             : duplicateAdapter
-              ? "braid growth uninstall codex"
+              ? `braid growth uninstall ${host}`
               : `braid growth status --host ${host}`;
 
   return {
@@ -185,7 +209,8 @@ const inspectNativeStatus = async (
     adapter: {
       kind: "native-plugin",
       discovered: probe.adapterDiscovered,
-      duplicateManualCodexAdapter: duplicateAdapter,
+      duplicateManualAdapter: duplicateAdapter,
+      duplicateManualCodexAdapter: host === "codex" && duplicateAdapter,
     },
     session: lifecycle,
     compatibility: probe.classification,
@@ -283,10 +308,10 @@ export const growthStatusCommand = async (
         `Latest result: ${status.session?.latestStatus ?? "none"}`,
         `Unresolved completion: ${status.session?.unresolvedCompletion ? "yes" : "no"}`,
         `Compatibility: ${status.compatibility}`,
-        ...(status.adapter.duplicateManualCodexAdapter
+        ...(status.adapter.duplicateManualAdapter
           ? [
-              "Duplicate adapter: native plugin and manual Codex adapter are both present.",
-              "Remediation: braid growth uninstall codex",
+              `Duplicate adapter: native plugin and manual ${status.host.name} adapter are both present.`,
+              `Remediation: braid growth uninstall ${status.host.name}`,
             ]
           : []),
         "Known limitations:",
@@ -407,9 +432,78 @@ export const growthUninstallCodexCommand = async (
   );
 };
 
+export const growthInstallClaudeCommand = async (
+  options: InstallOptions,
+): Promise<void> => {
+  const result = await installClaudeHooks({
+    projectRoot: path.resolve(options.path),
+    launcher: [process.execPath, cliEntrypoint(), "growth", "hook"],
+    dryRun: options.dryRun ?? false,
+    confirm: options.confirm ?? false,
+    ...(options.claude ? { claudeExecutable: options.claude } : {}),
+  });
+  if (options.json) {
+    writeJson({ ...result, configPath: ".claude/settings.local.json" });
+    return;
+  }
+  process.stdout.write(
+    [
+      `Braid Claude hook ${result.dryRun ? "dry run" : "installation"}`,
+      "Configuration: .claude/settings.local.json",
+      `Changed: ${result.changed ? "yes" : "no"}`,
+      ...CLAUDE_HOOK_EVENTS.map(
+        (event) => `${event}: ${result.events[event] ? "enabled" : "missing"}`,
+      ),
+      ...(result.backupPath ? ["Backup created: yes"] : []),
+      ...(result.dryRun ? ["", result.diff] : []),
+      "Trust: review repository hooks with /hooks in Claude Code.",
+      "",
+    ].join("\n"),
+  );
+};
+
+export const growthUninstallClaudeCommand = async (
+  options: UninstallOptions,
+): Promise<void> => {
+  const result = await uninstallClaudeHooks({
+    projectRoot: path.resolve(options.path),
+    dryRun: options.dryRun ?? false,
+  });
+  if (options.json) {
+    writeJson({ ...result, configPath: ".claude/settings.local.json" });
+    return;
+  }
+  process.stdout.write(
+    [
+      `Braid Claude hook ${result.dryRun ? "uninstall dry run" : "uninstall"}`,
+      "Configuration: .claude/settings.local.json",
+      `Changed: ${result.changed ? "yes" : "no"}`,
+      `Owned handlers removed: ${result.removedHandlerCount}`,
+      ...(result.dryRun ? ["", result.diff] : []),
+      "",
+    ].join("\n"),
+  );
+};
+
+const writeClaudeFailOpen = async (reason: string): Promise<void> => {
+  // Drain exactly one provider payload without parsing or retaining it.
+  for await (const _chunk of process.stdin) void _chunk;
+  const detail = reason.endsWith(".") ? reason.slice(0, -1) : reason;
+  process.stderr.write(`[braid-growth] ${detail}; continuing.\n`);
+  process.stdout.write("{}\n");
+};
+
 export const growthHookCommand = async (options: {
   host?: string;
   event?: string;
+  source?: string;
+  probeClaudeHook?: () => Promise<{
+    supported: boolean;
+    reason?: string | null;
+  }>;
+  runClaudeHook?: typeof runClaudeHookStdio;
+  runNativeHook?: typeof runNativeHookStdio;
+  writeClaudeFailOpen?: (reason: string) => Promise<void>;
 }): Promise<void> => {
   if (!options.host) {
     await runCodexHookStdio();
@@ -421,6 +515,42 @@ export const growthHookCommand = async (options: {
     );
   }
   const host = options.host as NativeAgentHost;
+  if (host === "claude") {
+    const source = options.source ?? "native-plugin";
+    if (source !== "native-plugin" && source !== "manual") {
+      throw new InvalidInputError(`Unsupported Claude hook source ${source}.`);
+    }
+    if (
+      source === "native-plugin" &&
+      (!options.event ||
+        !(NATIVE_HOOK_EVENTS.claude as readonly string[]).includes(
+          options.event,
+        ))
+    ) {
+      throw new InvalidInputError(
+        `Unsupported claude hook event ${options.event ?? "<missing>"}.`,
+      );
+    }
+    const capability = await (
+      options.probeClaudeHook ?? probeClaudeHookCapabilities
+    )();
+    if (!capability.supported) {
+      await (options.writeClaudeFailOpen ?? writeClaudeFailOpen)(
+        capability.reason ??
+          "Claude Code is outside the verified hook contract",
+      );
+      return;
+    }
+    if (source === "manual") {
+      await (options.runClaudeHook ?? runClaudeHookStdio)({ source });
+      return;
+    }
+    await (options.runNativeHook ?? runNativeHookStdio)(
+      host,
+      options.event as NativeHookEvent,
+    );
+    return;
+  }
   if (
     !options.event ||
     !(NATIVE_HOOK_EVENTS[host] as readonly string[]).includes(options.event)
@@ -429,5 +559,8 @@ export const growthHookCommand = async (options: {
       `Unsupported ${host} hook event ${options.event ?? "<missing>"}.`,
     );
   }
-  await runNativeHookStdio(host, options.event as NativeHookEvent);
+  await (options.runNativeHook ?? runNativeHookStdio)(
+    host,
+    options.event as NativeHookEvent,
+  );
 };

@@ -11,3 +11,7 @@ export * from "./state-store.js";
 export * from "./codex/capabilities.js";
 export * from "./codex/installer.js";
 export * from "./codex/protocol.js";
+export * from "./claude/capabilities.js";
+export * from "./claude/duplicate-store.js";
+export * from "./claude/installer.js";
+export * from "./claude/protocol.js";

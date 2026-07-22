@@ -1,0 +1,54 @@
+{
+  "description": "Braid Growth Mode lifecycle hooks for Claude Code 2.1.215.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" claude SessionStart",
+            "timeout": 35,
+            "statusMessage": "Braid Growth Mode: initializing architecture baseline"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" claude UserPromptSubmit",
+            "timeout": 35,
+            "statusMessage": "Braid Growth Mode: checking session context"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" claude PostToolUse",
+            "timeout": 35,
+            "statusMessage": "Braid Growth Mode: checking architecture"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime.mjs\" claude Stop",
+            "timeout": 35,
+            "statusMessage": "Braid Growth Mode: running final architecture scan"
+          }
+        ]
+      }
+    ]
+  }
+}

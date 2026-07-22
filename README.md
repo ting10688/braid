@@ -53,24 +53,22 @@ Install the latest stable release:
 The current release is v0.6.0. Its native-agent workflow is:
 
 1. Install the Braid CLI once.
-2. Choose Codex, Gemini CLI, or local GitHub Copilot CLI and install its native
+2. Choose Codex, Claude Code, Gemini CLI, or local GitHub Copilot CLI and install its native
    Braid plugin or extension.
-3. Run `$braid:setup` in Codex or `/braid:setup` in Gemini/Copilot.
+3. Run `$braid:setup` in Codex or `/braid:setup` in Claude/Gemini/Copilot.
 4. Run `braid init` in the TypeScript project if it is not initialized.
 5. Review `.braid/architecture.yaml` and explicitly enable Growth Mode.
 6. Use the coding agent normally; native lifecycle hooks run Braid
    automatically.
 
 Native adapters do not download Braid, initialize a project, enable Growth
-Mode, or grant host trust. The local Codex, Gemini, and Copilot package smokes
+Mode, or grant host trust. The local Codex, Claude, Gemini, and Copilot package smokes
 have passed. Remote owner/repository installation works only after the plugin
 content exists on the repository's default branch; release validation tests
 those paths after merge. See the
 [native agent plugin guide](docs/native-agent-plugins.md) for exact verified
 local commands, host limitations, uninstall, and troubleshooting. Claude Code
-support is deferred and is not included in the current release. Completed
-compatibility research is preserved for a future implementation cycle in the
-[compatibility report](docs/agent-compatibility.md).
+support is exact-version scoped to local 2.1.215 on Darwin arm64.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ting10688/Braid/main/install.sh | sh
@@ -81,6 +79,14 @@ Then open a new shell and verify the installation:
 ```bash
 braid --version
 braid --help
+```
+
+For Claude Code 2.1.215, install the native plugin after the CLI:
+
+```text
+/plugin marketplace add ting10688/Braid
+/plugin install braid@braid
+/braid:setup
 ```
 
 ### Requirements
@@ -265,7 +271,7 @@ See the [migration guide](docs/migrations.md) for configuration, approval, valid
 
 ## Growth Mode
 
-Growth Mode brings Braid into ordinary Codex, Gemini CLI, and local GitHub
+Growth Mode brings Braid into ordinary Codex, Claude Code, Gemini CLI, and local GitHub
 Copilot CLI coding sessions.
 
 It captures a baseline when a session starts, evaluates architecture after relevant source changes, returns concise findings to the same session, and performs a bounded final check before the agent finishes.
@@ -273,7 +279,7 @@ It captures a baseline when a session starts, evaluates architecture after relev
 Install the selected native plugin or extension, initialize the project, and
 explicitly enable `growthMode` in `.braid/architecture.yaml`. See the
 [native agent plugin guide](docs/native-agent-plugins.md) for exact Codex,
-Gemini, and Copilot installation commands and host-specific trust or restart
+Claude, Gemini, and Copilot installation commands and host-specific trust or restart
 requirements.
 
 The existing repository-local Codex adapter remains available as a manual
@@ -283,6 +289,17 @@ fallback:
 braid growth install codex --dry-run
 braid growth install codex --confirm
 ```
+
+Claude uses the native plugin above. When marketplace installation is
+unavailable, its explicit repository-local fallback is:
+
+```bash
+braid growth install claude --dry-run
+braid growth install claude --confirm
+```
+
+Do not install both Claude adapters. Keep the native plugin and remove only
+the manual fallback with `braid growth uninstall claude`.
 
 Do not install both Codex adapters. If both are detected, keep the native
 plugin by running:
@@ -324,9 +341,9 @@ Growth Mode:
 - does not invoke migration execution;
 - does not create commits, branches, or worktrees.
 
-The v0.6.0 production host scope is Codex, Gemini CLI, and local GitHub Copilot
-CLI. Copilot cloud-agent support is not claimed. Claude Code production support
-is deferred.
+The v0.6.0 production host scope is Codex, local Claude Code 2.1.215, Gemini
+CLI, and local GitHub Copilot CLI. Claude web and both hosts' cloud-agent
+environments are not claimed.
 
 See the [Growth Mode guide](docs/growth-mode.md) for lifecycle behavior, hook ownership, finite blocking, caching, configuration, and limitations.
 
@@ -728,9 +745,10 @@ See the [benchmark methodology](docs/benchmarking.md).
 
 ## Status
 
-Braid v0.6.0 adds native Growth Mode integrations for Codex, Gemini CLI, and local GitHub Copilot CLI
-while preserving the manual Codex fallback and verified standalone distribution. Claude Code
-production support is deferred. Authenticated package-level live-agent smoke has not been performed.
+Braid v0.6.0 adds native Growth Mode integrations for Codex, Claude Code,
+Gemini CLI, and local GitHub Copilot CLI while preserving manual fallbacks and
+the verified standalone distribution. Claude 2.1.215 completed authenticated
+package-level lifecycle verification.
 Recovery journals use schema version `1.0.0`; Growth reports and their adapter protocol remain at
 `1.0.0`, while snapshot, proposal, execution-plan, and execution-record schemas remain version 1.
 

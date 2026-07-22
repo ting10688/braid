@@ -1,0 +1,22 @@
+{
+  "name": "braid",
+  "owner": {
+    "name": "Braid"
+  },
+  "description": "Native agent integrations for Braid continuous architecture evolution.",
+  "version": "0.6.0",
+  "plugins": [
+    {
+      "name": "braid",
+      "source": "./plugins/braid-claude",
+      "description": "Braid Growth Mode hooks and diagnostics for Claude Code.",
+      "version": "0.6.0",
+      "author": {
+        "name": "Braid"
+      },
+      "license": "MIT",
+      "category": "development",
+      "tags": ["architecture", "growth-mode", "quality"]
+    }
+  ]
+}

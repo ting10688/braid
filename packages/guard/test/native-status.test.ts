@@ -18,6 +18,29 @@ afterEach(async () => {
 });
 
 describe("native agent status probes", () => {
+  it("accepts only the authenticated Claude Code contract and detects the plugin", async () => {
+    const installed = await probeNativeAgent("claude", {
+      runCommand: async (_command, arguments_) =>
+        arguments_[0] === "--version"
+          ? { stdout: "2.1.215 (Claude Code)\n" }
+          : {
+              stdout:
+                '[{"id":"braid@braid","version":"0.6.0","enabled":true}]\n',
+            },
+    });
+    expect(installed).toMatchObject({
+      supported: true,
+      adapterDiscovered: true,
+      version: "2.1.215",
+      classification: "verified",
+    });
+
+    const future = await probeNativeAgent("claude", {
+      runCommand: async () => ({ stdout: "2.1.216 (Claude Code)\n" }),
+    });
+    expect(future).toMatchObject({ supported: false, version: "2.1.216" });
+  });
+
   it("parses installed Copilot CLI output and rejects an unverified version", async () => {
     const installed = await probeNativeAgent("copilot", {
       runCommand: async (_command, arguments_) =>

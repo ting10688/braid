@@ -19,12 +19,12 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-assert(names.length === 3, "Expected one deterministic fixture set per host");
+assert(names.length === 4, "Expected one deterministic fixture set per host");
 for (const name of names) {
   const raw = await readFile(path.join(fixtureRoot, name), "utf8");
   const fixture = JSON.parse(raw);
   assert(
-    ["codex", "gemini", "copilot"].includes(fixture.platform),
+    ["codex", "claude", "gemini", "copilot"].includes(fixture.platform),
     `${name} has an unsupported platform`,
   );
   assert(

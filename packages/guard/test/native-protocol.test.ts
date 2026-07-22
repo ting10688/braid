@@ -17,6 +17,7 @@ import {
   type NativeHookEvent,
 } from "../src/native/protocol.js";
 import { codexHookInputSchema } from "../src/codex/protocol.js";
+import { claudeHookInputSchema } from "../src/claude/protocol.js";
 import { installCodexHooks } from "../src/codex/installer.js";
 
 interface FixtureEvent {
@@ -79,6 +80,7 @@ describe("native host hook translation", () => {
   it("validates every deterministic host fixture and retains live provenance", async () => {
     const fixtures = await Promise.all([
       loadFixture("codex-0.144.5.json"),
+      loadFixture("claude-2.1.215.json"),
       loadFixture("gemini-0.40.0.json"),
       loadFixture("copilot-1.0.71.json"),
     ]);
@@ -91,11 +93,13 @@ describe("native host hook translation", () => {
         const valid =
           fixture.platform === "codex"
             ? codexHookInputSchema.safeParse(event.payload).success
-            : fixture.platform === "gemini"
-              ? geminiHookInputSchema.safeParse(event.payload).success
-              : copilotHookInputSchemas[
-                  event.officialEventName as keyof typeof copilotHookInputSchemas
-                ].safeParse(event.payload).success;
+            : fixture.platform === "claude"
+              ? claudeHookInputSchema.safeParse(event.payload).success
+              : fixture.platform === "gemini"
+                ? geminiHookInputSchema.safeParse(event.payload).success
+                : copilotHookInputSchemas[
+                    event.officialEventName as keyof typeof copilotHookInputSchemas
+                  ].safeParse(event.payload).success;
         expect(valid, `${fixture.platform}:${event.officialEventName}`).toBe(
           true,
         );
@@ -163,6 +167,77 @@ describe("native host hook translation", () => {
         { decision: "block", reason: "Repair the architecture regression" },
       ]);
     }
+  });
+
+  it("routes the verified Claude lifecycle through the native host boundary", async () => {
+    const lifecycle = createLifecycle();
+    const coordinator = {
+      preflight: vi.fn(async () => ({ action: "evaluate" as const })),
+      claim: vi.fn(async () => true),
+    };
+    const common = {
+      session_id: "<session-id>",
+      cwd: "/repo",
+      permission_mode: "default",
+    };
+    const events = [
+      {
+        name: "SessionStart" as const,
+        payload: {
+          session_id: common.session_id,
+          cwd: common.cwd,
+          hook_event_name: "SessionStart",
+          source: "startup",
+        },
+      },
+      {
+        name: "UserPromptSubmit" as const,
+        payload: { ...common, hook_event_name: "UserPromptSubmit" },
+      },
+      {
+        name: "PostToolUse" as const,
+        payload: {
+          ...common,
+          hook_event_name: "PostToolUse",
+          tool_name: "Edit",
+          tool_use_id: "<tool-use-id>",
+        },
+      },
+      {
+        name: "Stop" as const,
+        payload: {
+          ...common,
+          hook_event_name: "Stop",
+          stop_hook_active: false,
+        },
+      },
+    ];
+    const outputs = [];
+    for (const event of events) {
+      outputs.push(
+        await handleNativeHook("claude", event.name, event.payload, {
+          ...optionsFor(lifecycle),
+          claudeDuplicateCoordinator: coordinator,
+        }),
+      );
+    }
+    expect(outputs).toEqual([
+      {
+        hookSpecificOutput: {
+          hookEventName: "SessionStart",
+          additionalContext:
+            "Braid Growth Mode active — architecture baseline captured.",
+        },
+      },
+      {},
+      {
+        hookSpecificOutput: {
+          hookEventName: "PostToolUse",
+          additionalContext: "Architecture changed",
+        },
+      },
+      { decision: "block", reason: "Repair the architecture regression" },
+    ]);
   });
 
   it("allows a repaired final scan and a bounded unchanged retry", async () => {

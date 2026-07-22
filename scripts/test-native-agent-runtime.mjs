@@ -136,6 +136,31 @@ process.stdout.write(mode === "block" ? '{"decision":"block","reason":"repair"}\
     "Missing-Braid diagnostics leaked payload data",
   );
 
+  const withoutBraidClaude = await new Promise((resolve, reject) => {
+    execFile(
+      process.execPath,
+      [runtime, "claude", "SessionStart"],
+      { env: { ...process.env, PATH: temporaryRoot }, timeout: 5_000 },
+      (error, stdout, stderr) =>
+        error ? reject(error) : resolve({ stdout, stderr }),
+    ).stdin?.end(
+      JSON.stringify({
+        session_id: "<session-id>",
+        cwd: "<repo-root>",
+        hook_event_name: "SessionStart",
+        source: "startup",
+      }),
+    );
+  });
+  assert(
+    JSON.stringify(JSON.parse(withoutBraidClaude.stdout)) === "{}",
+    "Missing Braid did not fail Claude open",
+  );
+  assert(
+    !withoutBraidClaude.stderr.includes("<session-id>"),
+    "Claude missing-Braid diagnostics leaked payload data",
+  );
+
   process.stdout.write(
     "Native adapter runtime and process cleanup tests passed.\n",
   );
